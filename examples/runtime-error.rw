@@ -1,0 +1,5 @@
+fn divide(a, b) {
+  return a / b;
+}
+
+let result = divide(12, 0);

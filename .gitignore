@@ -1,0 +1,10 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.vite/
+.vitest/
+*.tsbuildinfo
+.npm-cache/
+.playwright-browsers/
+.artifacts/

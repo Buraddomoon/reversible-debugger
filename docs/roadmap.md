@@ -1,0 +1,47 @@
+# Etapas de implementação
+
+## Primeira entrega — implementada
+
+1. **Especificação:** semântica da linguagem, granularidade das instruções, estado explícito e contrato de transações.
+2. **Execução:** lexer, parser, compilador e VM com variáveis, matemática, condicionais, loops e funções, incluindo recursão.
+3. **Reversibilidade:** histórico de deltas, cursor, inversão, replay e erros atômicos. Testes de todo o estado e navegação gerada.
+4. **Demo:** código destacado, avanço/retrocesso, reprodução/pausa, variáveis por frame, pilha, mudanças, resultado e edição. Cinco exemplos.
+5. **Documentação e validação:** build estático, testes do núcleo e smoke test com o Firefox instalado. Fluxos Playwright preparados para Firefox, Chromium, WebKit e layout móvel; validação desses engines adicionais fica pendente de ambiente com browsers de teste disponíveis.
+
+Critério de aceite: executar a soma incorreta, observar `10`, voltar através do resultado e retorno, restaurar a função com seus locais e avançar novamente com os mesmos estados. Também restaurar completamente a execução inicial e reproduzir até o mesmo resultado.
+
+## Próximo marco — linha do tempo e checkpoints
+
+- Extrair a interface `HistoryStore` do armazenamento atual em array.
+- Implementar checkpoints em intervalo configurável, preservando deltas.
+- Implementar busca por cursor e testar equivalência com navegação sequencial em todas as posições.
+- Medir memória e latência em programas com muitos passos e muitos locais, antes de escolher um intervalo padrão.
+- Trocar o indicador do histórico por uma linha do tempo navegável, com eventos de chamada, retorno, decisão e erro.
+
+Critério: buscar qualquer posição reproduz o mesmo estado completo; medir o efeito de checkpoints contra deltas sequenciais e snapshots por passo de referência.
+
+## Breakpoints e passos por comando
+
+- Associar breakpoints a spans/instruções e parar antes de executar a posição escolhida.
+- Definir comportamento ao repetir uma linha em um loop, ao voltar e ao retomar exatamente no breakpoint.
+- Agrupar instruções em passos por comando, mantendo eventos de chamadas dentro de expressões observáveis.
+- Adicionar entrar, passar sobre e sair da função sobre o histórico existente.
+
+Critério: navegação, agrupamento e breakpoints não alteram a execução da VM nem o resultado do replay.
+
+## Comparação entre execuções
+
+- Identificar sessões pelo código e pelo estado inicial.
+- Comparar estados e mudanças de dois programas, começando pela soma incorreta/corrigida.
+- Definir alinhamento semântico por posição de código e ocorrência de evento. Mesmo número de passo não implica mesma etapa lógica quando programas divergem.
+- Evidenciar a primeira diferença relevante e permitir navegar pelas duas sessões.
+
+## Explicações visuais e escala
+
+- Usar os próprios deltas para explicar leituras, atribuições, decisões, chamadas e retornos.
+- Animar mudanças com preferência por movimento reduzido respeitada.
+- Acrescentar diagramas de expressões ou frames somente quando ajudarem a entender a execução.
+- Mover execução e busca para Web Worker se os benchmarks indicarem necessidade.
+- Considerar serialização/versionamento do histórico e política de retenção antes de permitir sessões grandes ou efeitos externos.
+
+Cada marco preserva os testes de reversibilidade. Arrays, objetos e closures exigirão uma modelagem explícita de heap e identidades, e devem ser uma evolução própria da linguagem.

@@ -1,0 +1,11 @@
+fn gcd(a, b) {
+  let rest = 0;
+  while (b != 0) {
+    rest = a % b;
+    a = b;
+    b = rest;
+  }
+  return a;
+}
+
+let result = gcd(48, 18);
