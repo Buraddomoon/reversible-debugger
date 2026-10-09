@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 import { DebugSession } from '../core/debugger';
 import { describeInstruction } from '../core/compiler';
 import type { DeepReadonly, Step } from '../core/machine';
-import type { Span } from '../core/language';
 import { examples } from '../examples';
 import { formatValue, runtimes, type LanguageId } from '../core/runtime';
 import { ScriptEditor } from './ScriptEditor';
@@ -11,6 +10,9 @@ import { DeleteScriptModal } from './DeleteScriptModal';
 import { newSavedScript, readScriptLibrary, uniqueScriptName, type SavedScript } from './script-library';
 import { useScriptLibrary } from './useScriptLibrary';
 import { Timeline } from './Timeline';
+import { SourceView } from './SourceView';
+import { ExecutionControl, type RunMode } from '../core/execution-control';
+import { actionLabels, BreakpointBar, StepControls } from './DebugControls';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -33,56 +35,11 @@ function Icon({ name }: { name: IconName }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function syntax(text: string, language: LanguageId): ReactNode[] {
-  const pattern = language === 'python' ? /(#.*|\b(?:def|while|if|elif|else|return|pass|not|and|or|True|False|None)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g : /(\/\/.*|\b(?:fn|let|while|if|else|return|true|false)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g;
-  return text.split(pattern).filter(Boolean).map((piece, index) => {
-    const kind = piece.startsWith(language === 'python' ? '#' : '//') ? 'comment' : /^(fn|def|let|while|if|elif|else|return|pass|not|and|or|true|false|True|False|None)$/.test(piece) ? 'keyword' : /^\d/.test(piece) ? 'number' : /^[+*/%<>=!\-]+$/.test(piece) ? 'operator' : /^[A-Za-z_]/.test(piece) ? 'function' : '';
-    return <span className={`syntax-${kind}`} key={index}>{piece}</span>;
-  });
-}
-
-function SourceView({ source, span, language }: { source: string; span?: Span; language: LanguageId }) {
-  const container = useRef<HTMLDivElement>(null);
-  const lastSource = useRef(source);
-  const lines = useMemo(() => source.trimEnd().split('\n'), [source]);
-  const [viewport, setViewport] = useState({ top: 0, height: 440, lineHeight: 28 });
-  useEffect(() => {
-    const element = container.current!;
-    const measure = () => setViewport({ top: element.scrollTop, height: element.clientHeight, lineHeight: Number.parseFloat(getComputedStyle(element).getPropertyValue('--code-line-height')) || 28 });
-    const observer = new ResizeObserver(measure);
-    observer.observe(element); measure();
-    return () => observer.disconnect();
-  }, []);
-  useEffect(() => {
-    const element = container.current!;
-    const sourceChanged = lastSource.current !== source;
-    lastSource.current = source;
-    if (!span && !sourceChanged) return;
-    const top = ((span?.line ?? 1) - 1) * viewport.lineHeight + 22;
-    if (top < element.scrollTop) element.scrollTop = top;
-    if (top + viewport.lineHeight > element.scrollTop + element.clientHeight) element.scrollTop = top + viewport.lineHeight - element.clientHeight;
-    setViewport(current => ({ ...current, top: element.scrollTop }));
-  }, [span?.line, source, viewport.lineHeight]);
-  const start = Math.max(0, Math.floor((viewport.top - 22) / viewport.lineHeight) - 8);
-  const end = Math.min(lines.length, Math.ceil((viewport.top + viewport.height) / viewport.lineHeight) + 8);
-  return <div className="source-scroll" ref={container} tabIndex={0} aria-label="Código-fonte em execução" onScroll={event => { const top = event.currentTarget.scrollTop; setViewport(current => ({ ...current, top })); }}>
-    <div className="source-lines" style={{ height: lines.length * viewport.lineHeight }}>
-    {lines.slice(start, end).map((line, offset) => {
-      const index = start + offset;
-      const active = index + 1 === span?.line;
-      return <div className={`code-line ${active ? 'current' : ''}`} key={index} style={{ top: index * viewport.lineHeight }} data-testid={active ? 'current-line' : undefined} aria-current={active ? 'step' : undefined}>
-        <span className="line-number">{index + 1}</span>
-        <span className="line-marker" aria-hidden="true">{active ? '▸' : ''}</span>
-        <code>{syntax(line || ' ', language)}</code>
-      </div>;
-    })}</div>
-  </div>;
-}
-
-interface Navigation { step: DeepReadonly<Step>; direction: 'forward' | 'backward' | 'seek' }
+interface Navigation { step: DeepReadonly<Step>; direction: 'forward' | 'backward' | 'seek'; group?: { from: number; to: number; label: string } }
 function ChangeView({ navigation, language }: { navigation: Navigation | null; language: LanguageId }) {
   if (!navigation) return <div className="change-empty"><span className="empty-symbol">↔</span><p>Um passo, uma mudança.</p><span>Avance para acompanhar o que acontece.</span></div>;
   if (navigation.direction === 'seek') return <div className="change-empty"><span className="empty-symbol">↔</span><p>Estado restaurado no histórico.</p><span>Veja na linha do tempo o passo que produziu este estado. Avance ou volte para acompanhar uma mudança.</span></div>;
+  if (navigation.group) return <div className="change-content"><div className="change-direction">{navigation.group.label}<span>{Math.abs(navigation.group.to - navigation.group.from)} instruções</span></div><p className="change-description">Do passo {navigation.group.from} ao {navigation.group.to}.</p><p className="muted">Última instrução {navigation.direction === 'forward' ? 'aplicada' : 'desfeita'}: {navigation.step.description}</p></div>;
   const forward = navigation.direction === 'forward';
   const changes = navigation.step.changes.filter(change => change.kind !== 'control');
   if (!forward) changes.reverse();
@@ -124,6 +81,7 @@ export function App() {
   });
   const store = useScriptLibrary(initial.stored);
   const [session, setSession] = useState(initial.session);
+  const controller = useMemo(() => new ExecutionControl(session), [session]);
   const [exampleId, setExampleId] = useState(initial.selection);
   const [draft, setDraft] = useState(initial.source);
   const [editing, setEditing] = useState(initial.editing);
@@ -148,13 +106,16 @@ export function App() {
   const next = state.control.status === 'running' ? session.program.instructions[state.control.pc] : undefined;
   const result = state.frames[0]!.locals.result;
   const hasResult = Object.hasOwn(state.frames[0]!.locals, 'result');
-  const changedNames = new Set(navigation?.direction === 'seek' ? [] : navigation?.step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '') ?? []);
-  const status = rewinding ? 'Retrocedendo' : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : playing ? 'Executando' : 'Pausado';
+  const highlightSteps = navigation?.group ? session.history.slice(Math.min(navigation.group.from, navigation.group.to), Math.max(navigation.group.from, navigation.group.to)) : navigation && navigation.direction !== 'seek' ? [navigation.step] : [];
+  const changedNames = new Set(highlightSteps.flatMap(step => step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '')));
+  const breakpoints = controller.breakpoints;
+  const breakpointLine = controller.stop?.reason === 'breakpoint' ? controller.stop.line : null;
+  const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : 'Pausado';
   const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, session.runtime.language);
 
   const move = (direction: 'forward' | 'backward') => {
     if (rewinding) return;
-    setPlaying(false); setNotice(null); setSelectedFrame(null);
+    controller.cancel(); setPlaying(false); setNotice(null); setSelectedFrame(null);
     try {
       const step = direction === 'forward' ? session.forward() : session.backward();
       if (step) setNavigation({ step, direction });
@@ -162,11 +123,20 @@ export function App() {
     refresh();
   };
   const seek = (cursor: number) => {
+    controller.cancel();
     setPlaying(false); setRewinding(false); setNotice(null); setSelectedFrame(null); setNavigation(null);
     try { session.seek(cursor); if (session.lastStep) setNavigation({ step: session.lastStep, direction: 'seek' }); }
     catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
     refresh();
   };
+  const begin = (mode: RunMode) => {
+    setNotice(null); setSelectedFrame(null); setNavigation(null);
+    try { controller.start(mode); setPlaying(true); }
+    catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+    refresh();
+  };
+  const pause = () => { controller.cancel(); setPlaying(false); setRewinding(false); refresh(); };
+  const toggleBreakpoint = (line: number) => { pause(); controller.toggleBreakpoint(line); };
   useEffect(() => {
     if (!playing && !rewinding) return;
     const timer = window.setTimeout(() => {
@@ -175,18 +145,20 @@ export function App() {
           session.backwardBatch(500);
           if (!session.canBackward) { setRewinding(false); setNavigation(null); }
         } else {
-          session.runBatch(speed);
-          if (session.lastStep) setNavigation({ step: session.lastStep, direction: 'forward' });
+          const mode = controller.mode!;
+          const grouped = mode !== 'continue' && mode !== 'reverse-continue';
+          const result = controller.runBatch(grouped ? 256 : speed);
+          if (result.lastStep) setNavigation({ step: result.lastStep, direction: result.direction, ...(grouped ? { group: { from: result.origin, to: session.cursor, label: actionLabels[mode] } } : {}) });
+          if (!controller.running) setPlaying(false);
         }
         setSelectedFrame(null);
-        if (!session.canForward) setPlaying(false);
       } catch (error) {
-        setPlaying(false); setRewinding(false); setNotice(error instanceof Error ? error.message : String(error));
+        controller.cancel(); setPlaying(false); setRewinding(false); setNavigation(null); setNotice(error instanceof Error ? error.message : String(error));
       }
       refresh();
-    }, rewinding ? 0 : speed === 1 ? 180 : 80);
+    }, rewinding || (controller.mode && controller.mode !== 'continue' && controller.mode !== 'reverse-continue') ? 0 : speed === 1 ? 180 : 80);
     return () => window.clearTimeout(timer);
-  }, [playing, rewinding, session, speed, revision]);
+  }, [playing, rewinding, session, controller, speed, revision]);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const element = event.target as HTMLElement;
@@ -198,6 +170,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKey);
   });
   const load = (id: string) => {
+    controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setSelectedFrame(null);
     store.update(library => ({ ...library, selection: id }));
     const script = store.library.scripts.find(item => item.id === id);
@@ -228,6 +201,7 @@ export function App() {
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };
   const newScript = () => {
+    controller.cancel();
     setPlaying(false); setRewinding(false); setCreating(true);
   };
   const createScript = ({ name, filename, language, version }: NewScript) => {
@@ -247,6 +221,7 @@ export function App() {
     load(nextId); store.flush(); setDeleting(null);
   };
   const restartProgram = () => {
+    controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setNotice(null); setSelectedFrame(null);
     session.restart(); refresh();
   };
@@ -263,7 +238,7 @@ export function App() {
         <p>{example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
         <span className="example-tag">{example?.tag ?? 'Programa personalizado'}</span>
         <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
-        {selectedScript && <button className="delete-script" onClick={() => { setPlaying(false); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
+        {selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
       </section>
       <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
@@ -271,18 +246,20 @@ export function App() {
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
             <button className="primary" onClick={() => move('forward')} disabled={!session.canForward || editing || rewinding} title="Avançar uma instrução (tecla direita)"><Icon name="next" /><span>Avançar</span></button>
             <span className="control-divider" />
-            <button className="play-button" onClick={() => { setNotice(null); setPlaying(!playing); }} disabled={!session.canForward || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
+            <button className="play-button" onClick={() => playing ? pause() : begin('continue')} disabled={(!session.canForward && !playing) || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
             <label className="speed-label"><span className="sr-only">Velocidade de execução</span><select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1×</option><option value={4}>4×</option></select></label>
-            <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
+            <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { controller.cancel(); setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
             <button onClick={restartProgram} disabled={editing || rewinding} title="Iniciar uma execução nova sem remover o código ou os scripts salvos"><Icon name="reset" /><span>Reiniciar programa</span></button>
           </div>
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>
+        <StepControls disabled={editing || rewinding} canForward={session.canForward} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
+        {breakpointLine !== null && <div className="breakpoint-pause" data-testid="debug-pause"><strong>Breakpoint na linha {breakpointLine}</strong><span>Parado antes do comando. Executar retoma esta passagem; o breakpoint continua ativo nas próximas.</span></div>}
         {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
         <div className="workspace">
           <section className="source-panel" aria-label="Programa em execução">
-            <div className="panel-header"><div><Icon name="code" /><span>{editing ? draftFilename : filename}</span><span className="source-runtime">{(editing ? draftLanguage : session.runtime.language) === 'python' ? 'Python 3' : 'Experimental 0.1'}</span></div><button className="text-button" onClick={() => { setPlaying(false); setRewinding(false); if (!editing) { setDraft(selectedScript?.source ?? session.program.source); setDraftLanguage(selectedScript?.language ?? session.runtime.language); setDraftVersion(selectedScript?.version ?? session.runtime.version); setDraftFilename(selectedScript?.filename ?? filename); } setEditing(!editing); setNotice(null); }}>{editing ? 'Fechar editor' : 'Editar código'}</button></div>
-            {editing ? <ScriptEditor key={exampleId} saved={Boolean(selectedScript) && !store.error} source={draft} filename={draftFilename} language={draftLanguage} version={draftVersion} onSource={changeSource} onFilename={name => { setDraftFilename(name); if (selectedScript) patchSelectedScript({ filename: name }); }} onRuntime={(language, version) => { setDraftLanguage(language); setDraftVersion(version); if (selectedScript) patchSelectedScript({ language, version }); }} onApply={applyDraft} onError={setNotice} /> : <SourceView source={session.program.source} language={session.runtime.language} span={next?.span ?? (state.control.status === 'error' ? session.lastStep?.span : undefined)} />}
+            <div className="panel-header"><div><Icon name="code" /><span>{editing ? draftFilename : filename}</span><span className="source-runtime">{(editing ? draftLanguage : session.runtime.language) === 'python' ? 'Python 3' : 'Experimental 0.1'}</span></div><button className="text-button" onClick={() => { pause(); setRewinding(false); if (!editing) { setDraft(selectedScript?.source ?? session.program.source); setDraftLanguage(selectedScript?.language ?? session.runtime.language); setDraftVersion(selectedScript?.version ?? session.runtime.version); setDraftFilename(selectedScript?.filename ?? filename); } setEditing(!editing); setNotice(null); }}>{editing ? 'Fechar editor' : 'Editar código'}</button></div>
+            {editing ? <ScriptEditor key={exampleId} saved={Boolean(selectedScript) && !store.error} source={draft} filename={draftFilename} language={draftLanguage} version={draftVersion} onSource={changeSource} onFilename={name => { setDraftFilename(name); if (selectedScript) patchSelectedScript({ filename: name }); }} onRuntime={(language, version) => { setDraftLanguage(language); setDraftVersion(version); if (selectedScript) patchSelectedScript({ language, version }); }} onApply={applyDraft} onError={setNotice} /> : <><BreakpointBar lines={breakpoints} enabled={controller.breakpointsEnabled} onToggle={toggleBreakpoint} onEnabled={enabled => { pause(); controller.breakpointsEnabled = enabled; }} onClear={() => { pause(); controller.clearBreakpoints(); }} /><SourceView source={session.program.source} language={session.runtime.language} breakableLines={session.program.breakableLines} breakpoints={breakpoints} enabled={controller.breakpointsEnabled} onToggle={toggleBreakpoint} span={(controller.stop?.reason === 'step' || breakpointLine !== null) && controller.location?.entry ? controller.location.span : next?.span ?? (state.control.status === 'error' ? session.lastStep?.span : undefined)} /></>}
             <div className="next-instruction"><span>PRÓXIMA INSTRUÇÃO</span><strong data-testid="next-instruction">{next ? describeInstruction(next, session.runtime.language) : state.control.status === 'error' ? 'Volte para desfazer o erro' : 'Programa concluído'}</strong><code>{next ? `L${next.span.line}:${next.span.column} · ${next.op}` : '—'}</code></div>
             <div className="result-panel"><span className="result-label">Resultado <code>result</code></span><strong data-testid="result-value">{hasResult ? format(result!) : '—'}</strong><span className={hasResult && example?.expected !== undefined && result !== example.expected ? 'result-warning' : 'result-expected'}>{example?.expected !== undefined ? `Esperado: ${example.expected}` : hasResult ? 'Valor global' : 'Ainda não calculado'}</span></div>
             {session.runtime.language === 'python' && <section className="output-panel" aria-label="Saída do programa"><span>SAÍDA</span><pre data-testid="program-output">{state.output.join('') || 'Nenhuma saída ainda.'}</pre></section>}

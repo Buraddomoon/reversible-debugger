@@ -4,6 +4,8 @@ Debugger visual reversível implementado em TypeScript. Interpreta um subconjunt
 
 A linha do tempo permite saltar para qualquer passo registrado, escolher eventos e restaurar o estado exato usando deltas e checkpoints esparsos.
 
+Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da função** e **Voltar comando** permitem explorar o código por comandos. **Continuar para trás** busca o breakpoint anterior no histórico.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -46,6 +48,16 @@ Só existem destinos até o último passo registrado. Para descobrir estados nov
 
 ![Linha do tempo no Firefox: restaurando a decisão que encerra cedo a soma Python](docs/timeline.png)
 
+## Breakpoints e comandos
+
+Clique no número de uma linha executável para colocar um breakpoint. **Executar** para antes de seu comando; executar novamente atravessa essa passagem e permite parar na próxima iteração. **Continuar para trás** restaura a ocorrência anterior no histórico.
+
+No exemplo Python da soma, coloque um ponto na linha **4**: a primeira pausa mostra `i = 1` e `total = 0`; a seguinte mostra `i = 2` e `total = 1`. Voltar ao breakpoint recupera os valores anteriores. A lista permite remover pontos, desativá-los temporariamente ou limpar todos. Reiniciar preserva os pontos da sessão; trocar/aplicar código ou recarregar cria uma configuração nova.
+
+**Entrar** observa a próxima chamada; **Passar sobre** conclui o comando e suas chamadas; **Sair da função** para logo após o retorno do frame atual. Breakpoints encontrados no caminho continuam valendo. **Voltar comando** recupera o início do comando anterior na ordem do histórico. Os controles básicos continuam avançando/voltando uma instrução.
+
+Um comando de condição para antes do próximo comando do bloco escolhido. Um retorno pode deixar a execução no meio da expressão do chamador, com temporários na pilha. [Regras completas, exemplo visual e API](docs/breakpoints-stepping.md).
+
 ## Usar seu próprio script
 
 1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
@@ -78,10 +90,12 @@ src/core/machine.ts    Estado explícito, transações e deltas
 src/core/history.ts    HistoryStore, checkpoints e política de retenção
 src/core/history-events.ts  Eventos projetados das transações
 src/core/debugger.ts   Sessão, cursor, passos e busca por posição
+src/core/execution-control.ts  Breakpoints, planos em lotes e passos por comando
 src/ui/               Interface React e estilos responsivos
 examples/             Programas .rw usados pela demo e pelos testes
 tests/core.test.ts    Semântica, reversibilidade e propriedades geradas
 tests/history.test.ts Busca exata, checkpoints, eventos e navegação gerada
+tests/execution-control.test.ts  Paradas, recursão, agrupamento e replay
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -159,6 +173,9 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - Busca de cada cursor comparada com a referência sequencial nos dois runtimes; chamadas recursivas, controle, operandos, saída, erros, `bigint`, `-0`, infinitos e `NaN` restaurados exatamente.
 - Checkpoints isolados, retenção limitada, continuidade após restauração, descarte no reinício e nenhuma chamada ao executor durante saltos; navegação gerada com seed reproduzível.
 - No Firefox: linha do tempo, range com teclado, salto numérico, eventos, frames, resultado, saída e erro restaurados, pausa ao navegar e histórico preservado.
+- Breakpoints antes dos comandos, retomada por ocorrência, busca reversa, loops vazios, comandos na mesma linha e cabeçalhos multilinha.
+- Entrar/passar sobre/sair em chamadas aninhadas e recursivas, temporários preservados, retorno implícito, saída desfeita ao voltar comando e estados completos iguais aos da referência.
+- No Firefox: controles por comando, breakpoint no loop, retomada, ocorrência anterior, replay parcial, preservação dos pontos no reinício, desativação/remoção e layout móvel.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -169,5 +186,6 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Python 3: recursos e limitações](docs/python.md)
 - [Etapas e próximos marcos](docs/roadmap.md)
 - [Medidas e política de checkpoints](docs/history-performance.md)
+- [Breakpoints e controles por comando](docs/breakpoints-stepping.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface reproduz e retrocede em lotes pequenos para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Breakpoints, passos por comando/função e comparação entre execuções são os próximos marcos.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Comparação entre execuções e explicações visuais mais detalhadas são os próximos marcos.

@@ -43,16 +43,20 @@ JavaScript fica como próximo adaptador de linguagem, seguindo a prioridade de P
 
 Critério atendido: buscar qualquer posição testada reproduz o mesmo estado completo da referência sequencial. Firefox instalado validou controles, teclado, chamadas, resultado, erro, saída, pausa ao navegar, reinício e layout móvel.
 
-## Próximo marco — breakpoints e passos por comando
+## Breakpoints e passos por comando — implementado
 
-- Associar breakpoints a spans/instruções e parar antes de executar a posição escolhida.
-- Definir comportamento ao repetir uma linha em um loop, ao voltar e ao retomar exatamente no breakpoint.
-- Agrupar instruções em passos por comando, mantendo eventos de chamadas dentro de expressões observáveis.
-- Adicionar entrar, passar sobre e sair da função sobre o histórico existente.
+- Metadados imutáveis de comandos no compilador, separados dos spans de cada instrução. A VM e o formato dos deltas permanecem iguais.
+- Breakpoints pelo número da linha, antes da primeira instrução do comando; retomada ignora somente a passagem atual e permite parar nas iterações seguintes.
+- **Continuar para trás** busca ocorrências anteriores nos registros existentes, restaurando exatamente o mesmo estado anterior ao comando.
+- **Entrar**, **Passar sobre**, **Sair da função** e **Voltar comando**, usando os mesmos deltas e IDs de frames para distinguir chamadas recursivas.
+- Breakpoints internos interrompem passar sobre/sair. Chamadas e retornos dentro de expressões continuam observáveis ao entrar.
+- Controle de execução em lotes, fora da VM, com pausa/cancelamento e tratamento dos limites existentes.
+- Lista compacta, remoção e desativação dos breakpoints; reiniciar o programa preserva os pontos da sessão. Aplicar código ou trocar programa cria uma configuração nova.
+- [Regras e API documentadas](breakpoints-stepping.md), testes de estados completos, navegação gerada nos dois runtimes e fluxo verificado no Firefox, inclusive em 390 px.
 
-Critério: navegação, agrupamento e breakpoints não alteram a execução da VM nem o resultado do replay.
+Critério atendido: as paradas e o agrupamento correspondem aos estados da referência sequencial, e replay com controles não chama o executor nem cria registros duplicados.
 
-## Comparação entre execuções
+## Próximo marco — comparação entre execuções
 
 - Identificar sessões pelo código e pelo estado inicial.
 - Comparar estados e mudanças de dois programas, começando pela soma incorreta/corrigida.

@@ -8,7 +8,7 @@
 
 **Runtimes:** a sessão guarda uma seleção imutável de linguagem e versão. `runtime.ts` valida o catálogo: Python 3 usa `python.ts` e `python-values.ts`; Experimental 0.1 usa o parser original. Ambos produzem o AST compartilhado. Os detalhes da semântica Python, seu escopo e limitações estão em [Python 3](python.md). Runtimes inexistentes são rejeitados, sem fallback para outro parser.
 
-**Granularidade:** um passo é uma instrução da VM. A posição apresentada corresponde à próxima instrução; a última mudança é apresentada separadamente. Em um erro, o destaque identifica a instrução que falhou. Repetições da mesma linha são esperadas. Um futuro modo por comando deverá agrupar várias transações, sem perder o histórico de instruções.
+**Granularidade:** cada registro continua representando uma instrução da VM. Os controles por comando agrupam a navegação sem substituir esses registros. A posição apresentada corresponde à próxima instrução; em uma pausa por comando ou breakpoint, o destaque usa o cabeçalho do comando. Em um erro, identifica a instrução que falhou. Repetições da mesma linha são esperadas.
 
 ## Por que usar uma máquina virtual
 
@@ -80,6 +80,20 @@ Se uma instrução falha após remover operandos, a transação desfaz suas muda
 
 Uma sessão é definida por seu código imutável, estado inicial, transações e cursor. O código e as regras atuais da linguagem produzem execução determinística. A futura introdução de entrada, aleatoriedade ou efeitos externos exigirá modelar e registrar essas entradas explicitamente.
 
+## Breakpoints e controle por comando
+
+`Program.locations[pc]` descreve o comando que originou uma instrução: ID estático, span, início do comando e tipo. `Program.breakableLines` lista os cabeçalhos executáveis. Esses metadados são congelados junto com o programa e não integram os deltas. Saltos internos de fluxo e `HALT` não têm entrada de comando. O retorno implícito tem uma entrada sintética para permitir observar uma função vazia, mas não cria uma linha elegível para breakpoint.
+
+Um loop volta à mesma entrada estática em ocorrências diferentes do histórico. Dois comandos na mesma linha possuem IDs diferentes; uma expressão multilinha pertence ao cabeçalho do comando, não a cada linha dos operandos. Essa identificação evita depender de uma mudança no número da linha para detectar o próximo passo.
+
+`ExecutionControl` guarda breakpoints, plano em andamento e motivo de parada **fora de `MachineState`**. Ele utiliza somente `forward()` e `backward()` da sessão. Continuar para frente testa breakpoints antes da execução; retomar uma pausa ignora apenas o cursor atual. Continuar para trás desfaz pelo menos uma transação e procura uma entrada anterior. Assim, nenhum sentido modifica o programa ou fabrica registros de execução.
+
+Entrar para na próxima entrada ou mudança do frame ativo. Passar sobre ignora entradas de frames chamados e para na próxima entrada do frame original, ou imediatamente após seu retorno. Sair espera a remoção do ID do frame original, mesmo durante recursão. Breakpoints podem interromper qualquer uma dessas ações. Voltar comando percorre o histórico até a entrada anterior, incluindo retornos implícitos. [O contrato completo](breakpoints-stepping.md) detalha os casos de chamadas dentro de expressões e comandos compostos.
+
+Os planos sobrevivem entre lotes limitados a 1.000 transações. A UI usa 256 para ações por comando e mantém os lotes de 1/4 instruções na reprodução, devolvendo o controle ao navegador entre lotes. Pausa, passos manuais, busca na linha do tempo e reinício cancelam o plano antes de alterar a navegação. O controle deve ser cancelado também por consumidores do núcleo que naveguem diretamente na sessão.
+
+Reiniciar conserva os breakpoints e a opção de ativação do mesmo controlador. Trocar de programa, aplicar código ou recarregar cria outro controlador; breakpoints não são persistidos na biblioteca de scripts. O painel de mudanças informa a quantidade de instruções de uma ação agrupada e identifica a última instrução, sem apresentá-la como explicação de todas as alterações atravessadas.
+
 ## Custo e evolução
 
 O histórico ocupa espaço proporcional à soma dos payloads alterados, mais os metadados constantes de cada passo. Uma atribuição preserva seu binding e os operandos usados; seu tamanho não depende de quantas outras variáveis existem. Chamadas e retornos podem ter custo proporcional ao tamanho do frame afetado. A versão inicial não promete memória constante: o histórico continua crescendo e possui um limite explícito.
@@ -92,7 +106,7 @@ O padrão é um checkpoint a cada 128 instruções, com teto de 128 checkpoints 
 
 O teto limita a quantidade de cópias, não seus bytes nem o heap total. Deltas continuam crescendo até o limite explícito do histórico. [As medições](history-performance.md) mostram o ganho com muitos locais e também o caso em que snapshots minúsculos ocupam menos bytes que os deltas ricos em metadados. Snapshots por passo permanecem uma referência nos testes e no benchmark.
 
-A VM suporta estados que podem futuramente ser serializados e enviados por um Web Worker. Isso não é necessário para os exemplos iniciais: reprodução em lotes de até quatro instruções, limite de histórico e limite de frames mantêm a demo pequena. Não se usa `eval` nem `Function` para executar a linguagem.
+A VM suporta estados que podem futuramente ser serializados e enviados por um Web Worker. A UI atual usa lotes limitados, limite de histórico e limite de frames. Não se usa `eval` nem `Function` para executar a linguagem.
 
 ## Garantias verificadas
 
@@ -106,6 +120,8 @@ apply(undo(S', T), T) = S'
 A igualdade inclui todos os campos internos. Os testes percorrem os estados de programas conhecidos, desfazem todos os passos e reaplicam todos; sequências arbitrárias de navegação são comparadas com o estado de referência de cada cursor. Resultados conhecidos são verificados separadamente.
 
 Testes adicionais saltam a cada cursor a partir das duas pontas, misturam saltos e passos em sessões parcialmente registradas, continuam gravando após restaurar checkpoints e forçam o teto de retenção. Uma spy exige que saltar não chame `executeInstruction`. Recursão, valores especiais, saída e erros são comparados com snapshots independentes.
+
+Os testes de `ExecutionControl` verificam motivos e posições de parada, loops vazios, comandos na mesma linha, cabeçalhos multilinha, recursão, temporários no chamador, saída, erros e limites. Sequências geradas de ações nos dois runtimes são comparadas com todo o estado da referência de cada cursor. Uma spy também exige que os controles não reexecutem código durante replay.
 
 ## Arquivos grandes e interface
 

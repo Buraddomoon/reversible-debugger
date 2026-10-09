@@ -11,23 +11,36 @@ export type Operation =
   | { op: 'CALL'; name: string; argc: number; stackCallee?: boolean }
   | { op: 'RETURN' | 'POP' | 'DUP' | 'HALT' };
 export type Instruction = Operation & { span: Span };
+export interface DebugLocation {
+  readonly statementId: number;
+  readonly span: Span;
+  readonly entry: boolean;
+  readonly kind: 'statement' | 'implicit-return';
+}
 export interface FunctionInfo { entry: number; params: readonly string[] }
 export interface Program {
   readonly source: string;
   readonly runtime: RuntimeSelection;
   readonly instructions: readonly Instruction[];
   readonly functions: Readonly<Record<string, FunctionInfo>>;
+  readonly locations: readonly (DebugLocation | null)[];
+  readonly breakableLines: readonly number[];
 }
 
 export function compile(source: string, runtime: RuntimeSelection = getRuntime('rewind')): Program {
   const tree = runtime.language === 'python' ? parsePython(source) : parse(source);
   const instructions: Instruction[] = [];
+  const locations: Array<DebugLocation | null> = [];
+  let statementId = 0;
+  let currentSite: { statementId: number; span: Span; entryPc: number; kind: DebugLocation['kind'] } | null = null;
+  const site = (span: Span, kind: DebugLocation['kind'] = 'statement') => ({ statementId: statementId++, span, entryPc: instructions.length, kind });
   const functions: Record<string, FunctionInfo> = Object.create(null);
   for (const fn of tree.functions) {
     if (Object.hasOwn(functions, fn.name)) throw new LanguageError(`Função duplicada: ${fn.name}`, fn.span);
     functions[fn.name] = { entry: -1, params: fn.params };
   }
-  const emit = (operation: Operation, span: Span): number => {
+  const emit = (operation: Operation, span: Span, origin = currentSite): number => {
+    locations.push(origin ? { statementId: origin.statementId, span: origin.span, entry: origin.entryPc === instructions.length, kind: origin.kind } : null);
     instructions.push({ ...operation, span }); return instructions.length - 1;
   };
   const patch = (index: number, target: number) => {
@@ -80,7 +93,9 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
     }
   };
   const statements = (nodes: Statement[], inFunction: boolean) => {
+    const previousSite = currentSite;
     for (const node of nodes) {
+      currentSite = site(node.span);
       switch (node.kind) {
         case 'let': case 'assign': case 'set':
           expression(node.value);
@@ -94,7 +109,7 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
           expression(node.condition);
           const test = emit({ op: 'JUMP_IF_FALSE', target: -1 }, node.condition.span);
           statements(node.then, inFunction);
-          const skip = emit({ op: 'JUMP', target: -1 }, node.span);
+          const skip = emit({ op: 'JUMP', target: -1 }, node.span, null);
           patch(test, instructions.length);
           statements(node.otherwise, inFunction);
           patch(skip, instructions.length); break;
@@ -104,25 +119,30 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
           expression(node.condition);
           const test = emit({ op: 'JUMP_IF_FALSE', target: -1 }, node.condition.span);
           statements(node.body, inFunction);
-          emit({ op: 'JUMP', target: entry }, node.condition.span);
+          emit({ op: 'JUMP', target: entry }, node.condition.span, null);
           patch(test, instructions.length); break;
         }
       }
     }
+    currentSite = previousSite;
   };
   statements(tree.statements, false);
-  emit({ op: 'HALT' }, tree.statements.at(-1)?.span ?? tree.span);
+  emit({ op: 'HALT' }, tree.statements.at(-1)?.span ?? tree.span, null);
   for (const fn of tree.functions) {
     functions[fn.name] = { entry: instructions.length, params: fn.params };
     currentLocals = new Set([...fn.params, ...assignedNames(fn.body)]);
     statements(fn.body, true);
+    currentSite = site(fn.span, 'implicit-return');
     emit({ op: 'PUSH', value: runtime.language === 'python' ? null : 0 }, fn.span);
     emit({ op: 'RETURN' }, fn.span);
+    currentSite = null;
   }
   // Program and debug metadata are immutable throughout a run.
   for (const instruction of instructions) { Object.freeze(instruction.span); Object.freeze(instruction); }
   for (const fn of Object.values(functions)) { Object.freeze(fn.params); Object.freeze(fn); }
-  return Object.freeze({ source, runtime, instructions: Object.freeze(instructions), functions: Object.freeze(functions) });
+  for (const location of locations) if (location) { Object.freeze(location.span); Object.freeze(location); }
+  const breakableLines = [...new Set(locations.filter(location => location?.entry && location.kind === 'statement').map(location => location!.span.line))].sort((a, b) => a - b);
+  return Object.freeze({ source, runtime, instructions: Object.freeze(instructions), functions: Object.freeze(functions), locations: Object.freeze(locations), breakableLines: Object.freeze(breakableLines) });
 }
 
 export function describeInstruction(instruction: Instruction, language: LanguageId = 'rewind'): string {

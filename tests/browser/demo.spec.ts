@@ -53,6 +53,60 @@ test('troca exemplos e desfaz um erro de execução', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('Divisão por zero');
 });
 
+test('breakpoints param antes do comando, retomam no loop e são encontrados ao retroceder', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Sair da função', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Adicionar breakpoint na linha 4', exact: true }).click();
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Breakpoint · L4');
+  await expect(page.getByTestId('current-line')).toContainText('while i < n');
+  await expect(page.locator('.variable-row').filter({ has: page.locator('code', { hasText: /^i$/ }) }).locator('strong')).toHaveText('1');
+  const first = await page.getByTestId('step-count').textContent();
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.locator('.variable-row').filter({ has: page.locator('code', { hasText: /^i$/ }) }).locator('strong')).toHaveText('2');
+  await expect(page.getByRole('status')).toHaveText('Breakpoint · L4');
+  const second = await page.getByTestId('step-count').textContent();
+  const history = await page.getByTestId('history-length').textContent();
+  await page.getByRole('button', { name: 'Continuar para trás', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText(first!);
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText(second!);
+  await expect(page.getByTestId('history-length')).toHaveText(history!);
+  await page.getByRole('button', { name: 'Reiniciar programa', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Remover breakpoint L4', exact: true })).toBeVisible();
+  await page.getByLabel('Ativos', { exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Concluído');
+  await expect(page.getByTestId('result-value')).toHaveText('10');
+  await page.getByRole('button', { name: 'Limpar breakpoints' }).click();
+  await expect(page.locator('.breakpoint-caption strong')).toHaveText('0');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('entra na função, passa sobre comandos, sai e restaura o retorno ao voltar comando', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page.getByTestId('current-line')).toContainText('result = sum_to');
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page.getByTestId('call-stack')).toContainText('sum_to()');
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await expect(page.getByTestId('current-line')).toContainText('i = 1');
+  await page.getByRole('button', { name: 'Sair da função', exact: true }).click();
+  await expect(page.getByTestId('call-stack')).not.toContainText('sum_to()');
+  await expect(page.getByTestId('result-value')).toHaveText('—');
+  await expect(page.getByRole('button', { name: 'Sair da função', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await expect(page.getByTestId('result-value')).toHaveText('10');
+  await page.getByRole('button', { name: 'Voltar comando', exact: true }).click();
+  await expect(page.getByTestId('call-stack')).toContainText('sum_to()');
+  await expect(page.getByTestId('current-line')).toContainText('return total');
+  await expect(page.getByTestId('result-value')).toHaveText('—');
+  await expect(page.locator('.changes-panel')).toContainText('instruções');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Concluído');
+  await expect(page.getByTestId('result-value')).toHaveText('10');
+});
+
 test('navega pela linha do tempo sem aumentar o histórico e restaura frames e erros', async ({ page }) => {
   await page.goto('/');
   const slider = page.getByRole('slider', { name: 'Posição na linha do tempo' });
