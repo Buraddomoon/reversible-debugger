@@ -4,6 +4,7 @@ import fc from 'fast-check';
 import { DebugSession, HistoryLimitError } from '../src/core/debugger';
 import { compile } from '../src/core/compiler';
 import { initialState } from '../src/core/machine';
+import { MAX_SOURCE_CHARS } from '../src/core/language';
 
 const source = (name: string) => readFileSync(new URL(`../examples/${name}.rw`, import.meta.url), 'utf8');
 const snapshot = (session: DebugSession) => structuredClone(session.state);
@@ -66,7 +67,8 @@ describe('semântica da linguagem', () => {
     expect(() => compile(program)).toThrow(/linha \d+, coluna \d+/);
   });
   it('limita o tamanho e a profundidade sintática', () => {
-    expect(() => compile(' '.repeat(50_001))).toThrow('50.000');
+    expect(() => compile(' '.repeat(MAX_SOURCE_CHARS + 1))).toThrow('1.000.000');
+    expect(() => compile(`${' '.repeat(60_000)}let result = 42;`)).not.toThrow();
     expect(() => compile(`let x = ${'('.repeat(140)}1${')'.repeat(140)};`)).toThrow('aninhamento');
   });
 });

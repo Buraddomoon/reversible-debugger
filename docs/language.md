@@ -1,5 +1,7 @@
 # Linguagem Rewind v0.1
 
+Esta é a linguagem **experimental criada para a primeira demo**, identificada como “Experimental da demo” na interface. Rewind é também o nome do projeto. Para scripts Python, consulte [Python 3](python.md); os dois parsers têm sintaxe e regras distintas.
+
 Arquivos `.rw`; sintaxe inspirada em JavaScript. Esta linguagem é interpretada pela própria VM, não pelo JavaScript do navegador.
 
 ## Valores e expressões
@@ -66,6 +68,6 @@ Funções são declaradas apenas no nível superior e podem ser chamadas antes d
 
 ## Limites e exclusões
 
-O parser aceita até 50.000 caracteres e 128 níveis de aninhamento. Sessões têm, por padrão, 20.000 passos e 256 frames, incluindo o global. Ao atingir o limite de histórico, nenhum novo passo é executado; desfazer e reaplicar registros existentes permanece possível. O limite de frames aparece como erro reversível da VM.
+O parser aceita até 1.000.000 de caracteres e 128 níveis de aninhamento. Sessões têm, por padrão, 20.000 passos e 256 frames, incluindo o global. Ao atingir o limite de histórico, nenhum novo passo é executado; desfazer e reaplicar registros existentes permanece possível. O limite de frames aparece como erro reversível da VM.
 
 Não há strings, arrays, objetos, acesso a arquivos, rede, relógio, aleatoriedade, entrada/saída externa, exceções capturáveis ou alterações no código durante uma sessão. O resultado convencional dos exemplos é a variável global `result`.
