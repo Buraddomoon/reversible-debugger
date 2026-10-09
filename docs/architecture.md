@@ -73,6 +73,7 @@ Se uma instrução falha após remover operandos, a transação desfaz suas muda
 - Antes do fim, avançar aplica o delta já existente; não reavalia a instrução.
 - Voltar aplica a inversa do passo anterior.
 - **Retroceder tudo** desfaz todos os passos em lotes, preservando o histórico para replay, inclusive saída e definições de funções.
+- **Reiniciar programa** cria o estado inicial e um histórico vazio, mantendo o mesmo programa compilado e seu código.
 - Aplicar código editado ou trocar exemplo cria uma sessão nova. Não há edição de variáveis durante replay nem ramificação de histórico na versão inicial.
 
 Uma sessão é definida por seu código imutável, estado inicial, transações e cursor. O código e as regras atuais da linguagem produzem execução determinística. A futura introdução de entrada, aleatoriedade ou efeitos externos exigirá modelar e registrar essas entradas explicitamente.
@@ -101,3 +102,13 @@ A igualdade inclui todos os campos internos. Os testes percorrem os estados de p
 O limite de fonte é compartilhado entre os dois parsers, editor e importação: 1 milhão de caracteres. A importação lê um arquivo local como texto; `.py` e `.rw` selecionam o runtime e `.txt` preserva a seleção feita pelo usuário. Falhas de leitura, tamanho ou compilação preservam o rascunho e a sessão atual.
 
 `SourceView` mantém as linhas do código em memória, mas monta no DOM apenas as linhas visíveis e uma margem pequena. O cursor pode navegar até uma linha fora do viewport sem renderizar todas as anteriores. Um `ResizeObserver` ajusta a medida das linhas em mudanças de viewport. **Retroceder tudo** usa `backwardBatch(500)` entre retornos ao loop de eventos, preservando as mesmas transações e o estado exato obtido por retrocesso individual.
+
+## Criação e biblioteca de scripts
+
+`NewScriptModal` usa um `dialog` nativo para nome, linguagem e versão, com foco inicial, cancelamento por Escape e normalização da extensão. A criação registra um script vazio com ID estável e troca a sessão, sem carregar variáveis, saída ou histórico da sessão anterior. Nomes repetidos são rejeitados para não criar entradas ambíguas. `DeleteScriptModal` confirma a exclusão pelo nome.
+
+`script-library.ts` descreve a biblioteca de scripts e seu formato versionado. `useScriptLibrary` salva nome, arquivo, fonte, runtime e seleção em `localStorage`, sob a chave exclusiva `rewind.script-library.v1`. Editar um exemplo só o transforma em script próprio ao aplicar; scripts criados são atualizados durante a edição. A gravação usa debounce de 250 ms e flush síncrono ao esconder ou sair da página, preservando a última edição mesmo em recarga imediata.
+
+Essa biblioteca é separada da VM. Ao recarregar a página, o código selecionado é compilado novamente em uma sessão limpa. Se houver erro no rascunho salvo, o texto é mantido e aberto no editor; não é substituído por um exemplo ou por fonte vazia. Apenas o estado temporário da VM usa uma sessão vazia enquanto esse código é corrigido.
+
+Falhas de leitura não sobrescrevem a chave existente; falhas de gravação deixam o código na página e mostram um erro. A exclusão remove um ID da biblioteca e seleciona outro script, ou o exemplo inicial quando a biblioteca fica vazia. Scripts usam IDs em vez de nomes de arquivo para evitar que uma importação sobrescreva outro registro. O editor tem uma chave por ID, cancelando leituras de arquivo pendentes quando o usuário troca de script.

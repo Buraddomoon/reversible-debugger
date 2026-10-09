@@ -22,6 +22,15 @@ Critério de aceite: executar a soma incorreta, observar `10`, voltar através d
 
 JavaScript fica como próximo adaptador de linguagem, seguindo a prioridade de Python definida para esta entrega. Versões novas só devem aparecer no seletor depois de existir um parser/runtime correspondente e testes da semântica.
 
+## Modal e scripts preservados — implementado
+
+- Criação em modal com nome, linguagem e versão; depois de **Criar**, o editor abre vazio em uma sessão limpa.
+- Biblioteca compacta no seletor **Seus scripts**, com salvamento automático de código e metadados no navegador.
+- Restauração da seleção e do código após recarregar, incluindo rascunhos com sintaxe incompleta.
+- **Reiniciar programa** limpa apenas a execução, mantendo os scripts; **Retroceder tudo** continua preservando o histórico.
+- **Excluir script** com confirmação e preservação dos outros registros, sem apagar os arquivos importados do computador.
+- Fluxos verificados no Firefox instalado, com perfil isolado e sem downloads.
+
 ## Próximo marco — linha do tempo e checkpoints
 
 - Extrair a interface `HistoryStore` do armazenamento atual em array.

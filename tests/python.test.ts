@@ -117,6 +117,18 @@ describe('Python 3 no núcleo reversível', () => {
     finish(session); expect(clone(session)).toEqual(final);
     expect(() => session.backwardBatch(0)).toThrow('lote');
   });
+  it('reinicia a execução e apaga apenas o estado/histórico, preservando o programa e seu código', () => {
+    const session = finish(python('result = 42\nprint(result)'));
+    const program = session.program;
+    expect(session.history.length).toBeGreaterThan(0);
+    session.restart();
+    expect(session.program).toBe(program);
+    expect(session.state).toEqual(initialState());
+    expect(session.cursor).toBe(0); expect(session.history).toHaveLength(0);
+    finish(session);
+    expect(session.state.frames[0]!.locals.result).toBe(42n);
+    expect(session.state.output).toEqual(['42\n']);
+  });
   it('aceita 1 milhão de caracteres, compila expressões longas e rejeita apenas acima do limite', () => {
     const program = '#'.concat('x'.repeat(MAX_SOURCE_CHARS - 'result = 42\n'.length - 2), '\nresult = 42\n');
     expect(program).toHaveLength(MAX_SOURCE_CHARS);

@@ -6,7 +6,16 @@ import type { Span } from '../core/language';
 import { examples } from '../examples';
 import { formatValue, runtimes, type LanguageId } from '../core/runtime';
 import { ScriptEditor } from './ScriptEditor';
+import { NewScriptModal, type NewScript } from './NewScriptModal';
+import { DeleteScriptModal } from './DeleteScriptModal';
+import { newSavedScript, readScriptLibrary, uniqueScriptName, type SavedScript } from './script-library';
+import { useScriptLibrary } from './useScriptLibrary';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
+
+function openSavedScript(script: SavedScript) {
+  try { return { session: new DebugSession(script.source, script), editing: script.source.length === 0, notice: null as string | null }; }
+  catch (error) { return { session: new DebugSession('', script), editing: true, notice: error instanceof Error ? error.message : String(error) }; }
+}
 
 type IconName = 'rewind' | 'back' | 'next' | 'play' | 'pause' | 'reset' | 'code' | 'layers';
 function Icon({ name }: { name: IconName }) {
@@ -103,22 +112,34 @@ function ChangeView({ navigation, language }: { navigation: Navigation | null; l
 }
 
 export function App() {
-  const [session, setSession] = useState(() => new DebugSession(initialExample.source, { language: 'python' }));
-  const [exampleId, setExampleId] = useState(initialExample.id);
-  const [draft, setDraft] = useState(session.program.source);
-  const [editing, setEditing] = useState(false);
+  const [initial] = useState(() => {
+    const stored = readScriptLibrary();
+    const script = stored.library.scripts.find(item => item.id === stored.library.selection);
+    const example = examples.find(item => item.id === stored.library.selection) ?? initialExample;
+    const runtime = runtimes.find(item => item.id === (example.language ?? 'rewind'))!;
+    const view = script ? openSavedScript(script) : { session: new DebugSession(example.source, { language: runtime.id }), editing: false, notice: null };
+    return { stored, ...view, selection: script?.id ?? example.id, source: script?.source ?? example.source, filename: script?.filename ?? `${example.id}${runtime.extension}` };
+  });
+  const store = useScriptLibrary(initial.stored);
+  const [session, setSession] = useState(initial.session);
+  const [exampleId, setExampleId] = useState(initial.selection);
+  const [draft, setDraft] = useState(initial.source);
+  const [editing, setEditing] = useState(initial.editing);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<SavedScript | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rewinding, setRewinding] = useState(false);
-  const [draftLanguage, setDraftLanguage] = useState<LanguageId>('python');
-  const [draftVersion, setDraftVersion] = useState('3');
-  const [filename, setFilename] = useState('python-sum-bug.py');
-  const [draftFilename, setDraftFilename] = useState('programa.py');
+  const [draftLanguage, setDraftLanguage] = useState<LanguageId>(initial.session.runtime.language);
+  const [draftVersion, setDraftVersion] = useState(initial.session.runtime.version);
+  const [filename, setFilename] = useState(initial.filename);
+  const [draftFilename, setDraftFilename] = useState(initial.filename);
   const [speed, setSpeed] = useState(4);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(initial.notice);
   const [navigation, setNavigation] = useState<Navigation | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
   const [revision, refresh] = useReducer(value => value + 1, 0);
   const example = examples.find(item => item.id === exampleId);
+  const selectedScript = store.library.scripts.find(item => item.id === exampleId);
   const state = session.state;
   const activeFrame = state.frames.at(-1)!;
   const frame = state.frames.find(item => item.id === selectedFrame) ?? activeFrame;
@@ -161,7 +182,7 @@ export function App() {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const element = event.target as HTMLElement;
-      if (editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (creating || deleting || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === 'ArrowRight') { event.preventDefault(); move('forward'); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); move('backward'); }
     };
@@ -169,24 +190,57 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKey);
   });
   const load = (id: string) => {
-    if (id === 'custom') return;
-    const item = examples.find(example => example.id === id)!;
-    setPlaying(false); setRewinding(false); setEditing(false); setNotice(null); setNavigation(null); setSelectedFrame(null);
+    setPlaying(false); setRewinding(false); setNavigation(null); setSelectedFrame(null);
+    store.update(library => ({ ...library, selection: id }));
+    const script = store.library.scripts.find(item => item.id === id);
+    if (script) {
+      const opened = openSavedScript(script);
+      setSession(opened.session); setEditing(opened.editing); setNotice(opened.notice); setExampleId(id);
+      setDraft(script.source); setFilename(script.filename); setDraftFilename(script.filename);
+      setDraftLanguage(script.language); setDraftVersion(script.version);
+      return;
+    }
+    const item = examples.find(example => example.id === id) ?? initialExample;
+    setEditing(false); setNotice(null);
     const language = item.language ?? 'rewind';
     const runtime = runtimes.find(entry => entry.id === language)!;
     setSession(new DebugSession(item.source, { language })); setExampleId(id); setDraft(item.source);
     setFilename(`${id}${runtime.extension}`);
+    setDraftFilename(`${id}${runtime.extension}`); setDraftLanguage(language); setDraftVersion(runtime.versions[0]);
   };
+  const patchSelectedScript = (patch: Partial<SavedScript>) => store.update(library => ({ ...library, scripts: library.scripts.map(script => script.id === exampleId ? { ...script, ...patch } : script) }));
+  const changeSource = (source: string) => { setDraft(source); if (selectedScript) patchSelectedScript({ source }); };
   const applyDraft = () => {
     try {
       const replacement = new DebugSession(draft, { language: draftLanguage, version: draftVersion });
-      setPlaying(false); setRewinding(false); setSession(replacement); setExampleId('custom'); setEditing(false); setFilename(draftFilename);
+      const script = selectedScript ? { ...selectedScript, filename: draftFilename, source: draft, language: draftLanguage, version: draftVersion } : newSavedScript({ name: uniqueScriptName(draftFilename.replace(/\.(py|rw|txt)$/i, ''), store.library.scripts), filename: draftFilename, source: draft, language: draftLanguage, version: draftVersion });
+      store.update(library => ({ ...library, selection: script.id, scripts: selectedScript ? library.scripts.map(item => item.id === script.id ? script : item) : [...library.scripts, script] })); store.flush();
+      setPlaying(false); setRewinding(false); setSession(replacement); setExampleId(script.id); setEditing(false); setFilename(draftFilename);
       setNotice(null); setNavigation(null); setSelectedFrame(null);
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };
   const newScript = () => {
-    setPlaying(false); setRewinding(false); setNotice(null); setEditing(true);
-    setDraft(''); setDraftLanguage('python'); setDraftVersion('3'); setDraftFilename('programa.py');
+    setPlaying(false); setRewinding(false); setCreating(true);
+  };
+  const createScript = ({ name, filename, language, version }: NewScript) => {
+    const script = newSavedScript({ name, filename, language, version, source: '' });
+    store.update(library => ({ ...library, scripts: [...library.scripts, script], selection: script.id })); store.flush();
+    setSession(new DebugSession('', { language, version }));
+    setFilename(filename); setDraftFilename(filename); setExampleId(script.id);
+    setDraft(''); setDraftLanguage(language); setDraftVersion(version);
+    setNotice(null); setNavigation(null); setSelectedFrame(null);
+    setCreating(false); setEditing(true);
+  };
+  const deleteScript = () => {
+    if (!deleting) return;
+    const remaining = store.library.scripts.filter(script => script.id !== deleting.id);
+    const nextId = remaining.at(-1)?.id ?? initialExample.id;
+    store.update(library => ({ ...library, scripts: remaining, selection: nextId }));
+    load(nextId); store.flush(); setDeleting(null);
+  };
+  const restartProgram = () => {
+    setPlaying(false); setRewinding(false); setNavigation(null); setNotice(null); setSelectedFrame(null);
+    session.restart(); refresh();
   };
   return <div className="app-shell">
     <header className="app-header">
@@ -197,10 +251,11 @@ export function App() {
     <main>
       <div className="intro-row"><div><p className="eyebrow">LABORATÓRIO DE EXECUÇÃO</p><h1>Veja o programa pensar.<br /><span>E volte quando ele errar.</span></h1></div><div className="intro-note"><span className="note-mark">01 /</span><p>Explore cada decisão.<br />O estado acompanha você nos dois sentidos.</p></div></div>
       <section className="example-bar" aria-label="Escolha do programa">
-        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={exampleId} onChange={event => load(event.target.value)}>{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}{exampleId === 'custom' && <option value="custom">Seu programa</option>}</select></div>
+        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={exampleId} onChange={event => load(event.target.value)}>{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
         <p>{example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
         <span className="example-tag">{example?.tag ?? 'Programa personalizado'}</span>
         <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
+        {selectedScript && <button className="delete-script" onClick={() => { setPlaying(false); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
       </section>
       <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
@@ -211,14 +266,15 @@ export function App() {
             <button className="play-button" onClick={() => { setNotice(null); setPlaying(!playing); }} disabled={!session.canForward || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
             <label className="speed-label"><span className="sr-only">Velocidade de execução</span><select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1×</option><option value={4}>4×</option></select></label>
             <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
+            <button onClick={restartProgram} disabled={editing || rewinding} title="Iniciar uma execução nova sem remover o código ou os scripts salvos"><Icon name="reset" /><span>Reiniciar programa</span></button>
           </div>
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>
-        {(notice || (!editing && state.control.error)) && <div className="error-banner" role="alert">{notice ?? state.control.error}</div>}
+        {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
         <div className="workspace">
           <section className="source-panel" aria-label="Programa em execução">
-            <div className="panel-header"><div><Icon name="code" /><span>{editing ? draftFilename : filename}</span><span className="source-runtime">{(editing ? draftLanguage : session.runtime.language) === 'python' ? 'Python 3' : 'Experimental 0.1'}</span></div><button className="text-button" onClick={() => { setPlaying(false); setRewinding(false); setDraft(session.program.source); setDraftLanguage(session.runtime.language); setDraftVersion(session.runtime.version); setDraftFilename(filename); setEditing(!editing); setNotice(null); }}>{editing ? 'Cancelar edição' : 'Editar código'}</button></div>
-            {editing ? <ScriptEditor source={draft} filename={draftFilename} language={draftLanguage} version={draftVersion} onSource={setDraft} onFilename={setDraftFilename} onRuntime={(language, version) => { setDraftLanguage(language); setDraftVersion(version); if (/^programa\.(py|rw)$/.test(draftFilename)) setDraftFilename(`programa${language === 'python' ? '.py' : '.rw'}`); }} onApply={applyDraft} onError={setNotice} /> : <SourceView source={session.program.source} language={session.runtime.language} span={next?.span ?? (state.control.status === 'error' ? session.lastStep?.span : undefined)} />}
+            <div className="panel-header"><div><Icon name="code" /><span>{editing ? draftFilename : filename}</span><span className="source-runtime">{(editing ? draftLanguage : session.runtime.language) === 'python' ? 'Python 3' : 'Experimental 0.1'}</span></div><button className="text-button" onClick={() => { setPlaying(false); setRewinding(false); if (!editing) { setDraft(selectedScript?.source ?? session.program.source); setDraftLanguage(selectedScript?.language ?? session.runtime.language); setDraftVersion(selectedScript?.version ?? session.runtime.version); setDraftFilename(selectedScript?.filename ?? filename); } setEditing(!editing); setNotice(null); }}>{editing ? 'Fechar editor' : 'Editar código'}</button></div>
+            {editing ? <ScriptEditor key={exampleId} saved={Boolean(selectedScript) && !store.error} source={draft} filename={draftFilename} language={draftLanguage} version={draftVersion} onSource={changeSource} onFilename={name => { setDraftFilename(name); if (selectedScript) patchSelectedScript({ filename: name }); }} onRuntime={(language, version) => { setDraftLanguage(language); setDraftVersion(version); if (selectedScript) patchSelectedScript({ language, version }); }} onApply={applyDraft} onError={setNotice} /> : <SourceView source={session.program.source} language={session.runtime.language} span={next?.span ?? (state.control.status === 'error' ? session.lastStep?.span : undefined)} />}
             <div className="next-instruction"><span>PRÓXIMA INSTRUÇÃO</span><strong data-testid="next-instruction">{next ? describeInstruction(next, session.runtime.language) : state.control.status === 'error' ? 'Volte para desfazer o erro' : 'Programa concluído'}</strong><code>{next ? `L${next.span.line}:${next.span.column} · ${next.op}` : '—'}</code></div>
             <div className="result-panel"><span className="result-label">Resultado <code>result</code></span><strong data-testid="result-value">{hasResult ? format(result!) : '—'}</strong><span className={hasResult && example?.expected !== undefined && result !== example.expected ? 'result-warning' : 'result-expected'}>{example?.expected !== undefined ? `Esperado: ${example.expected}` : hasResult ? 'Valor global' : 'Ainda não calculado'}</span></div>
             {session.runtime.language === 'python' && <section className="output-panel" aria-label="Saída do programa"><span>SAÍDA</span><pre data-testid="program-output">{state.output.join('') || 'Nenhuma saída ainda.'}</pre></section>}
@@ -237,7 +293,9 @@ export function App() {
         </div>
         <footer className="history-strip"><div><span className="history-label">HISTÓRICO</span><span>{session.history.length} passos registrados</span></div><div className="history-track" aria-hidden="true">{Array.from({ length: 36 }, (_, index) => <span key={index} className={index < Math.round(session.history.length ? session.cursor / session.history.length * 36 : 0) ? 'filled' : ''} />)}</div><span className="replay-label">{session.cursor < session.history.length ? 'Reaplicando mudanças registradas' : 'Registrando mudanças'}</span></footer>
       </section>
-      <footer className="page-footer"><span>REWIND / uma pequena linguagem, um estado exato.</span><span>Variáveis · Decisões · Chamadas</span></footer>
+      <footer className="page-footer"><span>REWIND / uma pequena linguagem, um estado exato.</span><span>{store.library.scripts.length ? `${store.library.scripts.length} ${store.library.scripts.length === 1 ? 'script salvo' : 'scripts salvos'} neste navegador` : 'Variáveis · Decisões · Chamadas'}</span></footer>
     </main>
+    {creating && <NewScriptModal existingNames={store.library.scripts.map(script => script.name)} onCreate={createScript} onCancel={() => setCreating(false)} />}
+    {deleting && <DeleteScriptModal name={deleting.name} onCancel={() => setDeleting(null)} onDelete={deleteScript} />}
   </div>;
 }

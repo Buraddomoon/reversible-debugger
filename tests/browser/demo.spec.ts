@@ -1,4 +1,13 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+async function createScript(page: Page, name: string, language = 'python') {
+  await page.getByRole('button', { name: 'Adicionar script' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Criar script', exact: true });
+  await dialog.getByLabel('Nome do script').fill(name);
+  await dialog.getByLabel('Linguagem', { exact: true }).selectOption(language);
+  await dialog.getByRole('button', { name: 'Criar', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
 
 test('executa o bug, volta ao início e reaplica o mesmo resultado', async ({ page }) => {
   await page.goto('/');
@@ -62,13 +71,9 @@ test('permite editar código, preserva a sessão diante de sintaxe inválida e f
 
 test('adiciona e importa Python com linguagem e versão reais, retrocede tudo e reaplica a saída', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Adicionar script' }).click();
-  await expect(page.getByLabel('Linguagem', { exact: true })).toHaveValue('python');
-  await expect(page.getByLabel('Versão', { exact: true })).toHaveValue('3');
-  await page.getByLabel('Linguagem', { exact: true }).selectOption('rewind');
+  await createScript(page, 'Minha soma', 'rewind');
   await page.getByLabel('Arquivo do script').setInputFiles({ name: 'meu-script.py', mimeType: 'text/plain', buffer: Buffer.from('def double(n):\n    return n * 2\nresult = double(21)\nprint(result)') });
-  await expect(page.getByLabel('Linguagem', { exact: true })).toHaveValue('python');
-  await expect(page.getByLabel('Versão', { exact: true })).toHaveValue('3');
+  await expect(page.locator('.editor-runtime')).toContainText('Python 3');
   await expect(page.getByLabel('Código do programa')).toHaveValue(/def double/);
   await page.getByRole('button', { name: 'Aplicar código' }).click();
   await page.getByRole('button', { name: 'Executar', exact: true }).click();
@@ -88,7 +93,7 @@ test('adiciona e importa Python com linguagem e versão reais, retrocede tudo e 
 
 test('aceita arquivo acima do limite antigo com renderização limitada e preserva o rascunho ao rejeitar arquivo grande demais', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Adicionar script' }).click();
+  await createScript(page, 'Arquivo grande');
   const source = '# comentário\n'.repeat(10000) + 'result = 42\n';
   await page.getByLabel('Arquivo do script').setInputFiles({ name: 'grande.py', mimeType: 'text/plain', buffer: Buffer.from(source) });
   await expect(page.getByLabel('Código do programa')).toHaveValue(source);
@@ -103,4 +108,78 @@ test('aceita arquivo acima do limite antigo com renderização limitada e preser
   await expect(page.getByTestId('result-value')).toHaveText('42');
   await expect(page.locator('.source-scroll')).toContainText('result = 42');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('modal pede nome, linguagem e versão, mantém a execução ao cancelar e cria um script vazio', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Avançar', exact: true }).click();
+  await page.getByRole('button', { name: 'Adicionar script' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Criar script', exact: true });
+  await expect(dialog.getByLabel('Nome do script')).toBeFocused();
+  await expect(dialog.getByRole('button', { name: 'Criar', exact: true })).toBeDisabled();
+  await expect(dialog.getByLabel('Linguagem', { exact: true })).toHaveValue('python');
+  await expect(dialog.getByLabel('Versão', { exact: true })).toHaveValue('3');
+  await page.keyboard.press('Tab');
+  await expect(dialog.getByLabel('Linguagem', { exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('step-count')).toHaveText('001');
+  await createScript(page, 'Meu algoritmo.py');
+  await expect(page.getByLabel('Código do programa')).toHaveValue('');
+  await expect(page.getByLabel('Código do programa')).toBeFocused();
+  await expect(page.getByTestId('step-count')).toHaveText('000');
+  await expect(page.locator('.source-panel > .panel-header')).toContainText('Meu algoritmo.py');
+  await expect(page.locator('#example option:checked')).toHaveText('Meu algoritmo');
+  await expect(page.getByRole('button', { name: 'Excluir script' })).toBeVisible();
+  await page.getByRole('button', { name: 'Adicionar script' }).click();
+  await dialog.getByLabel('Nome do script').fill('Meu algoritmo');
+  await dialog.getByRole('button', { name: 'Criar', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Já existe');
+  await dialog.getByRole('button', { name: 'Cancelar' }).click();
+});
+
+test('salva o código em edição ao recarregar e reinicia só a execução', async ({ page }) => {
+  await page.goto('/');
+  await createScript(page, 'Persistente');
+  const source = 'result = 42\nprint(result)';
+  await page.getByLabel('Código do programa').fill(source);
+  // Reload immediately, before the autosave debounce, to verify the unload flush.
+  await page.reload();
+  await expect(page.locator('#example option:checked')).toHaveText('Persistente');
+  await expect(page.locator('.source-scroll')).toContainText('print(result)');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByTestId('program-output')).toHaveText('42');
+  await page.getByRole('button', { name: 'Reiniciar programa', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText('000');
+  await expect(page.getByTestId('result-value')).toHaveText('—');
+  await expect(page.getByTestId('program-output')).toHaveText('Nenhuma saída ainda.');
+  await expect(page.locator('#example option:checked')).toHaveText('Persistente');
+  await page.getByRole('button', { name: 'Editar código' }).click();
+  await page.getByLabel('Código do programa').fill('result =');
+  await page.reload();
+  await expect(page.getByLabel('Código do programa')).toHaveValue('result =');
+  await expect(page.getByRole('alert')).toContainText('Expressão Python');
+});
+
+test('mantém outros scripts ao excluir um e preserva a exclusão depois de recarregar', async ({ page }) => {
+  await page.goto('/');
+  await createScript(page, 'Primeiro');
+  await page.getByLabel('Código do programa').fill('result = 1');
+  await createScript(page, 'Segundo');
+  await page.getByLabel('Código do programa').fill('result = 2');
+  await page.getByRole('button', { name: 'Excluir script' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Excluir script?', exact: true });
+  await expect(dialog).toContainText('Segundo');
+  await dialog.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.locator('#example optgroup[label="Seus scripts"] option')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Excluir script' }).click();
+  await dialog.getByRole('button', { name: 'Excluir', exact: true }).click();
+  await page.reload();
+  await expect(page.locator('#example optgroup[label="Seus scripts"] option')).toHaveCount(1);
+  await expect(page.locator('#example option:checked')).toHaveText('Primeiro');
+  await expect(page.locator('.source-scroll')).toContainText('result = 1');
+  await page.getByRole('button', { name: 'Excluir script' }).click();
+  await dialog.getByRole('button', { name: 'Excluir', exact: true }).click();
+  await expect(page.locator('#example optgroup[label="Seus scripts"]')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Excluir script' })).toHaveCount(0);
 });

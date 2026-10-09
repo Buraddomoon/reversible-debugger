@@ -70,6 +70,8 @@ export class DebugSession {
     return count;
   }
   rewind(): void { while (this.canBackward) this.backward(); }
+  /** Start a fresh execution without replacing the immutable program or its source. */
+  restart(): void { this.machine = initialState(); this.steps = []; this.position = 0; }
 }
 
 function freezePayload(value: object): void {

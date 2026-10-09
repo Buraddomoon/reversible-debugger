@@ -34,11 +34,19 @@ As dependências ficam em `node_modules/` e o cache em `.npm-cache/`, conforme `
 
 ## Usar seu próprio script
 
-1. Clique em **Adicionar script** para abrir um rascunho independente da execução atual.
-2. Selecione **Python** e **Python 3**, ou a linguagem **Experimental da demo / 0.1** para arquivos `.rw`.
-3. Cole o código ou use **Importar arquivo** para carregar `.py`, `.rw` ou `.txt`. Arquivos `.py` e `.rw` selecionam a linguagem correspondente automaticamente.
+1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
+2. Escolha **Python / Python 3** ou **Experimental da demo / 0.1** e clique em **Criar**. O script aparece vazio no editor, com o nome escolhido e uma execução limpa. Cancelar ou pressionar Escape preserva o programa anterior.
+3. Cole o código ou use **Importar arquivo** para carregar `.py`, `.rw` ou `.txt`. Arquivos `.py` e `.rw` selecionam a linguagem correspondente automaticamente; o nome do script criado é preservado.
 4. Confira o contador de caracteres e clique em **Aplicar código**. Erros preservam a sessão anterior e o rascunho para correção.
 5. Use **Executar**, **Voltar** e **Retroceder tudo**. `print` aparece no painel **Saída** e também é desfeito ao retroceder.
+
+Os scripts criados ficam no grupo **Seus scripts** do seletor de programas. O código em edição é salvo automaticamente no navegador, inclusive se ainda tiver erros de sintaxe. Ao recarregar a página, a seleção e o código são restaurados e uma execução nova é preparada. Rascunhos inválidos são reabertos no editor para correção. A importação continua preservando o rascunho anterior quando rejeita um arquivo.
+
+**Reiniciar programa** limpa o estado da execução e o histórico, mantendo o código e todos os scripts salvos. **Retroceder tudo** preserva o histórico para reaplicação. Para limpar a lista, selecione um script e clique em **Excluir script**: a confirmação identifica o nome e remove apenas esse script do navegador; os outros ficam guardados. Arquivos importados no computador não são apagados.
+
+O armazenamento usa o navegador e o endereço em que a demo foi aberta, sem backend ou sincronização com o GitHub. Apenas código, nome, linguagem, versão e seleção são guardados; frames e histórico de execução não são persistidos. Falhas de armazenamento aparecem na interface. Nenhuma gravação sobrescreve dados que a aplicação não conseguiu ler.
+
+![Modal de criação com nome do script, linguagem e versão](docs/create-script.png)
 
 O limite passou de 50.000 para **1.000.000 de caracteres**, tanto no editor quanto na importação e no núcleo. A tela renderiza apenas as linhas próximas ao trecho visível, inclusive quando o programa tem milhares de linhas. O seletor oferece apenas versões realmente implementadas: Python 3 e Experimental 0.1. JavaScript ainda não está implementado.
 
@@ -117,6 +125,7 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - No Firefox: execução do bug, chamadas, retorno, reinício, replay, exemplo corrigido, erro reversível, edição, layout de 390 px sem overflow e ausência de erros no console.
 - Python: inteiros exatos, divisão inteira e resto com sinais, precedência de potências, escopos locais, definição de funções em ordem e curto-circuito. Uma verificação opcional compara os valores/tipos com o Python instalado, sem instalar ou atualizar esse runtime.
 - No Firefox: importação `.py`, linguagem/versão, execução e desfazimento de `print`, retrocesso completo, arquivo de 10.001 linhas e preservação do rascunho ao rejeitar um arquivo acima do limite.
+- No Firefox: modal com foco no nome, cancelamento por Escape, criação vazia sem estado antigo, reinício do programa, recarga imediata com código em edição, recuperação de código incompleto e exclusão com confirmação sem remover outros scripts.
 
 Os snapshots completos existem **apenas nos testes como referência**. O histórico de produção armazena mudanças. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 

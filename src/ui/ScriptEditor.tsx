@@ -7,6 +7,7 @@ interface Props {
   filename: string;
   language: LanguageId;
   version: string;
+  saved: boolean;
   onSource: (source: string) => void;
   onFilename: (name: string) => void;
   onRuntime: (language: LanguageId, version: string) => void;
@@ -41,18 +42,14 @@ export function ScriptEditor(props: Props) {
   };
   return <div className="editor-wrap">
     <div className="script-settings">
-      <label htmlFor="script-language">Linguagem<select id="script-language" value={props.language} disabled={loading} onChange={event => {
-        const selected = runtimes.find(item => item.id === event.target.value)!;
-        props.onRuntime(selected.id, selected.versions[0]); props.onError(null);
-      }}>{runtimes.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
-      <label htmlFor="script-version">Versão<select id="script-version" value={props.version} disabled={loading} onChange={event => props.onRuntime(props.language, event.target.value)}>{runtime.versions.map(version => <option value={version} key={version}>{runtime.versionLabel}</option>)}</select></label>
+      <span className="editor-runtime">{runtime.label} · {props.version === '3' ? 'Python 3' : props.version}</span>
       <button type="button" disabled={loading} onClick={() => upload.current?.click()}>{loading ? 'Lendo arquivo…' : 'Importar arquivo'}</button>
       <input ref={upload} className="sr-only" type="file" tabIndex={-1} aria-label="Arquivo do script" accept=".py,.rw,.txt,text/plain" onChange={importFile} />
     </div>
     <p className="runtime-description">{runtime.description}</p>
     <div className="editor-file-meta"><code>{props.filename}</code><span className={props.source.length > MAX_SOURCE_CHARS ? 'over-limit' : ''} data-testid="character-count">{props.source.length.toLocaleString('pt-BR')} / {MAX_SOURCE_CHARS.toLocaleString('pt-BR')} caracteres</span></div>
     <label className="sr-only" htmlFor="source-editor">Código do programa</label>
-    <textarea id="source-editor" spellCheck={false} autoFocus value={props.source} disabled={loading} onChange={event => props.onSource(event.target.value)} placeholder={props.language === 'python' ? 'def double(n):\n    return n * 2\n\nresult = double(21)' : 'fn double(n) {\n  return n * 2;\n}\n\nlet result = double(21);'} />
-    <div className="editor-footer"><span>Aplicar inicia uma nova execução.</span><button className="primary" disabled={loading} onClick={props.onApply}>Aplicar código</button></div>
+    <textarea id="source-editor" spellCheck={false} autoFocus value={props.source} disabled={loading} onChange={event => props.onSource(event.target.value)} placeholder={props.language === 'python' ? '# Escreva seu código Python aqui' : '// Escreva seu código aqui'} />
+    <div className="editor-footer"><span>{props.saved ? 'Código salvo automaticamente. Aplicar inicia uma nova execução.' : 'Aplicar guarda seu script e inicia uma nova execução.'}</span><button className="primary" disabled={loading} onClick={props.onApply}>Aplicar código</button></div>
   </div>;
 }

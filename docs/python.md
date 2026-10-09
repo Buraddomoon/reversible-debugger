@@ -33,6 +33,8 @@ print(result)
 
 Importe um `.py`, cole o código em **Adicionar script**, ou escolha um dos três exemplos Python. Ao aplicar, o debugger inicia uma sessão nova. **Retroceder tudo** restaura inclusive as definições de funções e a saída inicial vazia; avançar depois reaplica os registros existentes.
 
+**Adicionar script** abre o modal de nome, linguagem e versão. Depois de criar, o editor começa vazio. Scripts criados e seu código em edição ficam guardados no navegador; recarregar a página ou usar **Reiniciar programa** não os remove. **Excluir script** pede confirmação antes de remover o registro selecionado.
+
 ## Semântica que merece atenção
 
 Um nome atribuído dentro de uma função é local nessa função inteira, inclusive antes da primeira atribuição. Ler esse local antes de inicializá-lo gera erro; não se usa o global de mesmo nome como substituto. Leituras de nomes que não são locais usam o frame global, sem acessar locais do chamador. Esta regra é coberta por testes e segue o [modelo de execução do Python](https://docs.python.org/3/reference/executionmodel.html).
