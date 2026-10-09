@@ -94,6 +94,24 @@ Os planos sobrevivem entre lotes limitados a 1.000 transações. A UI usa 256 pa
 
 Reiniciar conserva os breakpoints e a opção de ativação do mesmo controlador. Trocar de programa, aplicar código ou recarregar cria outro controlador; breakpoints não são persistidos na biblioteca de scripts. O painel de mudanças informa a quantidade de instruções de uma ação agrupada e identifica a última instrução, sem apresentá-la como explicação de todas as alterações atravessadas.
 
+## Comparação entre execuções
+
+`ExecutionComparison` cria duas sessões próprias a partir de fontes imutáveis. A execução principal da interface é pausada e permanece com seu estado, cursor e histórico. Identidades guardam o código completo, runtime e uma cópia congelada do estado inicial. Um fingerprint curto rotula a identidade; ele não é usado como prova de igualdade nem como chave do alinhamento.
+
+O compilador acrescenta `semanticKey` e `flowDecision` aos metadados de comandos. A chave combina escopo, caminho do bloco, tipo/alvo do comando e sua ocorrência entre comandos semelhantes. Condições consideram os nomes lidos/chamados, preservando a correspondência ao trocar `<` por `<=`. Espaços, comentários e números físicos de linha não fazem parte da chave. `flowDecision` distingue a decisão de `if`/`while` dos saltos internos de curto-circuito.
+
+`RecordedComparisonRun` projeta pontos dos deltas de atribuição, decisão de fluxo, chamada, retorno, saída e término. Cada ponto guarda cursor, âncora, fase e ocorrência; não contém cópia da VM. Contextos de chamada são internados por contexto pai, âncora/posição da chamada, nome da função e ocorrência. Isso permite comparar frames correspondentes mesmo quando uma chamada extra deslocou seus IDs reais. Recursão preserva contextos distintos sem duplicar a pilha inteira em cada ponto.
+
+`alignComparison` encontra chaves comuns e mantém uma subsequência crescente de posições da segunda execução, usando busca binária. O custo é O(P log P) em tempo e O(P) em espaço para P pontos, sem matriz quadrática. Eventos que ficam entre âncoras são apresentados em apenas um lado; o outro permanece em seu último ponto representado. Essa ordem não inventa simultaneidade entre eventos exclusivos. O algoritmo pode reencontrar o mesmo retorno após uma iteração adicional.
+
+Início e término são âncoras globais comuns; término pode corresponder a conclusão, erro ou limite. Os motivos permanecem distintos nos dados do ponto e na comparação.
+
+Os estados são restaurados por `seek()` para analisar cada par. São comparados resultado das decisões, controle de término/erro, pilha por contexto de chamada, bindings presentes/ausentes em frames correspondentes, valores/tipos, operandos e saída. PC, endereços de retorno e contador de alocação não são comparados como valores entre fontes diferentes; a restauração de cada sessão continua incluindo esses campos exatamente. A análise guarda somente a contagem de diferenças e o índice da primeira. Detalhes são calculados no ponto selecionado.
+
+Gravação e análise devolvem o controle entre lotes; a UI usa 256 operações para gravar e 32 pontos para analisar. Cancelar, trocar a segunda fonte ou sair encerra a preparação. Ao atingir o limite de histórico, há um ponto de limite com estado da VM ainda válido, sem fabricar um erro de execução. A UI identifica gravações incompletas e mostra o resultado na parada.
+
+O alinhamento é uma heurística estrutural, não uma prova de equivalência entre programas arbitrários. Inserir comandos de outro tipo/alvo não renumera comandos existentes, mas inserir um comando repetido do mesmo tipo/alvo no mesmo bloco pode mudar sua ocorrência. Renomear variáveis/funções ou reorganizar blocos pode produzir eventos exclusivos. A comparação atual requer o mesmo runtime e observa os pontos projetados, sem analisar diferenças transitórias de cada operação matemática. [O contrato](execution-comparison.md) explicita esses limites.
+
 ## Custo e evolução
 
 O histórico ocupa espaço proporcional à soma dos payloads alterados, mais os metadados constantes de cada passo. Uma atribuição preserva seu binding e os operandos usados; seu tamanho não depende de quantas outras variáveis existem. Chamadas e retornos podem ter custo proporcional ao tamanho do frame afetado. A versão inicial não promete memória constante: o histórico continua crescendo e possui um limite explícito.
@@ -122,6 +140,8 @@ A igualdade inclui todos os campos internos. Os testes percorrem os estados de p
 Testes adicionais saltam a cada cursor a partir das duas pontas, misturam saltos e passos em sessões parcialmente registradas, continuam gravando após restaurar checkpoints e forçam o teto de retenção. Uma spy exige que saltar não chame `executeInstruction`. Recursão, valores especiais, saída e erros são comparados com snapshots independentes.
 
 Os testes de `ExecutionControl` verificam motivos e posições de parada, loops vazios, comandos na mesma linha, cabeçalhos multilinha, recursão, temporários no chamador, saída, erros e limites. Sequências geradas de ações nos dois runtimes são comparadas com todo o estado da referência de cada cursor. Uma spy também exige que os controles não reexecutem código durante replay.
+
+Os testes da comparação identificam a quinta decisão divergente, iterações extras e retornos com cursores diferentes. Verificam deslocamentos de linhas e bytecode, IDs de frames após chamadas adicionais, recursão, curto-circuito, ausência de bindings, `bigint`, `-0`, tipos numéricos, `NaN`, saída, erros e limites. Todos os estados de cada ponto, incluindo os exclusivos, são comparados com referências completas nos dois sentidos; saltos gerados também são verificados. Navegar depois da preparação não chama `executeInstruction` nem cria novos registros.
 
 ## Arquivos grandes e interface
 

@@ -56,14 +56,20 @@ Critério atendido: buscar qualquer posição testada reproduz o mesmo estado co
 
 Critério atendido: as paradas e o agrupamento correspondem aos estados da referência sequencial, e replay com controles não chama o executor nem cria registros duplicados.
 
-## Próximo marco — comparação entre execuções
+## Comparação entre execuções — implementado
 
-- Identificar sessões pelo código e pelo estado inicial.
-- Comparar estados e mudanças de dois programas, começando pela soma incorreta/corrigida.
-- Definir alinhamento semântico por posição de código e ocorrência de evento. Mesmo número de passo não implica mesma etapa lógica quando programas divergem.
-- Evidenciar a primeira diferença relevante e permitir navegar pelas duas sessões.
+- Duas execuções isoladas, identificadas por fonte, runtime e estado inicial, preservando a sessão principal e os scripts.
+- Comparação dos exemplos e dos scripts salvos da mesma linguagem/versão, começando pela soma incorreta/corrigida.
+- Âncoras de comandos por escopo, bloco, tipo/alvo e ocorrência, com contextos de chamada internados para distinguir recursão e chamadas repetidas.
+- Alinhamento monotônico de atribuições, decisões, chamadas, retornos, saída e términos; eventos exclusivos ficam explícitos e retornos comuns são reencontrados depois de iterações extras.
+- Primeira divergência da soma na quinta decisão: `False` versus `True`, enquanto `i = 5` e `total = 10` ainda coincidem.
+- Navegação nos dois sentidos, controle deslizante, primeira/próxima diferença, código e estados lado a lado, escopos selecionáveis e tabelas paginadas.
+- Preparação e análise em lotes canceláveis, tratamento de sintaxe inválida e limites de gravação sem perder o replay.
+- [Contrato, critérios de comparação e limites do alinhamento](execution-comparison.md) documentados; snapshots de referência comprovam restauração de todos os campos em cada ponto.
 
-## Explicações visuais e escala
+Critério atendido: a comparação evidencia a decisão divergente e os resultados 10/15; retornos correspondentes podem ter cursores diferentes. Navegar restaura exatamente cada estado registrado sem executar código de novo. Firefox validou exemplos, scripts salvos, saída, cancelamento, erros de sintaxe, teclado, layout móvel e preservação da sessão principal.
+
+## Próximo marco — explicações visuais e escala
 
 - Usar os próprios deltas para explicar leituras, atribuições, decisões, chamadas e retornos.
 - Animar mudanças com preferência por movimento reduzido respeitada.

@@ -13,6 +13,7 @@ import { Timeline } from './Timeline';
 import { SourceView } from './SourceView';
 import { ExecutionControl, type RunMode } from '../core/execution-control';
 import { actionLabels, BreakpointBar, StepControls } from './DebugControls';
+import { ComparisonPanel, type ComparisonCandidate } from './ComparisonPanel';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -86,6 +87,7 @@ export function App() {
   const [draft, setDraft] = useState(initial.source);
   const [editing, setEditing] = useState(initial.editing);
   const [creating, setCreating] = useState(false);
+  const [comparing, setComparing] = useState(false);
   const [deleting, setDeleting] = useState<SavedScript | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rewinding, setRewinding] = useState(false);
@@ -162,7 +164,7 @@ export function App() {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const element = event.target as HTMLElement;
-      if (creating || deleting || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (comparing || creating || deleting || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === 'ArrowRight') { event.preventDefault(); move('forward'); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); move('backward'); }
     };
@@ -170,6 +172,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKey);
   });
   const load = (id: string) => {
+    setComparing(false);
     controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setSelectedFrame(null);
     store.update(library => ({ ...library, selection: id }));
@@ -205,6 +208,7 @@ export function App() {
     setPlaying(false); setRewinding(false); setCreating(true);
   };
   const createScript = ({ name, filename, language, version }: NewScript) => {
+    setComparing(false);
     const script = newSavedScript({ name, filename, language, version, source: '' });
     store.update(library => ({ ...library, scripts: [...library.scripts, script], selection: script.id })); store.flush();
     setSession(new DebugSession('', { language, version }));
@@ -225,6 +229,11 @@ export function App() {
     setPlaying(false); setRewinding(false); setNavigation(null); setNotice(null); setSelectedFrame(null);
     session.restart(); refresh();
   };
+  const comparisonCandidates: ComparisonCandidate[] = [
+    ...store.library.scripts.map(script => ({ ...script, group: 'script' as const })),
+    ...examples.map(item => ({ id: item.id, name: item.title, source: item.source, language: item.language ?? 'rewind', version: runtimes.find(runtime => runtime.id === (item.language ?? 'rewind'))!.versions[0], group: 'example' as const })),
+  ].filter(item => item.language === session.runtime.language && item.version === session.runtime.version);
+  const comparisonPrimary: ComparisonCandidate = { id: exampleId, name: selectedScript?.name ?? example?.title ?? filename, source: session.program.source, language: session.runtime.language, version: session.runtime.version, group: selectedScript ? 'script' : 'example' };
   return <div className="app-shell">
     <header className="app-header">
       <a href="#" className="brand" aria-label="Rewind — início"><span className="brand-icon"><Icon name="rewind" /></span><span>rewind<span className="brand-dot">.</span></span></a>
@@ -238,9 +247,10 @@ export function App() {
         <p>{example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
         <span className="example-tag">{example?.tag ?? 'Programa personalizado'}</span>
         <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
+        <button className="compare-script" disabled={editing || rewinding || comparing} onClick={() => { pause(); setComparing(true); }}>Comparar execuções</button>
         {selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
       </section>
-      <section className="debugger" aria-label="Debugger visual">
+      {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
@@ -277,7 +287,7 @@ export function App() {
           </aside>
         </div>
         <Timeline key={`${exampleId}:${editing}`} history={session.history} cursor={session.cursor} disabled={editing || rewinding} onSeek={seek} />
-      </section>
+      </section>}
       <footer className="page-footer"><span>REWIND / uma pequena linguagem, um estado exato.</span><span>{store.library.scripts.length ? `${store.library.scripts.length} ${store.library.scripts.length === 1 ? 'script salvo' : 'scripts salvos'} neste navegador` : 'Variáveis · Decisões · Chamadas'}</span></footer>
     </main>
     {creating && <NewScriptModal existingNames={store.library.scripts.map(script => script.name)} onCreate={createScript} onCancel={() => setCreating(false)} />}

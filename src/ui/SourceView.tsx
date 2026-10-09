@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Span } from '../core/language';
 import type { LanguageId } from '../core/runtime';
 
-function syntax(text: string, language: LanguageId): ReactNode[] {
+export function highlightSyntax(text: string, language: LanguageId): ReactNode[] {
   const pattern = language === 'python' ? /(#.*|\b(?:def|while|if|elif|else|return|pass|not|and|or|True|False|None)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g : /(\/\/.*|\b(?:fn|let|while|if|else|return|true|false)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g;
   return text.split(pattern).filter(Boolean).map((piece, index) => {
     const kind = piece.startsWith(language === 'python' ? '#' : '//') ? 'comment' : /^(fn|def|let|while|if|elif|else|return|pass|not|and|or|true|false|True|False|None)$/.test(piece) ? 'keyword' : /^\d/.test(piece) ? 'number' : /^[+*/%<>=!\-]+$/.test(piece) ? 'operator' : /^[A-Za-z_]/.test(piece) ? 'function' : '';
@@ -53,7 +53,7 @@ export function SourceView({ source, span, language, breakableLines, breakpoints
       return <div className={`code-line ${active ? 'current' : ''} ${point ? 'has-breakpoint' : ''}`} key={index} style={{ top: index * viewport.lineHeight }} data-testid={active ? 'current-line' : undefined} aria-current={active ? 'step' : undefined}>
         <button className={`line-number breakpoint-toggle ${point ? 'set' : ''} ${enabled ? '' : 'inactive'}`} disabled={!eligible.has(number)} onClick={() => onToggle(number)} aria-label={`${point ? 'Remover' : 'Adicionar'} breakpoint na linha ${number}`} aria-pressed={point} title={eligible.has(number) ? `${point ? 'Remover' : 'Adicionar'} breakpoint antes do comando na linha ${number}` : 'Essa linha não inicia um comando executável'}>{number}</button>
         <span className="line-marker" aria-hidden="true">{active ? '▸' : ''}</span>
-        <code>{syntax(line || ' ', language)}</code>
+        <code>{highlightSyntax(line || ' ', language)}</code>
       </div>;
     })}</div>
   </div>;

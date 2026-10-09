@@ -6,6 +6,8 @@ A linha do tempo permite saltar para qualquer passo registrado, escolher eventos
 
 Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da função** e **Voltar comando** permitem explorar o código por comandos. **Continuar para trás** busca o breakpoint anterior no histórico.
 
+**Comparar execuções** mostra duas versões lado a lado, alinha seus eventos e identifica a primeira diferença observada, preservando a sessão principal.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -58,6 +60,16 @@ No exemplo Python da soma, coloque um ponto na linha **4**: a primeira pausa mos
 
 Um comando de condição para antes do próximo comando do bloco escolhido. Um retorno pode deixar a execução no meio da expressão do chamador, com temporários na pilha. [Regras completas, exemplo visual e API](docs/breakpoints-stepping.md).
 
+## Comparar duas versões
+
+No exemplo **Python · Soma com bug**, clique em **Comparar execuções**, mantenha **Python · Soma corrigida** como B e clique em **Preparar comparação**. Os resultados são `10` e `15`. **Primeira diferença** mostra a quinta condição: os locais ainda coincidem (`i = 5`, `total = 10`), mas A sai e B continua.
+
+Navegue pelos pontos nos dois sentidos ou use o controle deslizante. Uma iteração extra aparece como evento exclusivo de B; os retornos são reencontrados mesmo com números de passo diferentes. A tela mostra código, variáveis por escopo, pilhas, saída, resultado e diferenças. **Voltar ao debugger** preserva a posição original.
+
+A segunda fonte pode ser um exemplo ou um script salvo da mesma linguagem/versão. A preparação é cancelável; fontes inválidas e limites de gravação não apagam código ou a sessão aberta. O alinhamento é estrutural e automático: não prova equivalência entre programas arbitrários nem compara cada operação matemática intermediária. [Contrato, limites e API](docs/execution-comparison.md).
+
+![Comparação no Firefox: primeira decisão divergente da soma Python](docs/comparison.png)
+
 ## Usar seu próprio script
 
 1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
@@ -91,11 +103,13 @@ src/core/history.ts    HistoryStore, checkpoints e política de retenção
 src/core/history-events.ts  Eventos projetados das transações
 src/core/debugger.ts   Sessão, cursor, passos e busca por posição
 src/core/execution-control.ts  Breakpoints, planos em lotes e passos por comando
+src/core/comparison*.ts  Execuções isoladas, pontos, alinhamento e diferenças
 src/ui/               Interface React e estilos responsivos
 examples/             Programas .rw usados pela demo e pelos testes
 tests/core.test.ts    Semântica, reversibilidade e propriedades geradas
 tests/history.test.ts Busca exata, checkpoints, eventos e navegação gerada
 tests/execution-control.test.ts  Paradas, recursão, agrupamento e replay
+tests/comparison.test.ts  Divergência, alinhamento e restauração das duas sessões
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -176,6 +190,9 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - Breakpoints antes dos comandos, retomada por ocorrência, busca reversa, loops vazios, comandos na mesma linha e cabeçalhos multilinha.
 - Entrar/passar sobre/sair em chamadas aninhadas e recursivas, temporários preservados, retorno implícito, saída desfeita ao voltar comando e estados completos iguais aos da referência.
 - No Firefox: controles por comando, breakpoint no loop, retomada, ocorrência anterior, replay parcial, preservação dos pontos no reinício, desativação/remoção e layout móvel.
+- Comparação: quinta decisão divergente, iteração extra, retorno com cursores diferentes, linhas/endereços deslocados, recursão e IDs de frames após chamadas adicionais.
+- Restauração de todos os campos de ambas as sessões em cada ponto, saltos gerados, valores especiais, saída, erros e limites; navegação não reexecuta instruções.
+- No Firefox: comparação dos exemplos e scripts salvos, primeira diferença, eventos exclusivos, saída, versões iguais, teclado, cancelamento, fonte inválida, layout móvel e sessão principal preservada.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -187,5 +204,6 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Etapas e próximos marcos](docs/roadmap.md)
 - [Medidas e política de checkpoints](docs/history-performance.md)
 - [Breakpoints e controles por comando](docs/breakpoints-stepping.md)
+- [Comparação entre execuções](docs/execution-comparison.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Comparação entre execuções e explicações visuais mais detalhadas são os próximos marcos.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Explicações visuais mais detalhadas e escala são o próximo marco.

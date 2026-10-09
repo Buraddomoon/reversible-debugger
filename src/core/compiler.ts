@@ -16,6 +16,8 @@ export interface DebugLocation {
   readonly span: Span;
   readonly entry: boolean;
   readonly kind: 'statement' | 'implicit-return';
+  readonly semanticKey: string;
+  readonly flowDecision: boolean;
 }
 export interface FunctionInfo { entry: number; params: readonly string[] }
 export interface Program {
@@ -32,15 +34,15 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
   const instructions: Instruction[] = [];
   const locations: Array<DebugLocation | null> = [];
   let statementId = 0;
-  let currentSite: { statementId: number; span: Span; entryPc: number; kind: DebugLocation['kind'] } | null = null;
-  const site = (span: Span, kind: DebugLocation['kind'] = 'statement') => ({ statementId: statementId++, span, entryPc: instructions.length, kind });
+  let currentSite: { statementId: number; span: Span; entryPc: number; kind: DebugLocation['kind']; semanticKey: string } | null = null;
+  const site = (span: Span, semanticKey: string, kind: DebugLocation['kind'] = 'statement') => ({ statementId: statementId++, span, entryPc: instructions.length, kind, semanticKey });
   const functions: Record<string, FunctionInfo> = Object.create(null);
   for (const fn of tree.functions) {
     if (Object.hasOwn(functions, fn.name)) throw new LanguageError(`Função duplicada: ${fn.name}`, fn.span);
     functions[fn.name] = { entry: -1, params: fn.params };
   }
-  const emit = (operation: Operation, span: Span, origin = currentSite): number => {
-    locations.push(origin ? { statementId: origin.statementId, span: origin.span, entry: origin.entryPc === instructions.length, kind: origin.kind } : null);
+  const emit = (operation: Operation, span: Span, origin = currentSite, flowDecision = false): number => {
+    locations.push(origin ? { statementId: origin.statementId, span: origin.span, entry: origin.entryPc === instructions.length, kind: origin.kind, semanticKey: origin.semanticKey, flowDecision } : null);
     instructions.push({ ...operation, span }); return instructions.length - 1;
   };
   const patch = (index: number, target: number) => {
@@ -92,10 +94,34 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
       }
     }
   };
-  const statements = (nodes: Statement[], inFunction: boolean) => {
+  const conditionNames = (root: Expression): string => {
+    const names = new Set<string>(), pending = [root];
+    while (pending.length) {
+      const node = pending.pop()!;
+      if (node.kind === 'variable') names.add(`var:${node.name}`);
+      if (node.kind === 'call') { names.add(`call:${node.name}`); for (const arg of node.args) pending.push(arg); }
+      if (node.kind === 'unary') pending.push(node.operand);
+      if (node.kind === 'binary' || node.kind === 'logical') pending.push(node.left, node.right);
+    }
+    return [...names].sort().map(encodeURIComponent).join(',');
+  };
+  const statementSignature = (node: Statement): string => {
+    switch (node.kind) {
+      case 'let': case 'assign': case 'set': case 'define': return `${node.kind}:${encodeURIComponent(node.name)}`;
+      case 'if': case 'while': return `${node.kind}:${conditionNames(node.condition)}`;
+      case 'return': return 'return';
+      case 'expression': return `expression:${node.value.kind === 'call' ? encodeURIComponent(node.value.name) : node.value.kind}`;
+    }
+  };
+  const statements = (nodes: Statement[], inFunction: boolean, block: string) => {
     const previousSite = currentSite;
+    const occurrences = new Map<string, number>();
     for (const node of nodes) {
-      currentSite = site(node.span);
+      const signature = statementSignature(node);
+      const occurrence = (occurrences.get(signature) ?? 0) + 1;
+      occurrences.set(signature, occurrence);
+      const semanticKey = `${block}/${signature}@${occurrence}`;
+      currentSite = site(node.span, semanticKey);
       switch (node.kind) {
         case 'let': case 'assign': case 'set':
           expression(node.value);
@@ -107,18 +133,18 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
           expression(node.value); emit({ op: 'RETURN' }, node.span); break;
         case 'if': {
           expression(node.condition);
-          const test = emit({ op: 'JUMP_IF_FALSE', target: -1 }, node.condition.span);
-          statements(node.then, inFunction);
+          const test = emit({ op: 'JUMP_IF_FALSE', target: -1 }, node.condition.span, currentSite, true);
+          statements(node.then, inFunction, `${semanticKey}/then`);
           const skip = emit({ op: 'JUMP', target: -1 }, node.span, null);
           patch(test, instructions.length);
-          statements(node.otherwise, inFunction);
+          statements(node.otherwise, inFunction, `${semanticKey}/else`);
           patch(skip, instructions.length); break;
         }
         case 'while': {
           const entry = instructions.length;
           expression(node.condition);
-          const test = emit({ op: 'JUMP_IF_FALSE', target: -1 }, node.condition.span);
-          statements(node.body, inFunction);
+          const test = emit({ op: 'JUMP_IF_FALSE', target: -1 }, node.condition.span, currentSite, true);
+          statements(node.body, inFunction, `${semanticKey}/body`);
           emit({ op: 'JUMP', target: entry }, node.condition.span, null);
           patch(test, instructions.length); break;
         }
@@ -126,13 +152,14 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
     }
     currentSite = previousSite;
   };
-  statements(tree.statements, false);
+  statements(tree.statements, false, 'program');
   emit({ op: 'HALT' }, tree.statements.at(-1)?.span ?? tree.span, null);
   for (const fn of tree.functions) {
     functions[fn.name] = { entry: instructions.length, params: fn.params };
     currentLocals = new Set([...fn.params, ...assignedNames(fn.body)]);
-    statements(fn.body, true);
-    currentSite = site(fn.span, 'implicit-return');
+    const scope = `function:${encodeURIComponent(fn.name)}`;
+    statements(fn.body, true, scope);
+    currentSite = site(fn.span, `${scope}/implicit-return`, 'implicit-return');
     emit({ op: 'PUSH', value: runtime.language === 'python' ? null : 0 }, fn.span);
     emit({ op: 'RETURN' }, fn.span);
     currentSite = null;
