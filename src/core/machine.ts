@@ -1,5 +1,7 @@
 import { describeInstruction, type Instruction, type Program } from './compiler';
 import type { Span, Value } from './language';
+import { pythonBinary, pythonBuiltins, pythonTruth, pythonUnary } from './python-values';
+import { formatValue } from './runtime';
 
 export interface Control {
   pc: number;
@@ -18,6 +20,7 @@ export interface MachineState {
   control: Control;
   frames: Frame[];
   operands: Value[];
+  output: string[];
 }
 export type DeepReadonly<T> = T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T;
 type Binding = { exists: false } | { exists: true; value: Value };
@@ -25,6 +28,7 @@ export type Change =
   | { kind: 'control'; before: Control; after: Control }
   | { kind: 'binding'; frameId: number; name: string; before: Binding; after: Binding }
   | { kind: 'operands'; index: number; removed: Value[]; added: Value[] }
+  | { kind: 'output'; index: number; removed: string[]; added: string[] }
   | { kind: 'frames'; index: number; removed: Frame[]; added: Frame[] };
 export interface Step {
   index: number;
@@ -39,6 +43,7 @@ export function initialState(): MachineState {
     control: { pc: 0, status: 'running', error: null, nextFrameId: 1 },
     frames: [{ id: 0, name: 'programa', locals: Object.create(null), returnPc: null, operandBase: 0 }],
     operands: [],
+    output: [],
   };
 }
 
@@ -57,6 +62,9 @@ export function applyChange(state: MachineState, change: Change, direction: 'for
     }
     case 'operands':
       state.operands.splice(change.index, (forward ? change.removed : change.added).length, ...(forward ? change.added : change.removed));
+      break;
+    case 'output':
+      state.output.splice(change.index, (forward ? change.removed : change.added).length, ...(forward ? change.added : change.removed));
       break;
     case 'frames':
       state.frames.splice(change.index, (forward ? change.removed : change.added).length, ...structuredClone(forward ? change.added : change.removed));
@@ -107,7 +115,9 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
   if (!instruction) throw new Error('Posição de execução inválida');
   const changes: Change[] = [];
   let after: Control = { ...before, pc: before.pc + 1 };
-  let description = describeInstruction(instruction);
+  let description = describeInstruction(instruction, program.runtime.language);
+  const python = program.runtime.language === 'python';
+  const format = (value: Value) => formatValue(value, program.runtime.language);
   const commit = (change: Change) => { applyChange(state, change, 'forward'); changes.push(change); };
   const push = (value: Value) => commit({ kind: 'operands', index: state.operands.length, removed: [], added: [value] });
   const pop = (): Value => {
@@ -117,60 +127,97 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
     commit({ kind: 'operands', index: state.operands.length - 1, removed: [value], added: [] });
     return value;
   };
-  const resolve = (name: string): Frame => {
+  const resolve = (name: string, scope?: 'local' | 'global'): Frame => {
     const local = state.frames.at(-1)!;
-    if (Object.hasOwn(local.locals, name)) return local;
+    if (scope !== 'global' && Object.hasOwn(local.locals, name)) return local;
     const global = state.frames[0]!;
-    if (Object.hasOwn(global.locals, name)) return global;
+    if (scope !== 'local' && Object.hasOwn(global.locals, name)) return global;
+    if (scope === 'local') throw new Error(`Variável local ainda não inicializada: ${name}`);
     throw new Error(`Variável inexistente: ${name}`);
+  };
+  const read = (name: string, scope?: 'local' | 'global'): Value => {
+    try { return resolve(name, scope).locals[name]!; }
+    catch (error) {
+      if (python && scope !== 'local' && pythonBuiltins.has(name)) return { kind: 'builtin', name };
+      throw error;
+    }
   };
   try {
     switch (instruction.op) {
       case 'PUSH': push(instruction.value); break;
-      case 'LOAD': push(resolve(instruction.name).locals[instruction.name]!); break;
-      case 'DECLARE': case 'STORE': {
-        const frame = instruction.op === 'DECLARE' ? state.frames.at(-1)! : resolve(instruction.name);
+      case 'LOAD': push(read(instruction.name, instruction.scope)); break;
+      case 'DECLARE': case 'STORE': case 'SET': case 'DEFINE': {
+        const frame = instruction.op === 'STORE' ? resolve(instruction.name) : state.frames.at(-1)!;
         const exists = Object.hasOwn(frame.locals, instruction.name);
         if (instruction.op === 'DECLARE' && exists) throw new Error(`Variável já declarada neste escopo: ${instruction.name}`);
-        const value = pop();
+        const value: Value = instruction.op === 'DEFINE' ? { kind: 'function', name: instruction.name } : pop();
         const binding: Binding = exists ? { exists: true, value: frame.locals[instruction.name]! } : { exists: false };
         commit({ kind: 'binding', frameId: frame.id, name: instruction.name, before: binding, after: { exists: true, value } });
-        description = exists ? `${instruction.name}: ${frame.locals[instruction.name]} (antes: ${binding.exists ? binding.value : ''})` : `Declarar ${instruction.name} = ${value}`;
+        description = exists ? `${instruction.name}: ${format(value)} (antes: ${binding.exists ? format(binding.value) : ''})` : `Declarar ${instruction.name} = ${format(value)}`;
         break;
       }
       case 'BINARY': {
         const right = pop(), left = pop();
-        const result = binary(instruction.operator, left, right);
+        const result = python ? pythonBinary(instruction.operator, left, right) : binary(instruction.operator, left, right);
         push(result);
-        description = `${left} ${instruction.operator} ${right} → ${result}`; break;
+        description = `${format(left)} ${instruction.operator} ${format(right)} → ${format(result)}`; break;
       }
       case 'UNARY': {
         const value = pop();
-        if (instruction.operator === '!') {
+        if (python) push(pythonUnary(instruction.operator, value));
+        else if (instruction.operator === '!') {
           if (typeof value !== 'boolean') throw new Error('O operador ! exige um booleano');
           push(!value);
         } else { push(-numeric(value)); }
         break;
       }
       case 'POP': pop(); break;
+      case 'DUP':
+        if (state.operands.length <= state.frames.at(-1)!.operandBase) throw new Error('Pilha de operandos insuficiente');
+        push(state.operands.at(-1)!); break;
       case 'JUMP': after.pc = instruction.target; break;
       case 'JUMP_IF_FALSE': {
-        const condition = pop();
+        const value = pop();
+        const condition = python ? pythonTruth(value) : value;
         if (typeof condition !== 'boolean') throw new Error('A condição precisa ser booleana');
         if (!condition) after.pc = instruction.target;
         description = condition ? 'Condição verdadeira: entrar no bloco' : 'Condição falsa: sair do bloco'; break;
       }
       case 'CALL': {
+        let name = instruction.name;
+        let builtin = false;
+        if (instruction.stackCallee) {
+          const callee = state.operands[state.operands.length - instruction.argc - 1];
+          if (callee === null || typeof callee !== 'object') throw new Error(`${name} não é uma função chamável`);
+          name = callee.name; builtin = callee.kind === 'builtin';
+        }
+        if (builtin) {
+          const values: Value[] = [];
+          for (let i = 0; i < instruction.argc; i++) values.unshift(pop());
+          pop(); // The callee was evaluated before the arguments, like Python.
+          if (name === 'print') {
+            const text = `${values.map(format).join(' ')}\n`;
+            commit({ kind: 'output', index: state.output.length, removed: [], added: [text] });
+            push(null); description = `Saída: ${text.trimEnd()}`;
+          } else {
+            if (values.length > 1 || (values.length === 0 && name === 'abs')) throw new Error(`${name} espera ${name === 'abs' ? 'um argumento' : 'até um argumento'} nesta versão`);
+            const result = pythonUnary(name, values.length ? values[0]! : 0n);
+            push(result); description = `${name}(${values.map(format).join(', ')}) → ${format(result)}`;
+          }
+          break;
+        }
         if (state.frames.length >= maxFrames) throw new Error(`Limite de ${maxFrames} frames de chamada excedido`);
-        const fn = program.functions[instruction.name]!;
+        const fn = program.functions[name]!;
+        if (fn.params.length !== instruction.argc) throw new Error(`${name} espera ${fn.params.length} argumento(s)`);
         const values: Value[] = [];
         for (let i = 0; i < instruction.argc; i++) values.unshift(pop());
+        if (instruction.stackCallee) pop();
         const locals: Record<string, Value> = Object.create(null);
         fn.params.forEach((name, index) => { locals[name] = values[index]!; });
-        const frame: Frame = { id: before.nextFrameId, name: instruction.name, locals, returnPc: before.pc + 1, operandBase: state.operands.length };
+        const frame: Frame = { id: before.nextFrameId, name, locals, returnPc: before.pc + 1, operandBase: state.operands.length };
         commit({ kind: 'frames', index: state.frames.length, removed: [], added: [frame] });
         after.nextFrameId++; after.pc = fn.entry;
-        description = `Entrar em ${instruction.name}(${values.join(', ')})`; break;
+        description = `Entrar em ${name}(${values.map(format).join(', ')})`; break;
       }
       case 'RETURN': {
         const frame = state.frames.at(-1)!;
@@ -182,7 +229,7 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
         }
         commit({ kind: 'frames', index: state.frames.length - 1, removed: [structuredClone(frame)], added: [] });
         push(result); after.pc = frame.returnPc;
-        description = `${frame.name} retorna ${result}`; break;
+        description = `${frame.name} retorna ${format(result)}`; break;
       }
       case 'HALT': after.status = 'halted'; description = 'Execução concluída'; break;
     }

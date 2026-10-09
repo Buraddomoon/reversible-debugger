@@ -10,6 +10,18 @@
 
 Critério de aceite: executar a soma incorreta, observar `10`, voltar através do resultado e retorno, restaurar a função com seus locais e avançar novamente com os mesmos estados. Também restaurar completamente a execução inicial e reproduzir até o mesmo resultado.
 
+## Scripts próprios e Python — implementado
+
+- Botão **Adicionar script**, colagem e importação de `.py`, `.rw` ou `.txt`.
+- Seleção explícita de linguagem e versão; Python 3 e Experimental da demo 0.1 são os runtimes disponíveis.
+- Parser e semântica para um subconjunto documentado de Python 3, com inteiros exatos, funções, recursão, escopos locais, `if/elif/else`, `while`, operações e curto-circuito.
+- Saída de `print` registrada como delta reversível.
+- Limite ampliado para 1 milhão de caracteres e visualização do código com renderização das linhas visíveis.
+- **Retroceder tudo** em lotes, mantendo os registros para replay.
+- Testes de reversibilidade de Python, comparação com o Python instalado e fluxo de importação/arquivos grandes no Firefox.
+
+JavaScript fica como próximo adaptador de linguagem, seguindo a prioridade de Python definida para esta entrega. Versões novas só devem aparecer no seletor depois de existir um parser/runtime correspondente e testes da semântica.
+
 ## Próximo marco — linha do tempo e checkpoints
 
 - Extrair a interface `HistoryStore` do armazenamento atual em array.

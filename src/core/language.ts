@@ -1,6 +1,11 @@
 /** The complete front end for the intentionally small Rewind language. */
 export interface Span { start: number; end: number; line: number; column: number }
-export type Value = number | boolean;
+export interface FunctionValue { readonly kind: 'function' | 'builtin'; readonly name: string }
+export type Value = number | bigint | boolean | null | FunctionValue;
+export const MAX_SOURCE_CHARS = 1_000_000;
+export function validateSourceSize(source: string): void {
+  if (source.length > MAX_SOURCE_CHARS) throw new LanguageError(`O programa excede o limite de ${MAX_SOURCE_CHARS.toLocaleString('pt-BR')} caracteres`, { start: 0, end: 0, line: 1, column: 1 });
+}
 export class LanguageError extends Error {
   constructor(message: string, public readonly span: Span) {
     super(`${message} (linha ${span.line}, coluna ${span.column})`);
@@ -10,16 +15,18 @@ export class LanguageError extends Error {
 interface Token { text: string; kind: 'number' | 'name' | 'symbol' | 'eof'; span: Span }
 export type Expression =
   | { kind: 'literal'; value: Value; span: Span }
-  | { kind: 'variable'; name: string; span: Span }
+  | { kind: 'variable'; name: string; scope?: 'local' | 'global'; span: Span }
   | { kind: 'unary'; operator: string; operand: Expression; span: Span }
   | { kind: 'binary'; operator: string; left: Expression; right: Expression; span: Span }
+  | { kind: 'logical'; operator: 'and' | 'or'; left: Expression; right: Expression; span: Span }
   | { kind: 'call'; name: string; args: Expression[]; span: Span };
 export type Statement =
-  | { kind: 'let' | 'assign'; name: string; value: Expression; span: Span }
+  | { kind: 'let' | 'assign' | 'set'; name: string; value: Expression; span: Span }
   | { kind: 'if'; condition: Expression; then: Statement[]; otherwise: Statement[]; span: Span }
   | { kind: 'while'; condition: Expression; body: Statement[]; span: Span }
   | { kind: 'return'; value: Expression; span: Span }
-  | { kind: 'expression'; value: Expression; span: Span };
+  | { kind: 'expression'; value: Expression; span: Span }
+  | { kind: 'define'; name: string; span: Span };
 export interface FunctionNode { name: string; params: string[]; body: Statement[]; span: Span }
 export interface SyntaxTree { statements: Statement[]; functions: FunctionNode[]; span: Span }
 
@@ -195,6 +202,6 @@ class Parser {
 }
 
 export function parse(source: string): SyntaxTree {
-  if (source.length > 50_000) throw new LanguageError('O programa excede o limite de 50.000 caracteres', { start: 0, end: 0, line: 1, column: 1 });
+  validateSourceSize(source);
   return new Parser(tokenize(source)).parse();
 }

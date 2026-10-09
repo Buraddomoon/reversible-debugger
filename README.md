@@ -1,8 +1,10 @@
 # Rewind
 
-Debugger visual reversível para uma linguagem pequena, implementado em TypeScript. A primeira entrega executa um algoritmo com bug e permite navegar pela execução nos dois sentidos, observando variáveis, chamadas, instruções e mudanças.
+Debugger visual reversível implementado em TypeScript. Interpreta um subconjunto de **Python 3** e mantém os exemplos da linguagem experimental criada para a primeira demo. Permite navegar pela execução nos dois sentidos, observando variáveis, chamadas, instruções, saída e mudanças.
 
-![Demo no Firefox: o retorno de sumTo foi desfeito e seu frame voltou com n=5, total=10 e i=5](docs/demo.png)
+**Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
+
+![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
 
 ## Rodar a demo
 
@@ -20,15 +22,25 @@ As dependências ficam em `node_modules/` e o cache em `.npm-cache/`, conforme `
 
 ## Experimentar
 
-1. Mantenha o exemplo **A soma que perdeu um número**.
-2. Avance duas instruções: o argumento `5` é preparado e `sumTo` entra na pilha.
+1. Mantenha o exemplo **Python · Soma com bug**.
+2. Avance até `sum_to` entrar na pilha. A definição da função e a preparação do argumento também são passos.
 3. Continue com **Avançar**, ou use **Executar** para reproduzir a execução.
 4. O resultado é `10`, embora a soma inclusiva de 1 a 5 devesse ser `15`.
-5. Volte através da declaração de `result` e do retorno: o resultado desaparece e o frame de `sumTo` reaparece com suas variáveis.
+5. Volte através da atribuição de `result` e do retorno: o resultado desaparece e o frame de `sum_to` reaparece com suas variáveis.
 6. Continue voltando até `i < n` comparar `5 < 5`. Avance novamente para reproduzir exatamente as mudanças registradas.
-7. Escolha **Soma corrigida** para executar `i <= n`, obtendo `15`.
+7. Escolha **Python · Soma corrigida** para executar `i <= n`, obtendo `15`.
 
-**Reiniciar** volta ao estado inicial e preserva o histórico para reaplicação. Trocar de exemplo ou aplicar código editado cria uma nova sessão. As teclas esquerda/direita navegam quando o foco não está em um controle de edição. Cada passo representa uma instrução da VM: uma linha do código pode exigir vários passos.
+**Retroceder tudo** desfaz os passos em lotes e restaura o estado inicial, inclusive saída, preservando o histórico para reaplicação. Trocar de exemplo ou aplicar código editado cria uma nova sessão. As teclas esquerda/direita navegam quando o foco não está em um controle de edição. Cada passo representa uma instrução da VM: uma linha do código pode exigir vários passos.
+
+## Usar seu próprio script
+
+1. Clique em **Adicionar script** para abrir um rascunho independente da execução atual.
+2. Selecione **Python** e **Python 3**, ou a linguagem **Experimental da demo / 0.1** para arquivos `.rw`.
+3. Cole o código ou use **Importar arquivo** para carregar `.py`, `.rw` ou `.txt`. Arquivos `.py` e `.rw` selecionam a linguagem correspondente automaticamente.
+4. Confira o contador de caracteres e clique em **Aplicar código**. Erros preservam a sessão anterior e o rascunho para correção.
+5. Use **Executar**, **Voltar** e **Retroceder tudo**. `print` aparece no painel **Saída** e também é desfeito ao retroceder.
+
+O limite passou de 50.000 para **1.000.000 de caracteres**, tanto no editor quanto na importação e no núcleo. A tela renderiza apenas as linhas próximas ao trecho visível, inclusive quando o programa tem milhares de linhas. O seletor oferece apenas versões realmente implementadas: Python 3 e Experimental 0.1. JavaScript ainda não está implementado.
 
 Outros exemplos: fatorial recursivo (`120`), algoritmo de Euclides (`6`) e divisão por zero. No último, voltar desfaz o erro e restaura os operandos da divisão.
 
@@ -36,6 +48,9 @@ Outros exemplos: fatorial recursivo (`120`), algoritmo de Euclides (`6`) e divis
 
 ```text
 src/core/language.ts   Lexer, parser, AST e posições no código
+src/core/python.ts     Parser Python, indentação e posições originais
+src/core/python-values.ts  Regras de valores e operações Python
+src/core/runtime.ts    Linguagens, versões e apresentação dos valores
 src/core/compiler.ts   Instruções, funções e metadados de origem
 src/core/machine.ts    Estado explícito, transações e deltas
 src/core/debugger.ts   Sessão, histórico, cursor e navegação
@@ -57,6 +72,15 @@ session.forward();
 session.backward();
 session.forward(); // Reaplica o registro existente.
 console.log(session.state, session.cursor);
+```
+
+Para Python, informe o runtime:
+
+```ts
+const session = new DebugSession('result = 2 + 3\nprint(result)', {
+  language: 'python',
+  version: '3',
+});
 ```
 
 ## Verificações
@@ -91,6 +115,8 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - Limites de histórico e chamadas sem perder a possibilidade de voltar.
 - Deltas de atribuição cujo tamanho não acompanha a quantidade de outras variáveis.
 - No Firefox: execução do bug, chamadas, retorno, reinício, replay, exemplo corrigido, erro reversível, edição, layout de 390 px sem overflow e ausência de erros no console.
+- Python: inteiros exatos, divisão inteira e resto com sinais, precedência de potências, escopos locais, definição de funções em ordem e curto-circuito. Uma verificação opcional compara os valores/tipos com o Python instalado, sem instalar ou atualizar esse runtime.
+- No Firefox: importação `.py`, linguagem/versão, execução e desfazimento de `print`, retrocesso completo, arquivo de 10.001 linhas e preservação do rascunho ao rejeitar um arquivo acima do limite.
 
 Os snapshots completos existem **apenas nos testes como referência**. O histórico de produção armazena mudanças. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -98,6 +124,7 @@ Os snapshots completos existem **apenas nos testes como referência**. O histór
 
 - [Arquitetura e decisões](docs/architecture.md)
 - [Especificação da linguagem](docs/language.md)
+- [Python 3: recursos e limitações](docs/python.md)
 - [Etapas e próximos marcos](docs/roadmap.md)
 
-Limites iniciais: 50.000 caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. A interface reproduz em lotes pequenos para devolver o controle ao navegador. Checkpoints, saltos na linha do tempo, breakpoints e comparação entre execuções são próximos marcos, não recursos desta versão.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface reproduz e retrocede em lotes pequenos para devolver o controle ao navegador. Checkpoints, saltos na linha do tempo, breakpoints e comparação entre execuções são próximos marcos.

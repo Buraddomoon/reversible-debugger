@@ -1,9 +1,12 @@
-import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { DebugSession } from '../core/debugger';
 import { describeInstruction } from '../core/compiler';
 import type { DeepReadonly, Step } from '../core/machine';
 import type { Span } from '../core/language';
 import { examples } from '../examples';
+import { formatValue, runtimes, type LanguageId } from '../core/runtime';
+import { ScriptEditor } from './ScriptEditor';
+const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 type IconName = 'rewind' | 'back' | 'next' | 'play' | 'pause' | 'reset' | 'code' | 'layers';
 function Icon({ name }: { name: IconName }) {
@@ -20,40 +23,59 @@ function Icon({ name }: { name: IconName }) {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-function syntax(text: string): ReactNode[] {
-  return text.split(/(\/\/.*|\b(?:fn|let|while|if|else|return|true|false)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g).filter(Boolean).map((piece, index) => {
-    const kind = piece.startsWith('//') ? 'comment' : /^(fn|let|while|if|else|return|true|false)$/.test(piece) ? 'keyword' : /^\d/.test(piece) ? 'number' : /^[+*/%<>=!\-]+$/.test(piece) ? 'operator' : /^[A-Za-z_]/.test(piece) ? 'function' : '';
+function syntax(text: string, language: LanguageId): ReactNode[] {
+  const pattern = language === 'python' ? /(#.*|\b(?:def|while|if|elif|else|return|pass|not|and|or|True|False|None)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g : /(\/\/.*|\b(?:fn|let|while|if|else|return|true|false)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g;
+  return text.split(pattern).filter(Boolean).map((piece, index) => {
+    const kind = piece.startsWith(language === 'python' ? '#' : '//') ? 'comment' : /^(fn|def|let|while|if|elif|else|return|pass|not|and|or|true|false|True|False|None)$/.test(piece) ? 'keyword' : /^\d/.test(piece) ? 'number' : /^[+*/%<>=!\-]+$/.test(piece) ? 'operator' : /^[A-Za-z_]/.test(piece) ? 'function' : '';
     return <span className={`syntax-${kind}`} key={index}>{piece}</span>;
   });
 }
 
-function SourceView({ source, span }: { source: string; span?: Span }) {
-  const current = useRef<HTMLDivElement>(null);
+function SourceView({ source, span, language }: { source: string; span?: Span; language: LanguageId }) {
   const container = useRef<HTMLDivElement>(null);
+  const lastSource = useRef(source);
+  const lines = useMemo(() => source.trimEnd().split('\n'), [source]);
+  const [viewport, setViewport] = useState({ top: 0, height: 440, lineHeight: 28 });
   useEffect(() => {
-    if (!current.current || !container.current) return;
-    const line = current.current.getBoundingClientRect();
-    const viewport = container.current.getBoundingClientRect();
-    if (line.top < viewport.top) container.current.scrollTop -= viewport.top - line.top;
-    if (line.bottom > viewport.bottom) container.current.scrollTop += line.bottom - viewport.bottom;
-  }, [span?.line]);
-  return <div className="source-scroll" ref={container} tabIndex={0} aria-label="Código-fonte em execução">
-    {source.trimEnd().split('\n').map((line, index) => {
+    const element = container.current!;
+    const measure = () => setViewport({ top: element.scrollTop, height: element.clientHeight, lineHeight: Number.parseFloat(getComputedStyle(element).getPropertyValue('--code-line-height')) || 28 });
+    const observer = new ResizeObserver(measure);
+    observer.observe(element); measure();
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const element = container.current!;
+    const sourceChanged = lastSource.current !== source;
+    lastSource.current = source;
+    if (!span && !sourceChanged) return;
+    const top = ((span?.line ?? 1) - 1) * viewport.lineHeight + 22;
+    if (top < element.scrollTop) element.scrollTop = top;
+    if (top + viewport.lineHeight > element.scrollTop + element.clientHeight) element.scrollTop = top + viewport.lineHeight - element.clientHeight;
+    setViewport(current => ({ ...current, top: element.scrollTop }));
+  }, [span?.line, source, viewport.lineHeight]);
+  const start = Math.max(0, Math.floor((viewport.top - 22) / viewport.lineHeight) - 8);
+  const end = Math.min(lines.length, Math.ceil((viewport.top + viewport.height) / viewport.lineHeight) + 8);
+  return <div className="source-scroll" ref={container} tabIndex={0} aria-label="Código-fonte em execução" onScroll={event => { const top = event.currentTarget.scrollTop; setViewport(current => ({ ...current, top })); }}>
+    <div className="source-lines" style={{ height: lines.length * viewport.lineHeight }}>
+    {lines.slice(start, end).map((line, offset) => {
+      const index = start + offset;
       const active = index + 1 === span?.line;
-      return <div className={`code-line ${active ? 'current' : ''}`} key={index} ref={active ? current : undefined} data-testid={active ? 'current-line' : undefined} aria-current={active ? 'step' : undefined}>
+      return <div className={`code-line ${active ? 'current' : ''}`} key={index} style={{ top: index * viewport.lineHeight }} data-testid={active ? 'current-line' : undefined} aria-current={active ? 'step' : undefined}>
         <span className="line-number">{index + 1}</span>
         <span className="line-marker" aria-hidden="true">{active ? '▸' : ''}</span>
-        <code>{syntax(line || ' ')}</code>
+        <code>{syntax(line || ' ', language)}</code>
       </div>;
-    })}
+    })}</div>
   </div>;
 }
 
 interface Navigation { step: DeepReadonly<Step>; direction: 'forward' | 'backward' }
-function ChangeView({ navigation }: { navigation: Navigation | null }) {
+function ChangeView({ navigation, language }: { navigation: Navigation | null; language: LanguageId }) {
   if (!navigation) return <div className="change-empty"><span className="empty-symbol">↔</span><p>Um passo, uma mudança.</p><span>Avance para acompanhar o que acontece.</span></div>;
   const forward = navigation.direction === 'forward';
   const changes = navigation.step.changes.filter(change => change.kind !== 'control');
+  if (!forward) changes.reverse();
+  const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, language);
   return <div className="change-content">
     <div className="change-direction">{forward ? 'PASSO APLICADO' : 'PASSO DESFEITO'} <span>{navigation.step.op}</span></div>
     <p className="change-description">{navigation.step.description}</p>
@@ -62,7 +84,7 @@ function ChangeView({ navigation }: { navigation: Navigation | null }) {
       if (change.kind === 'binding') {
         const before = forward ? change.before : change.after;
         const after = forward ? change.after : change.before;
-        return <div className="binding-change" key={index}><code>{change.name}</code><span>{before.exists ? String(before.value) : 'ausente'}</span><span className="change-arrow">→</span><strong>{after.exists ? String(after.value) : 'removida'}</strong></div>;
+        return <div className="binding-change" key={index}><code>{change.name}</code><span>{before.exists ? format(before.value) : 'ausente'}</span><span className="change-arrow">→</span><strong>{after.exists ? format(after.value) : 'removida'}</strong></div>;
       }
       if (change.kind === 'frames') {
         const added = forward ? change.added : change.removed;
@@ -72,19 +94,25 @@ function ChangeView({ navigation }: { navigation: Navigation | null }) {
       if (change.kind === 'operands') {
         const added = forward ? change.added : change.removed;
         const removed = forward ? change.removed : change.added;
-        return <div className="operand-change" key={index}><span>Pilha de valores</span><code>{removed.length ? `− [${removed.join(', ')}]` : ''} {added.length ? `+ [${added.join(', ')}]` : ''}</code></div>;
+        return <div className="operand-change" key={index}><span>Pilha de valores</span><code>{removed.length ? `− [${removed.map(format).join(', ')}]` : ''} {added.length ? `+ [${added.map(format).join(', ')}]` : ''}</code></div>;
       }
+      if (change.kind === 'output') return <div className="operand-change" key={index}><span>{forward ? 'Saída adicionada' : 'Saída removida'}</span><code>{(forward ? change.added : change.removed).join('')}</code></div>;
       return null;
     })}
   </div>;
 }
 
 export function App() {
-  const [session, setSession] = useState(() => new DebugSession(examples[0]!.source));
-  const [exampleId, setExampleId] = useState(examples[0]!.id);
+  const [session, setSession] = useState(() => new DebugSession(initialExample.source, { language: 'python' }));
+  const [exampleId, setExampleId] = useState(initialExample.id);
   const [draft, setDraft] = useState(session.program.source);
   const [editing, setEditing] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [rewinding, setRewinding] = useState(false);
+  const [draftLanguage, setDraftLanguage] = useState<LanguageId>('python');
+  const [draftVersion, setDraftVersion] = useState('3');
+  const [filename, setFilename] = useState('python-sum-bug.py');
+  const [draftFilename, setDraftFilename] = useState('programa.py');
   const [speed, setSpeed] = useState(4);
   const [notice, setNotice] = useState<string | null>(null);
   const [navigation, setNavigation] = useState<Navigation | null>(null);
@@ -98,9 +126,11 @@ export function App() {
   const result = state.frames[0]!.locals.result;
   const hasResult = Object.hasOwn(state.frames[0]!.locals, 'result');
   const changedNames = new Set(navigation?.step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '') ?? []);
-  const status = state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : playing ? 'Executando' : 'Pausado';
+  const status = rewinding ? 'Retrocedendo' : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : playing ? 'Executando' : 'Pausado';
+  const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, session.runtime.language);
 
   const move = (direction: 'forward' | 'backward') => {
+    if (rewinding) return;
     setPlaying(false); setNotice(null); setSelectedFrame(null);
     try {
       const step = direction === 'forward' ? session.forward() : session.backward();
@@ -109,24 +139,29 @@ export function App() {
     refresh();
   };
   useEffect(() => {
-    if (!playing) return;
+    if (!playing && !rewinding) return;
     const timer = window.setTimeout(() => {
       try {
-        session.runBatch(speed);
-        if (session.lastStep) setNavigation({ step: session.lastStep, direction: 'forward' });
+        if (rewinding) {
+          session.backwardBatch(500);
+          if (!session.canBackward) { setRewinding(false); setNavigation(null); }
+        } else {
+          session.runBatch(speed);
+          if (session.lastStep) setNavigation({ step: session.lastStep, direction: 'forward' });
+        }
         setSelectedFrame(null);
         if (!session.canForward) setPlaying(false);
       } catch (error) {
-        setPlaying(false); setNotice(error instanceof Error ? error.message : String(error));
+        setPlaying(false); setRewinding(false); setNotice(error instanceof Error ? error.message : String(error));
       }
       refresh();
-    }, speed === 1 ? 180 : 80);
+    }, rewinding ? 0 : speed === 1 ? 180 : 80);
     return () => window.clearTimeout(timer);
-  }, [playing, session, speed, revision]);
+  }, [playing, rewinding, session, speed, revision]);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const element = event.target as HTMLElement;
-      if (editing || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === 'ArrowRight') { event.preventDefault(); move('forward'); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); move('backward'); }
     };
@@ -136,15 +171,22 @@ export function App() {
   const load = (id: string) => {
     if (id === 'custom') return;
     const item = examples.find(example => example.id === id)!;
-    setPlaying(false); setEditing(false); setNotice(null); setNavigation(null); setSelectedFrame(null);
-    setSession(new DebugSession(item.source)); setExampleId(id); setDraft(item.source);
+    setPlaying(false); setRewinding(false); setEditing(false); setNotice(null); setNavigation(null); setSelectedFrame(null);
+    const language = item.language ?? 'rewind';
+    const runtime = runtimes.find(entry => entry.id === language)!;
+    setSession(new DebugSession(item.source, { language })); setExampleId(id); setDraft(item.source);
+    setFilename(`${id}${runtime.extension}`);
   };
   const applyDraft = () => {
     try {
-      const replacement = new DebugSession(draft);
-      setPlaying(false); setSession(replacement); setExampleId('custom'); setEditing(false);
+      const replacement = new DebugSession(draft, { language: draftLanguage, version: draftVersion });
+      setPlaying(false); setRewinding(false); setSession(replacement); setExampleId('custom'); setEditing(false); setFilename(draftFilename);
       setNotice(null); setNavigation(null); setSelectedFrame(null);
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+  };
+  const newScript = () => {
+    setPlaying(false); setRewinding(false); setNotice(null); setEditing(true);
+    setDraft(''); setDraftLanguage('python'); setDraftVersion('3'); setDraftFilename('programa.py');
   };
   return <div className="app-shell">
     <header className="app-header">
@@ -158,37 +200,39 @@ export function App() {
         <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={exampleId} onChange={event => load(event.target.value)}>{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}{exampleId === 'custom' && <option value="custom">Seu programa</option>}</select></div>
         <p>{example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
         <span className="example-tag">{example?.tag ?? 'Programa personalizado'}</span>
+        <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
       </section>
       <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
-            <button onClick={() => move('backward')} disabled={!session.canBackward || editing} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
-            <button className="primary" onClick={() => move('forward')} disabled={!session.canForward || editing} title="Avançar uma instrução (tecla direita)"><Icon name="next" /><span>Avançar</span></button>
+            <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
+            <button className="primary" onClick={() => move('forward')} disabled={!session.canForward || editing || rewinding} title="Avançar uma instrução (tecla direita)"><Icon name="next" /><span>Avançar</span></button>
             <span className="control-divider" />
-            <button className="play-button" onClick={() => { setNotice(null); setPlaying(!playing); }} disabled={!session.canForward || editing}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
+            <button className="play-button" onClick={() => { setNotice(null); setPlaying(!playing); }} disabled={!session.canForward || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
             <label className="speed-label"><span className="sr-only">Velocidade de execução</span><select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1×</option><option value={4}>4×</option></select></label>
-            <button className="icon-button" aria-label="Reiniciar" title="Voltar ao início mantendo o histórico" onClick={() => { setPlaying(false); session.rewind(); setNavigation(null); setNotice(null); setSelectedFrame(null); refresh(); }} disabled={!session.canBackward || editing}><Icon name="reset" /></button>
+            <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
           </div>
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>
-        {(notice || state.control.error) && <div className="error-banner" role="alert">{notice ?? state.control.error}</div>}
+        {(notice || (!editing && state.control.error)) && <div className="error-banner" role="alert">{notice ?? state.control.error}</div>}
         <div className="workspace">
           <section className="source-panel" aria-label="Programa em execução">
-            <div className="panel-header"><div><Icon name="code" /><span>{exampleId === 'custom' ? 'programa.rw' : `${exampleId}.rw`}</span></div><button className="text-button" onClick={() => { setPlaying(false); setDraft(session.program.source); setEditing(!editing); setNotice(null); }}>{editing ? 'Cancelar edição' : 'Editar código'}</button></div>
-            {editing ? <div className="editor-wrap"><label className="sr-only" htmlFor="source-editor">Código do programa</label><textarea id="source-editor" spellCheck={false} value={draft} onChange={event => setDraft(event.target.value)} /><div className="editor-footer"><span>Aplicar inicia uma nova execução.</span><button className="primary" onClick={applyDraft}>Aplicar código</button></div></div> : <SourceView source={session.program.source} span={next?.span ?? (state.control.status === 'error' ? session.lastStep?.span : undefined)} />}
-            <div className="next-instruction"><span>PRÓXIMA INSTRUÇÃO</span><strong data-testid="next-instruction">{next ? describeInstruction(next) : state.control.status === 'error' ? 'Volte para desfazer o erro' : 'Programa concluído'}</strong><code>{next ? `L${next.span.line}:${next.span.column} · ${next.op}` : '—'}</code></div>
-            <div className="result-panel"><span className="result-label">Resultado <code>result</code></span><strong data-testid="result-value">{hasResult ? String(result) : '—'}</strong><span className={hasResult && example?.expected !== undefined && result !== example.expected ? 'result-warning' : 'result-expected'}>{example?.expected !== undefined ? `Esperado: ${example.expected}` : hasResult ? 'Valor global' : 'Ainda não calculado'}</span></div>
+            <div className="panel-header"><div><Icon name="code" /><span>{editing ? draftFilename : filename}</span><span className="source-runtime">{(editing ? draftLanguage : session.runtime.language) === 'python' ? 'Python 3' : 'Experimental 0.1'}</span></div><button className="text-button" onClick={() => { setPlaying(false); setRewinding(false); setDraft(session.program.source); setDraftLanguage(session.runtime.language); setDraftVersion(session.runtime.version); setDraftFilename(filename); setEditing(!editing); setNotice(null); }}>{editing ? 'Cancelar edição' : 'Editar código'}</button></div>
+            {editing ? <ScriptEditor source={draft} filename={draftFilename} language={draftLanguage} version={draftVersion} onSource={setDraft} onFilename={setDraftFilename} onRuntime={(language, version) => { setDraftLanguage(language); setDraftVersion(version); if (/^programa\.(py|rw)$/.test(draftFilename)) setDraftFilename(`programa${language === 'python' ? '.py' : '.rw'}`); }} onApply={applyDraft} onError={setNotice} /> : <SourceView source={session.program.source} language={session.runtime.language} span={next?.span ?? (state.control.status === 'error' ? session.lastStep?.span : undefined)} />}
+            <div className="next-instruction"><span>PRÓXIMA INSTRUÇÃO</span><strong data-testid="next-instruction">{next ? describeInstruction(next, session.runtime.language) : state.control.status === 'error' ? 'Volte para desfazer o erro' : 'Programa concluído'}</strong><code>{next ? `L${next.span.line}:${next.span.column} · ${next.op}` : '—'}</code></div>
+            <div className="result-panel"><span className="result-label">Resultado <code>result</code></span><strong data-testid="result-value">{hasResult ? format(result!) : '—'}</strong><span className={hasResult && example?.expected !== undefined && result !== example.expected ? 'result-warning' : 'result-expected'}>{example?.expected !== undefined ? `Esperado: ${example.expected}` : hasResult ? 'Valor global' : 'Ainda não calculado'}</span></div>
+            {session.runtime.language === 'python' && <section className="output-panel" aria-label="Saída do programa"><span>SAÍDA</span><pre data-testid="program-output">{state.output.join('') || 'Nenhuma saída ainda.'}</pre></section>}
             <div className="source-footnote"><span>Um passo executa uma instrução. Uma linha pode ter vários passos.</span><kbd>←</kbd><kbd>→</kbd></div>
           </section>
           <aside className="state-panel">
             <section className="variables-panel"><div className="panel-header"><div><span className="panel-square" /><h2>Variáveis</h2></div><span className="scope-badge">{frame.name} <span>#{frame.id}</span></span></div>
-              <div className="variable-table"><div className="variable-table-header"><span>Nome</span><span>Valor</span><span>Tipo</span></div>{Object.entries(frame.locals).length === 0 ? <p className="variables-empty">Este escopo ainda não tem variáveis.</p> : Object.entries(frame.locals).map(([name, value]) => <div className={`variable-row ${changedNames.has(name) ? 'changed' : ''}`} key={name}><code>{name}</code><strong>{String(value)}</strong><span>{typeof value === 'number' ? 'número' : 'booleano'}</span></div>)}</div>
+              <div className="variable-table"><div className="variable-table-header"><span>Nome</span><span>Valor</span><span>Tipo</span></div>{Object.entries(frame.locals).length === 0 ? <p className="variables-empty">Este escopo ainda não tem variáveis.</p> : Object.entries(frame.locals).map(([name, value]) => <div className={`variable-row ${changedNames.has(name) ? 'changed' : ''}`} key={name}><code>{name}</code><strong>{format(value)}</strong><span>{value === null ? 'None' : typeof value === 'bigint' ? 'int' : typeof value === 'number' ? (session.runtime.language === 'python' ? 'float' : 'número') : typeof value === 'boolean' ? 'booleano' : 'função'}</span></div>)}</div>
             </section>
             <section className="stack-panel"><div className="panel-header"><div><Icon name="layers" /><h2>Pilha de chamadas</h2></div><span className="count-badge">{state.frames.length}</span></div>
               <div className="frames" data-testid="call-stack">{[...state.frames].reverse().map(item => <button key={item.id} className={`frame ${item.id === frame.id ? 'selected' : ''}`} onClick={() => setSelectedFrame(item.id)} aria-pressed={item.id === frame.id}><span className="frame-depth">{item.id.toString().padStart(2, '0')}</span><code>{item.name}{item.id !== 0 ? '()' : ''}</code><span className="frame-label">{item.id === activeFrame.id ? 'Atual' : 'Aguardando'}</span></button>)}</div>
-              <details className="operand-details"><summary>Pilha de valores <span>{state.operands.length}</span></summary><div className="operand-values">{state.operands.length ? state.operands.map((value, index) => <code key={index}>{String(value)}</code>) : <span>Vazia</span>}</div></details>
+              <details className="operand-details"><summary>Pilha de valores <span>{state.operands.length}</span></summary><div className="operand-values">{state.operands.length ? state.operands.map((value, index) => <code key={index}>{format(value)}</code>) : <span>Vazia</span>}</div></details>
             </section>
-            <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ChangeView navigation={navigation} /></section>
+            <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ChangeView navigation={navigation} language={session.runtime.language} /></section>
           </aside>
         </div>
         <footer className="history-strip"><div><span className="history-label">HISTÓRICO</span><span>{session.history.length} passos registrados</span></div><div className="history-track" aria-hidden="true">{Array.from({ length: 36 }, (_, index) => <span key={index} className={index < Math.round(session.history.length ? session.cursor / session.history.length * 36 : 0) ? 'filled' : ''} />)}</div><span className="replay-label">{session.cursor < session.history.length ? 'Reaplicando mudanças registradas' : 'Registrando mudanças'}</span></footer>
