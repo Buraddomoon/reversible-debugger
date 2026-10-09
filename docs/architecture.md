@@ -6,8 +6,6 @@
 
 **Pipeline:** fonte → tokens → AST → instruções com spans → máquina virtual → histórico reversível → interface. O núcleo é independente da interface. Não há backend, persistência em disco de sessões, rede ou dependência de relógio na linguagem.
 
-**Runtimes:** a sessão guarda uma seleção imutável de linguagem e versão. `runtime.ts` valida o catálogo: Python 3 usa `python.ts` e `python-values.ts`; Experimental 0.1 usa o parser original. Ambos produzem o AST compartilhado. Os detalhes da semântica Python, seu escopo e limitações estão em [Python 3](python.md). Runtimes inexistentes são rejeitados, sem fallback para outro parser.
-
 **Granularidade:** um passo é uma instrução da VM. A posição apresentada corresponde à próxima instrução; a última mudança é apresentada separadamente. Em um erro, o destaque identifica a instrução que falhou. Repetições da mesma linha são esperadas. Um futuro modo por comando deverá agrupar várias transações, sem perder o histórico de instruções.
 
 ## Por que usar uma máquina virtual
@@ -15,8 +13,6 @@
 Um interpretador que percorre o AST usando chamadas recursivas do JavaScript esconderia parte do estado em sua própria pilha de execução. Retroceder através de um retorno exigiria reconstruir essa continuação. Instruções pequenas deixam posição, pilhas, ponto de retorno e valores temporários explícitos e serializáveis.
 
 O compilador é deliberadamente simples: `PUSH`, `LOAD`, `DECLARE`, `STORE`, `BINARY`, `UNARY`, `POP`, `JUMP`, `JUMP_IF_FALSE`, `CALL`, `RETURN`, `HALT`. Cada instrução preserva o trecho do código que a originou. O programa compilado permanece congelado durante a sessão.
-
-Python acrescenta `SET` (atribuição no frame atual), `DEFINE` (binding de função) e `DUP` (curto-circuito). `LOAD` pode ter escopo local/global explícito, calculado a partir de todas as atribuições da função Python. Uma chamada avalia o callee antes dos argumentos e `CALL` consome essa referência da pilha. Os builtins implementados usam o mesmo fluxo de chamadas e registram a saída capturada por `print` como delta. Expressões são compiladas com uma pilha de trabalho explícita, permitindo expressões longas sem recursão do JavaScript no compilador.
 
 ## Estado completo da execução
 
@@ -31,16 +27,12 @@ interface MachineState {
   frames: Array<{
     id: number;
     name: string;
-    locals: Record<string, Value>;
+    locals: Record<string, number | boolean>;
     returnPc: number | null;
     operandBase: number;
   }>;
-  operands: Value[];
-  output: string[];
+  operands: Array<number | boolean>;
 }
-
-type Value = number | bigint | boolean | null
-  | { readonly kind: 'function' | 'builtin'; readonly name: string };
 ```
 
 O frame 0 guarda as variáveis globais. Cada chamada cria um frame com parâmetros, locais e endereço de retorno. `operandBase` separa seus temporários dos operandos que o chamador já tinha preparado, como o `n` de `n * factorial(n - 1)`.
@@ -59,11 +51,10 @@ Uma instrução registra uma lista ordenada de mudanças:
 | Binding | Frame, nome e presença/valor antes e depois |
 | Operandos | Índice, valores removidos e adicionados |
 | Frames | Índice, frames removidos e adicionados |
-| Saída | Índice, textos removidos e adicionados |
 
 `applyStep(state, step, 'forward')` aplica a lista em ordem. A direção contrária aplica as inversas em ordem reversa. Distinguir variável ausente de variável com valor é essencial: a inversa de uma declaração precisa remover o binding.
 
-Frames guardados no histórico são cópias dos frames **alterados**, nunca referências mutáveis ao frame ativo. O payload de cada passo é congelado, inclusive seus arrays e objetos. Um retorno guarda o frame removido para permitir restaurar seus locais. Isso copia aquele frame, sem copiar todos os demais frames e variáveis da máquina. Inteiros `bigint` e nomes de função são preservados exatamente; o histórico não usa JSON como formato de cópia. Uma futura serialização precisará codificar `bigint` explicitamente.
+Frames guardados no histórico são cópias dos frames **alterados**, nunca referências mutáveis ao frame ativo. O payload de cada passo é congelado, inclusive seus arrays e objetos. Um retorno guarda o frame removido para permitir restaurar seus locais. Isso copia aquele frame, sem copiar todos os demais frames e variáveis da máquina.
 
 Se uma instrução falha após remover operandos, a transação desfaz suas mudanças parciais e registra apenas a passagem do controle para erro. Voltar remove o erro e restaura o estado anterior; reaplicar reproduz o mesmo erro registrado.
 
@@ -72,7 +63,7 @@ Se uma instrução falha após remover operandos, a transação desfaz suas muda
 - No fim do histórico, avançar executa uma instrução e grava um novo delta.
 - Antes do fim, avançar aplica o delta já existente; não reavalia a instrução.
 - Voltar aplica a inversa do passo anterior.
-- **Retroceder tudo** desfaz todos os passos em lotes, preservando o histórico para replay, inclusive saída e definições de funções.
+- Reiniciar desfaz todos os passos, preservando o histórico para replay.
 - Aplicar código editado ou trocar exemplo cria uma sessão nova. Não há edição de variáveis durante replay nem ramificação de histórico na versão inicial.
 
 Uma sessão é definida por seu código imutável, estado inicial, transações e cursor. O código e as regras atuais da linguagem produzem execução determinística. A futura introdução de entrada, aleatoriedade ou efeitos externos exigirá modelar e registrar essas entradas explicitamente.
@@ -95,9 +86,3 @@ apply(undo(S', T), T) = S'
 ```
 
 A igualdade inclui todos os campos internos. Os testes percorrem os estados de programas conhecidos, desfazem todos os passos e reaplicam todos; sequências arbitrárias de navegação são comparadas com o estado de referência de cada cursor. Resultados conhecidos são verificados separadamente.
-
-## Arquivos grandes e interface
-
-O limite de fonte é compartilhado entre os dois parsers, editor e importação: 1 milhão de caracteres. A importação lê um arquivo local como texto; `.py` e `.rw` selecionam o runtime e `.txt` preserva a seleção feita pelo usuário. Falhas de leitura, tamanho ou compilação preservam o rascunho e a sessão atual.
-
-`SourceView` mantém as linhas do código em memória, mas monta no DOM apenas as linhas visíveis e uma margem pequena. O cursor pode navegar até uma linha fora do viewport sem renderizar todas as anteriores. Um `ResizeObserver` ajusta a medida das linhas em mudanças de viewport. **Retroceder tudo** usa `backwardBatch(500)` entre retornos ao loop de eventos, preservando as mesmas transações e o estado exato obtido por retrocesso individual.

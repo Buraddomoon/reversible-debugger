@@ -1,5 +1,4 @@
 import { compile, type Program } from './compiler';
-import { getRuntime, type RuntimeSelection } from './runtime';
 import { applyStep, executeInstruction, initialState, type DeepReadonly, type MachineState, type Step } from './machine';
 
 export class HistoryLimitError extends Error {
@@ -17,11 +16,9 @@ export class DebugSession {
   private position = 0;
   readonly maxSteps: number;
   readonly maxFrames: number;
-  readonly runtime: RuntimeSelection;
 
-  constructor(source: string, options: { maxSteps?: number; maxFrames?: number; language?: string; version?: string } = {}) {
-    this.runtime = getRuntime(options.language ?? 'rewind', options.version);
-    this.program = compile(source, this.runtime);
+  constructor(source: string, options: { maxSteps?: number; maxFrames?: number } = {}) {
+    this.program = compile(source);
     this.maxSteps = options.maxSteps ?? 20_000;
     this.maxFrames = options.maxFrames ?? 256;
     if (!Number.isInteger(this.maxSteps) || this.maxSteps < 1) throw new Error('maxSteps precisa ser um inteiro positivo');
@@ -63,12 +60,6 @@ export class DebugSession {
     return count;
   }
   /** Reset is navigation: preserve recorded history for exact forward replay. */
-  backwardBatch(size = 100): number {
-    if (!Number.isInteger(size) || size < 1 || size > 1000) throw new Error('O lote deve ter entre 1 e 1.000 passos');
-    let count = 0;
-    while (count < size && this.canBackward) { this.backward(); count++; }
-    return count;
-  }
   rewind(): void { while (this.canBackward) this.backward(); }
 }
 

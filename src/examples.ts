@@ -3,18 +3,13 @@ import fixed from '../examples/sum-fixed.rw?raw';
 import factorial from '../examples/factorial.rw?raw';
 import euclid from '../examples/euclid.rw?raw';
 import runtimeError from '../examples/runtime-error.rw?raw';
-import pythonBug from '../examples/python-sum-bug.py?raw';
-import pythonFixed from '../examples/python-sum-fixed.py?raw';
-import pythonFactorial from '../examples/python-factorial.py?raw';
-import type { LanguageId } from './core/runtime';
 
 export interface Example {
   id: string;
   title: string;
   tag: string;
   source: string;
-  expected?: number | bigint;
-  language?: LanguageId;
+  expected?: number;
   description: string;
 }
 export const examples: Example[] = [
@@ -28,10 +23,4 @@ export const examples: Example[] = [
     description: 'O maior divisor comum de 48 e 18 é 6. A cada volta, acompanhe a troca de a, b e rest.' },
   { id: 'runtime-error', title: 'Uma divisão impossível', tag: 'Erro reversível', source: runtimeError,
     description: 'Execute a divisão por zero. Voltar remove o erro e restaura os operandos da divisão.' },
-  { id: 'python-sum-bug', title: 'Python · Soma com bug', tag: 'Python 3', source: pythonBug, language: 'python', expected: 15n,
-    description: 'Código Python: a soma deveria ser 15. Acompanhe i < n e volte pela execução para encontrar o número que faltou.' },
-  { id: 'python-sum-fixed', title: 'Python · Soma corrigida', tag: 'Python 3', source: pythonFixed, language: 'python', expected: 15n,
-    description: 'A condição i <= n inclui o último número. O resultado agora é 15.' },
-  { id: 'python-factorial', title: 'Python · Fatorial recursivo', tag: 'Python 3', source: pythonFactorial, language: 'python', expected: 120n,
-    description: 'Código Python com chamadas recursivas. Observe os frames entrando e restaure cada retorno ao voltar.' },
 ];

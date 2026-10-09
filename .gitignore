@@ -8,5 +8,3 @@ playwright-report/
 .npm-cache/
 .playwright-browsers/
 .artifacts/
-__pycache__/
-*.pyc
