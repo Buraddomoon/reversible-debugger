@@ -10,6 +10,7 @@ import { NewScriptModal, type NewScript } from './NewScriptModal';
 import { DeleteScriptModal } from './DeleteScriptModal';
 import { newSavedScript, readScriptLibrary, uniqueScriptName, type SavedScript } from './script-library';
 import { useScriptLibrary } from './useScriptLibrary';
+import { Timeline } from './Timeline';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -78,9 +79,10 @@ function SourceView({ source, span, language }: { source: string; span?: Span; l
   </div>;
 }
 
-interface Navigation { step: DeepReadonly<Step>; direction: 'forward' | 'backward' }
+interface Navigation { step: DeepReadonly<Step>; direction: 'forward' | 'backward' | 'seek' }
 function ChangeView({ navigation, language }: { navigation: Navigation | null; language: LanguageId }) {
   if (!navigation) return <div className="change-empty"><span className="empty-symbol">↔</span><p>Um passo, uma mudança.</p><span>Avance para acompanhar o que acontece.</span></div>;
+  if (navigation.direction === 'seek') return <div className="change-empty"><span className="empty-symbol">↔</span><p>Estado restaurado no histórico.</p><span>Veja na linha do tempo o passo que produziu este estado. Avance ou volte para acompanhar uma mudança.</span></div>;
   const forward = navigation.direction === 'forward';
   const changes = navigation.step.changes.filter(change => change.kind !== 'control');
   if (!forward) changes.reverse();
@@ -146,7 +148,7 @@ export function App() {
   const next = state.control.status === 'running' ? session.program.instructions[state.control.pc] : undefined;
   const result = state.frames[0]!.locals.result;
   const hasResult = Object.hasOwn(state.frames[0]!.locals, 'result');
-  const changedNames = new Set(navigation?.step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '') ?? []);
+  const changedNames = new Set(navigation?.direction === 'seek' ? [] : navigation?.step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '') ?? []);
   const status = rewinding ? 'Retrocedendo' : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : playing ? 'Executando' : 'Pausado';
   const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, session.runtime.language);
 
@@ -157,6 +159,12 @@ export function App() {
       const step = direction === 'forward' ? session.forward() : session.backward();
       if (step) setNavigation({ step, direction });
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+    refresh();
+  };
+  const seek = (cursor: number) => {
+    setPlaying(false); setRewinding(false); setNotice(null); setSelectedFrame(null); setNavigation(null);
+    try { session.seek(cursor); if (session.lastStep) setNavigation({ step: session.lastStep, direction: 'seek' }); }
+    catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
     refresh();
   };
   useEffect(() => {
@@ -291,7 +299,7 @@ export function App() {
             <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ChangeView navigation={navigation} language={session.runtime.language} /></section>
           </aside>
         </div>
-        <footer className="history-strip"><div><span className="history-label">HISTÓRICO</span><span>{session.history.length} passos registrados</span></div><div className="history-track" aria-hidden="true">{Array.from({ length: 36 }, (_, index) => <span key={index} className={index < Math.round(session.history.length ? session.cursor / session.history.length * 36 : 0) ? 'filled' : ''} />)}</div><span className="replay-label">{session.cursor < session.history.length ? 'Reaplicando mudanças registradas' : 'Registrando mudanças'}</span></footer>
+        <Timeline key={`${exampleId}:${editing}`} history={session.history} cursor={session.cursor} disabled={editing || rewinding} onSeek={seek} />
       </section>
       <footer className="page-footer"><span>REWIND / uma pequena linguagem, um estado exato.</span><span>{store.library.scripts.length ? `${store.library.scripts.length} ${store.library.scripts.length === 1 ? 'script salvo' : 'scripts salvos'} neste navegador` : 'Variáveis · Decisões · Chamadas'}</span></footer>
     </main>

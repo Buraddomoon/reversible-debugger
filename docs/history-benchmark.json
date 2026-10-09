@@ -1,0 +1,209 @@
+{
+  "node": "v24.18.0",
+  "platform": "linux",
+  "seed": 20261009,
+  "seeks": 200,
+  "note": "Bytes de payload JSON com tags bigint/-0/nonfinite; não medem heap JS. Referência mantém deltas e copia o estado em cada passo; tempos são diagnósticos locais.",
+  "reports": [
+    {
+      "name": "loop Python, 2 locais",
+      "steps": 2609,
+      "snapshotBytes": 628007,
+      "snapshotRecordMs": 18.16,
+      "snapshotSeekMedianMs": 0.004,
+      "snapshotSeekP95Ms": 0.007,
+      "variants": [
+        {
+          "mode": "deltas",
+          "deltaBytes": 1012924,
+          "checkpointBytes": 182,
+          "checkpointCount": 1,
+          "recordMs": 7.13,
+          "seekMedianMs": 0.083,
+          "seekP95Ms": 0.378,
+          "maxReplayedSteps": 2475
+        },
+        {
+          "mode": "checkpoints 64",
+          "deltaBytes": 1012924,
+          "checkpointBytes": 10060,
+          "checkpointCount": 41,
+          "recordMs": 5.94,
+          "seekMedianMs": 0.007,
+          "seekP95Ms": 0.011,
+          "maxReplayedSteps": 32
+        },
+        {
+          "mode": "checkpoints 128",
+          "deltaBytes": 1012924,
+          "checkpointBytes": 5115,
+          "checkpointCount": 21,
+          "recordMs": 4.93,
+          "seekMedianMs": 0.01,
+          "seekP95Ms": 0.018,
+          "maxReplayedSteps": 63
+        },
+        {
+          "mode": "checkpoints 256",
+          "deltaBytes": 1012924,
+          "checkpointBytes": 2684,
+          "checkpointCount": 11,
+          "recordMs": 5.53,
+          "seekMedianMs": 0.015,
+          "seekP95Ms": 0.028,
+          "maxReplayedSteps": 128
+        }
+      ]
+    },
+    {
+      "name": "loop Python, 252 locais",
+      "steps": 3109,
+      "snapshotBytes": 17929825,
+      "snapshotRecordMs": 105.54,
+      "snapshotSeekMedianMs": 0.024,
+      "snapshotSeekP95Ms": 0.033,
+      "variants": [
+        {
+          "mode": "deltas",
+          "deltaBytes": 1243469,
+          "checkpointBytes": 182,
+          "checkpointCount": 1,
+          "recordMs": 5.43,
+          "seekMedianMs": 0.165,
+          "seekP95Ms": 0.547,
+          "maxReplayedSteps": 2903
+        },
+        {
+          "mode": "checkpoints 64",
+          "deltaBytes": 1243469,
+          "checkpointBytes": 279967,
+          "checkpointCount": 49,
+          "recordMs": 9.15,
+          "seekMedianMs": 0.031,
+          "seekP95Ms": 0.04,
+          "maxReplayedSteps": 32
+        },
+        {
+          "mode": "checkpoints 128",
+          "deltaBytes": 1243469,
+          "checkpointBytes": 141605,
+          "checkpointCount": 25,
+          "recordMs": 8.17,
+          "seekMedianMs": 0.031,
+          "seekP95Ms": 0.047,
+          "maxReplayedSteps": 64
+        },
+        {
+          "mode": "checkpoints 256",
+          "deltaBytes": 1243469,
+          "checkpointBytes": 72440,
+          "checkpointCount": 13,
+          "recordMs": 5.68,
+          "seekMedianMs": 0.034,
+          "seekP95Ms": 0.048,
+          "maxReplayedSteps": 128
+        }
+      ]
+    },
+    {
+      "name": "loop longo Python, 2 locais",
+      "steps": 19509,
+      "snapshotBytes": 4760034,
+      "snapshotRecordMs": 104.14,
+      "snapshotSeekMedianMs": 0.004,
+      "snapshotSeekP95Ms": 0.005,
+      "variants": [
+        {
+          "mode": "deltas",
+          "deltaBytes": 7625416,
+          "checkpointBytes": 182,
+          "checkpointCount": 1,
+          "recordMs": 38.54,
+          "seekMedianMs": 0.497,
+          "seekP95Ms": 1.938,
+          "maxReplayedSteps": 17659
+        },
+        {
+          "mode": "checkpoints 64",
+          "deltaBytes": 7625416,
+          "checkpointBytes": 19306,
+          "checkpointCount": 77,
+          "recordMs": 34.25,
+          "seekMedianMs": 0.017,
+          "seekP95Ms": 0.034,
+          "maxReplayedSteps": 127
+        },
+        {
+          "mode": "checkpoints 128",
+          "deltaBytes": 7625416,
+          "checkpointBytes": 19306,
+          "checkpointCount": 77,
+          "recordMs": 33.09,
+          "seekMedianMs": 0.018,
+          "seekP95Ms": 0.033,
+          "maxReplayedSteps": 127
+        },
+        {
+          "mode": "checkpoints 256",
+          "deltaBytes": 7625416,
+          "checkpointBytes": 19306,
+          "checkpointCount": 77,
+          "recordMs": 38.71,
+          "seekMedianMs": 0.018,
+          "seekP95Ms": 0.035,
+          "maxReplayedSteps": 127
+        }
+      ]
+    },
+    {
+      "name": "recursão Python + saída",
+      "steps": 304,
+      "snapshotBytes": 478396,
+      "snapshotRecordMs": 5.64,
+      "snapshotSeekMedianMs": 0.017,
+      "snapshotSeekP95Ms": 0.028,
+      "variants": [
+        {
+          "mode": "deltas",
+          "deltaBytes": 127684,
+          "checkpointBytes": 182,
+          "checkpointCount": 1,
+          "recordMs": 0.98,
+          "seekMedianMs": 0.021,
+          "seekP95Ms": 0.082,
+          "maxReplayedSteps": 299
+        },
+        {
+          "mode": "checkpoints 64",
+          "deltaBytes": 127684,
+          "checkpointBytes": 7619,
+          "checkpointCount": 5,
+          "recordMs": 1.12,
+          "seekMedianMs": 0.022,
+          "seekP95Ms": 0.047,
+          "maxReplayedSteps": 48
+        },
+        {
+          "mode": "checkpoints 128",
+          "deltaBytes": 127684,
+          "checkpointBytes": 4306,
+          "checkpointCount": 3,
+          "recordMs": 1,
+          "seekMedianMs": 0.023,
+          "seekP95Ms": 0.046,
+          "maxReplayedSteps": 64
+        },
+        {
+          "mode": "checkpoints 256",
+          "deltaBytes": 127684,
+          "checkpointBytes": 2692,
+          "checkpointCount": 2,
+          "recordMs": 0.88,
+          "seekMedianMs": 0.024,
+          "seekP95Ms": 0.054,
+          "maxReplayedSteps": 126
+        }
+      ]
+    }
+  ]
+}

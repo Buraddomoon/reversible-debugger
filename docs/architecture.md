@@ -72,6 +72,8 @@ Se uma instrução falha após remover operandos, a transação desfaz suas muda
 - No fim do histórico, avançar executa uma instrução e grava um novo delta.
 - Antes do fim, avançar aplica o delta já existente; não reavalia a instrução.
 - Voltar aplica a inversa do passo anterior.
+- `seek(cursor)` restaura um estado já registrado, escolhendo entre aplicar deltas a partir do estado atual e copiar o checkpoint mais próximo. O replay pode avançar ou retroceder a partir desse checkpoint, sem executar novamente o código.
+- O cursor 0 representa o estado inicial. O cursor N representa o estado após aplicar N transações. Buscar posições negativas, fracionárias ou ainda não registradas é rejeitado antes de qualquer alteração.
 - **Retroceder tudo** desfaz todos os passos em lotes, preservando o histórico para replay, inclusive saída e definições de funções.
 - **Reiniciar programa** cria o estado inicial e um histórico vazio, mantendo o mesmo programa compilado e seu código.
 - Aplicar código editado ou trocar exemplo cria uma sessão nova. Não há edição de variáveis durante replay nem ramificação de histórico na versão inicial.
@@ -82,7 +84,13 @@ Uma sessão é definida por seu código imutável, estado inicial, transações 
 
 O histórico ocupa espaço proporcional à soma dos payloads alterados, mais os metadados constantes de cada passo. Uma atribuição preserva seu binding e os operandos usados; seu tamanho não depende de quantas outras variáveis existem. Chamadas e retornos podem ter custo proporcional ao tamanho do frame afetado. A versão inicial não promete memória constante: o histórico continua crescendo e possui um limite explícito.
 
-O próximo estágio será um `HistoryStore` que combine deltas e checkpoints periódicos. Para buscar um cursor distante, restaura-se um checkpoint e aplicam-se deltas até a posição desejada. O intervalo será escolhido a partir de medidas de memória e tempo, mantendo o formato das transações como contrato estável. Snapshots por passo permanecerão uma implementação de referência nos testes.
+`HistoryStore` separa armazenamento e execução. `CheckpointHistory` guarda os deltas congelados e cópias completas **esparsas**, feitas com `structuredClone`. Restaurar também produz uma cópia: continuar uma execução nunca altera o checkpoint salvo. Isso preserva `bigint`, `-0`, infinitos e `NaN`, além de frames, IDs, retornos, temporários, bindings ausentes, controle e saída. JSON com tags serve apenas para medir o payload, não para restaurar valores.
+
+O padrão é um checkpoint a cada 128 instruções, com teto de 128 checkpoints incluindo o inicial. Antes de ultrapassar esse teto, o intervalo dobra e checkpoints intermediários são removidos uniformemente. O inicial permanece; nenhum delta é descartado. Assim, estados antigos continuam acessíveis, com um custo maior de replay conforme aumenta o espaçamento. `restart()` limpa registros e checkpoints e recupera o intervalo configurado inicialmente. O limite de passos da sessão continua independente.
+
+`seek()` compara a distância do cursor atual e do checkpoint mais próximo. Empates favorecem o estado atual para evitar a cópia. Essa heurística minimiza a quantidade de transações, sem estimar o custo de clonar frames grandes; o benchmark também mede a latência desse custo. `SeekResult` informa origem, destino, checkpoint utilizado e número de transações reaplicadas. `historyStats` e `measureHistory()` permitem inspecionar a retenção sem expor os estados salvos.
+
+O teto limita a quantidade de cópias, não seus bytes nem o heap total. Deltas continuam crescendo até o limite explícito do histórico. [As medições](history-performance.md) mostram o ganho com muitos locais e também o caso em que snapshots minúsculos ocupam menos bytes que os deltas ricos em metadados. Snapshots por passo permanecem uma referência nos testes e no benchmark.
 
 A VM suporta estados que podem futuramente ser serializados e enviados por um Web Worker. Isso não é necessário para os exemplos iniciais: reprodução em lotes de até quatro instruções, limite de histórico e limite de frames mantêm a demo pequena. Não se usa `eval` nem `Function` para executar a linguagem.
 
@@ -97,11 +105,17 @@ apply(undo(S', T), T) = S'
 
 A igualdade inclui todos os campos internos. Os testes percorrem os estados de programas conhecidos, desfazem todos os passos e reaplicam todos; sequências arbitrárias de navegação são comparadas com o estado de referência de cada cursor. Resultados conhecidos são verificados separadamente.
 
+Testes adicionais saltam a cada cursor a partir das duas pontas, misturam saltos e passos em sessões parcialmente registradas, continuam gravando após restaurar checkpoints e forçam o teto de retenção. Uma spy exige que saltar não chame `executeInstruction`. Recursão, valores especiais, saída e erros são comparados com snapshots independentes.
+
 ## Arquivos grandes e interface
 
 O limite de fonte é compartilhado entre os dois parsers, editor e importação: 1 milhão de caracteres. A importação lê um arquivo local como texto; `.py` e `.rw` selecionam o runtime e `.txt` preserva a seleção feita pelo usuário. Falhas de leitura, tamanho ou compilação preservam o rascunho e a sessão atual.
 
 `SourceView` mantém as linhas do código em memória, mas monta no DOM apenas as linhas visíveis e uma margem pequena. O cursor pode navegar até uma linha fora do viewport sem renderizar todas as anteriores. Um `ResizeObserver` ajusta a medida das linhas em mudanças de viewport. **Retroceder tudo** usa `backwardBatch(500)` entre retornos ao loop de eventos, preservando as mesmas transações e o estado exato obtido por retrocesso individual.
+
+`Timeline` projeta os eventos a partir das transações registradas, sem um segundo histórico de execução. Seu range vai de 0 ao último estado registrado; não tenta prever o futuro do programa. Eventos apontam para o estado após a transação, inclusive a passagem para erro. O painel de código continua destacando a próxima instrução. Após um salto, o painel de mudanças informa que o estado foi restaurado; ele não apresenta uma única transação como explicação de todas as mudanças atravessadas.
+
+O DOM da linha do tempo é limitado a oito cartões próximos do cursor e até 96 marcadores agregados. Os botões anterior/próximo percorrem todos os eventos registrados, inclusive os que não estão na janela visível. O range nativo oferece teclado e identificação acessível do passo; o campo numérico permite escolher um destino exato. A interface pausa a reprodução ao navegar e desabilita a busca durante edição ou retrocesso em lotes.
 
 ## Criação e biblioteca de scripts
 

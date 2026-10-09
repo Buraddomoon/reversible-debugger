@@ -53,6 +53,46 @@ test('troca exemplos e desfaz um erro de execução', async ({ page }) => {
   await expect(page.getByRole('alert')).toHaveText('Divisão por zero');
 });
 
+test('navega pela linha do tempo sem aumentar o histórico e restaura frames e erros', async ({ page }) => {
+  await page.goto('/');
+  const slider = page.getByRole('slider', { name: 'Posição na linha do tempo' });
+  await expect(slider).toBeDisabled();
+  await page.getByLabel('Programa', { exact: true }).selectOption('sum-bug');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Concluído', { timeout: 15000 });
+  const count = await page.getByTestId('step-count').textContent();
+  const history = await page.getByTestId('history-length').textContent();
+  await page.getByRole('button', { name: 'Início', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText('000');
+  await page.getByTestId('timeline-event-list').getByRole('button', { name: /^Chamada, passo 2,/ }).click();
+  await expect(page.getByTestId('call-stack')).toContainText('sumTo()');
+  await expect(page.getByTestId('timeline-selected')).toContainText('Entrar em sumTo');
+  await expect(page.locator('.changes-panel')).toContainText('Estado restaurado');
+  await page.getByLabel('Ir ao passo', { exact: true }).fill('99999');
+  await expect(page.getByRole('button', { name: 'Ir', exact: true })).toBeDisabled();
+  await page.getByLabel('Ir ao passo', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Ir', exact: true }).click();
+  await expect(page.getByTestId('call-stack')).not.toContainText('sumTo()');
+  await slider.focus(); await slider.press('ArrowRight');
+  await expect(page.getByTestId('step-count')).toHaveText('002');
+  await expect(page.getByTestId('call-stack')).toContainText('sumTo()');
+  await page.getByRole('button', { name: 'Último', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText(count!);
+  await expect(page.getByTestId('result-value')).toHaveText('10');
+  await expect(page.getByTestId('history-length')).toHaveText(history!);
+  expect(await page.locator('[data-event-cursor]').count()).toBeLessThanOrEqual(8);
+  await page.getByLabel('Programa', { exact: true }).selectOption('runtime-error');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveText('Divisão por zero');
+  await page.getByRole('button', { name: 'Início', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  await page.getByTestId('timeline-event-list').getByRole('button', { name: /^Erro,/ }).click();
+  await expect(page.getByRole('alert')).toHaveText('Divisão por zero');
+  await page.getByRole('button', { name: 'Reiniciar programa', exact: true }).click();
+  await expect(slider).toBeDisabled();
+  await expect(page.getByTestId('history-length')).toHaveText('0 passos registrados');
+});
+
 test('permite editar código, preserva a sessão diante de sintaxe inválida e funciona sem overflow', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Programa', { exact: true }).selectOption('sum-bug');

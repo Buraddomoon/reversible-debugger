@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "test:e2e": "node scripts/playwright.mjs test",
     "test:firefox": "node scripts/firefox-smoke.mjs",
+    "bench:history": "node scripts/history-benchmark.mjs",
     "check": "tsc --noEmit && vitest run"
   },
   "dependencies": {

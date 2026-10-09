@@ -2,6 +2,8 @@
 
 Debugger visual reversível implementado em TypeScript. Interpreta um subconjunto de **Python 3** e mantém os exemplos da linguagem experimental criada para a primeira demo. Permite navegar pela execução nos dois sentidos, observando variáveis, chamadas, instruções, saída e mudanças.
 
+A linha do tempo permite saltar para qualquer passo registrado, escolher eventos e restaurar o estado exato usando deltas e checkpoints esparsos.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -32,6 +34,18 @@ As dependências ficam em `node_modules/` e o cache em `.npm-cache/`, conforme `
 
 **Retroceder tudo** desfaz os passos em lotes e restaura o estado inicial, inclusive saída, preservando o histórico para reaplicação. Trocar de exemplo ou aplicar código editado cria uma nova sessão. As teclas esquerda/direita navegam quando o foco não está em um controle de edição. Cada passo representa uma instrução da VM: uma linha do código pode exigir vários passos.
 
+## Explorar a linha do tempo
+
+Depois de executar o programa, arraste o controle de posição ou use **Ir ao passo** para restaurar um estado registrado. **Início** restaura o estado inicial; **Último** restaura o último estado registrado. Navegar pausa a reprodução e mantém o histórico, inclusive se a execução ainda estiver incompleta.
+
+Os eventos mostram chamadas, retornos, decisões, saída, erros e conclusão. Clique em um cartão ou use **Evento anterior** / **Próximo evento**. O destino é o estado **após** aquele passo; o código destaca a próxima instrução. O controle deslizante também aceita as teclas de seta quando está em foco.
+
+Para investigar a soma Python com bug, execute até o resultado `10` e escolha a última **Decisão**: a condição é falsa com `i = 5`, e o programa está prestes a retornar sem somar esse número. Vá ao **Retorno** para ver a função sair da pilha; escolha a decisão novamente para recuperar seus locais. Avançar reaplica as mudanças gravadas.
+
+Só existem destinos até o último passo registrado. Para descobrir estados novos, continue com **Avançar** ou **Executar**. Reiniciar limpa também a linha do tempo e os checkpoints, preservando os scripts salvos.
+
+![Linha do tempo no Firefox: restaurando a decisão que encerra cedo a soma Python](docs/timeline.png)
+
 ## Usar seu próprio script
 
 1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
@@ -61,10 +75,13 @@ src/core/python-values.ts  Regras de valores e operações Python
 src/core/runtime.ts    Linguagens, versões e apresentação dos valores
 src/core/compiler.ts   Instruções, funções e metadados de origem
 src/core/machine.ts    Estado explícito, transações e deltas
-src/core/debugger.ts   Sessão, histórico, cursor e navegação
+src/core/history.ts    HistoryStore, checkpoints e política de retenção
+src/core/history-events.ts  Eventos projetados das transações
+src/core/debugger.ts   Sessão, cursor, passos e busca por posição
 src/ui/               Interface React e estilos responsivos
 examples/             Programas .rw usados pela demo e pelos testes
 tests/core.test.ts    Semântica, reversibilidade e propriedades geradas
+tests/history.test.ts Busca exata, checkpoints, eventos e navegação gerada
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -91,12 +108,25 @@ const session = new DebugSession('result = 2 + 3\nprint(result)', {
 });
 ```
 
+Para gravar e buscar posições usando checkpoints:
+
+```ts
+const session = new DebugSession('result = 2 + 3\nprint(result)', {
+  language: 'python', checkpointInterval: 128, maxCheckpoints: 128,
+});
+while (session.canForward) session.runBatch();
+session.seek(0);                      // Restaura o estado inicial.
+session.seek(session.history.length); // Recupera resultado e saída sem reexecutar.
+console.log(session.historyStats);    // Intervalo atual e cursores dos checkpoints.
+```
+
 ## Verificações
 
 ```bash
 npm run check         # TypeScript + testes do núcleo
 npm run build         # TypeScript + build estático em dist/
 npm run test:firefox  # Firefox instalado, sem baixar outro navegador
+npm run bench:history # Payload e latência: deltas, checkpoints e snapshots
 ```
 
 `test:firefox` usa o executável `firefox` disponível no PATH. É possível escolher outro caminho com `FIREFOX_BIN`. Abre uma instância headless separada com `--no-remote` e perfil próprio em `.artifacts/`, usando WebDriver BiDi. Não usa o perfil pessoal, geckodriver ou um navegador fornecido pelo Playwright. O servidor e a instância de teste são encerrados ao final; screenshots e log ficam em `.artifacts/`. Se a porta local 5178 ou 9238 estiver ocupada, encerre o processo de teste conflitante; `REWIND_BIDI_PORT` permite escolher a segunda porta.
@@ -126,8 +156,11 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - Python: inteiros exatos, divisão inteira e resto com sinais, precedência de potências, escopos locais, definição de funções em ordem e curto-circuito. Uma verificação opcional compara os valores/tipos com o Python instalado, sem instalar ou atualizar esse runtime.
 - No Firefox: importação `.py`, linguagem/versão, execução e desfazimento de `print`, retrocesso completo, arquivo de 10.001 linhas e preservação do rascunho ao rejeitar um arquivo acima do limite.
 - No Firefox: modal com foco no nome, cancelamento por Escape, criação vazia sem estado antigo, reinício do programa, recarga imediata com código em edição, recuperação de código incompleto e exclusão com confirmação sem remover outros scripts.
+- Busca de cada cursor comparada com a referência sequencial nos dois runtimes; chamadas recursivas, controle, operandos, saída, erros, `bigint`, `-0`, infinitos e `NaN` restaurados exatamente.
+- Checkpoints isolados, retenção limitada, continuidade após restauração, descarte no reinício e nenhuma chamada ao executor durante saltos; navegação gerada com seed reproduzível.
+- No Firefox: linha do tempo, range com teclado, salto numérico, eventos, frames, resultado, saída e erro restaurados, pausa ao navegar e histórico preservado.
 
-Os snapshots completos existem **apenas nos testes como referência**. O histórico de produção armazena mudanças. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
+Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
 ## Documentação
 
@@ -135,5 +168,6 @@ Os snapshots completos existem **apenas nos testes como referência**. O histór
 - [Especificação da linguagem](docs/language.md)
 - [Python 3: recursos e limitações](docs/python.md)
 - [Etapas e próximos marcos](docs/roadmap.md)
+- [Medidas e política de checkpoints](docs/history-performance.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface reproduz e retrocede em lotes pequenos para devolver o controle ao navegador. Checkpoints, saltos na linha do tempo, breakpoints e comparação entre execuções são próximos marcos.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface reproduz e retrocede em lotes pequenos para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Breakpoints, passos por comando/função e comparação entre execuções são os próximos marcos.

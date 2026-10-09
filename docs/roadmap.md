@@ -31,17 +31,19 @@ JavaScript fica como próximo adaptador de linguagem, seguindo a prioridade de P
 - **Excluir script** com confirmação e preservação dos outros registros, sem apagar os arquivos importados do computador.
 - Fluxos verificados no Firefox instalado, com perfil isolado e sem downloads.
 
-## Próximo marco — linha do tempo e checkpoints
+## Linha do tempo e checkpoints — implementado
 
-- Extrair a interface `HistoryStore` do armazenamento atual em array.
-- Implementar checkpoints em intervalo configurável, preservando deltas.
-- Implementar busca por cursor e testar equivalência com navegação sequencial em todas as posições.
-- Medir memória e latência em programas com muitos passos e muitos locais, antes de escolher um intervalo padrão.
-- Trocar o indicador do histórico por uma linha do tempo navegável, com eventos de chamada, retorno, decisão e erro.
+- Interface `HistoryStore` e armazenamento de deltas com checkpoints congelados e isolados da VM.
+- Intervalo inicial configurável de 128 passos e teto de 128 checkpoints; espaçamento dobra ao atingir o teto, preservando o início e todos os deltas.
+- `seek(cursor)` restaura posições já registradas pelo caminho com menos transações: estado atual ou checkpoint próximo, aplicando deltas nos dois sentidos.
+- Testes de todos os estados de exemplos, navegação gerada, erros, recursão, saída, valores especiais, continuidade e descarte dos checkpoints ao reiniciar.
+- [Benchmark reproduzível](history-performance.md) com payloads e tempos de busca, comparando deltas, intervalos 64/128/256 e snapshots por passo de referência.
+- Linha do tempo com controle deslizante, salto pelo número do passo, início/último estado, eventos de chamada, retorno, decisão, saída e erro, e navegação entre eventos.
+- Interface mantém até oito cartões de eventos e marcadores agregados para não montar milhares de controles. Saltar pausa a execução; o destino representa o estado após aquele passo.
 
-Critério: buscar qualquer posição reproduz o mesmo estado completo; medir o efeito de checkpoints contra deltas sequenciais e snapshots por passo de referência.
+Critério atendido: buscar qualquer posição testada reproduz o mesmo estado completo da referência sequencial. Firefox instalado validou controles, teclado, chamadas, resultado, erro, saída, pausa ao navegar, reinício e layout móvel.
 
-## Breakpoints e passos por comando
+## Próximo marco — breakpoints e passos por comando
 
 - Associar breakpoints a spans/instruções e parar antes de executar a posição escolhida.
 - Definir comportamento ao repetir uma linha em um loop, ao voltar e ao retomar exatamente no breakpoint.

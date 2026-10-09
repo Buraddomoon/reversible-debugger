@@ -120,6 +120,52 @@ try {
   assert.equal(await text('[data-testid=result-value]'), '10');
   console.log('PASS: bug, chamada, retorno, reinício e reaplicação exata.');
 
+  const input = (selector, value) => evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, ${JSON.stringify(value)}); element.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  const historyLength = await text('[data-testid=history-length]');
+  await click('Início');
+  await waitFor("document.querySelector('[data-testid=step-count]').textContent === '000'");
+  assert.equal(await text('[data-testid=result-value]'), '—');
+  await evaluate("document.querySelector('[data-event-cursor=\"2\"]').click()");
+  await waitFor("document.querySelector('[data-testid=call-stack]').textContent.includes('sumTo()')");
+  assert.match(await text('[data-testid=timeline-selected]'), /Entrar em sumTo/);
+  assert.match(await text('.changes-panel'), /Estado restaurado/);
+  await input('#timeline-target', '99999');
+  assert.equal(await evaluate("document.querySelector('.timeline-jump button').disabled"), true);
+  await input('#timeline-target', '1'); await click('Ir');
+  await waitFor("document.querySelector('[data-testid=step-count]').textContent === '001'");
+  assert.equal(await evaluate("document.querySelector('[data-testid=call-stack]').textContent.includes('sumTo()')"), false);
+  await evaluate("document.querySelector('#timeline-position').focus()");
+  await command('input.performActions', { context, actions: [{ type: 'key', id: 'timeline-keyboard', actions: [{ type: 'keyDown', value: '\uE014' }, { type: 'keyUp', value: '\uE014' }] }] });
+  await waitFor("document.querySelector('[data-testid=step-count]').textContent === '002'");
+  await input('#timeline-position', '20');
+  await waitFor("document.querySelector('[data-testid=step-count]').textContent === '020'");
+  await shot('firefox-timeline.png');
+  await click('Último');
+  assert.equal(await text('[data-testid=step-count]'), count);
+  assert.equal(await text('[data-testid=result-value]'), '10');
+  assert.equal(await text('[data-testid=history-length]'), historyLength);
+  assert.ok(await evaluate("document.querySelectorAll('[data-event-cursor]').length") <= 8);
+  await click('Evento anterior');
+  await waitFor("document.querySelector('[data-testid=timeline-selected]').textContent.includes('sumTo retorna')");
+  await click('Evento anterior');
+  assert.equal(await evaluate("document.querySelector('[data-testid=call-stack]').textContent.includes('sumTo()')"), true);
+  await click('Próximo evento');
+  assert.match(await text('[data-testid=timeline-selected]'), /sumTo retorna/);
+  await click('Início'); await click('Executar');
+  await input('#timeline-position', '2');
+  await waitFor("document.querySelector('[role=status]').textContent === 'Pausado'");
+  await evaluate('new Promise(resolve => setTimeout(resolve, 250))');
+  assert.equal(await text('[data-testid=step-count]'), '002');
+  await click('Último');
+  console.log('PASS: linha do tempo, teclado, saltos exatos, eventos, pausa ao navegar e histórico preservado.');
+
+  await choose('python-sum-bug'); await click('Executar');
+  await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
+  await evaluate("Array.from(document.querySelectorAll('[data-event-kind=decision]')).at(-1).click()");
+  assert.match(await text('[data-testid=timeline-selected]'), /Condição falsa/);
+  assert.equal(await evaluate("Array.from(document.querySelectorAll('.variable-row')).find(row => row.querySelector('code').textContent === 'i').querySelector('strong').textContent"), '5');
+  await shot('firefox-python-timeline.png');
+
   await choose('sum-fixed');
   await click('Executar');
   await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
@@ -133,6 +179,11 @@ try {
   assert.equal(await text('[data-testid=next-instruction]'), 'Calcular /');
   await click('Avançar');
   await waitFor("document.querySelector('[role=alert]')");
+  await click('Início');
+  await waitFor("!document.querySelector('[role=alert]')");
+  await evaluate("document.querySelector('[data-event-kind=error]').click()");
+  await waitFor("document.querySelector('[role=alert]')");
+  assert.equal(await text('[role=alert]'), 'Divisão por zero');
   console.log('PASS: soma corrigida e erro reversível.');
 
   await choose('factorial');
@@ -160,7 +211,6 @@ try {
   console.log('PASS: edição, diagnóstico e layout móvel sem overflow.');
 
   await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
-  const input = (selector, value) => evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, ${JSON.stringify(value)}); element.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   const createScript = async (name, language = 'python') => {
     await click('Adicionar script');
     await waitFor("document.querySelector('dialog[open] #new-script-name')");
@@ -197,6 +247,11 @@ try {
   await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
   assert.equal(await text('[data-testid=result-value]'), '42');
   assert.equal(await text('[data-testid=program-output]'), '42');
+  await click('Início');
+  assert.equal(await text('[data-testid=program-output]'), 'Nenhuma saída ainda.');
+  await evaluate("document.querySelector('[data-event-kind=output]').click()");
+  assert.equal(await text('[data-testid=program-output]'), '42');
+  await click('Último');
   await shot('firefox-python.png');
   const pythonCount = await text('[data-testid=step-count]');
   await click('Retroceder tudo');
@@ -209,6 +264,8 @@ try {
   assert.equal(await text('[data-testid=program-output]'), '42');
   console.log('PASS: importar .py, selecionar linguagem/versão, executar Python, desfazer saída e reaplicar tudo.');
   await click('Reiniciar programa');
+  assert.equal(await text('[data-testid=history-length]'), '0 passos registrados');
+  assert.equal(await evaluate("document.querySelector('#timeline-position').disabled"), true);
   assert.equal(await text('[data-testid=step-count]'), '000');
   assert.equal(await text('[data-testid=result-value]'), '—');
   assert.equal(await text('[data-testid=program-output]'), 'Nenhuma saída ainda.');
