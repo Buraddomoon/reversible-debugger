@@ -39,6 +39,42 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   });
 }
 
+test('exporta e importa a mesma posição, rejeita corrupção e compara registros preservando scripts', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Concluído', { timeout: 15000 });
+  await page.locator('[data-event-kind=decision]').last().click();
+  const cursor = await page.getByTestId('step-count').textContent();
+  const recorded = await page.getByTestId('history-length').textContent();
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Exportar histórico' }).click();
+  const download = await downloading, path = testInfo.outputPath('execucao.rewind.json');
+  await download.saveAs(path);
+  await page.getByLabel('Programa', { exact: true }).selectOption('python-sum-fixed');
+  await page.getByLabel('Arquivo de histórico', { exact: true }).setInputFiles(path);
+  await expect(page.getByTestId('recording-banner')).toBeVisible();
+  await expect(page.getByTestId('step-count')).toHaveText(cursor!);
+  await expect(page.getByTestId('history-length')).toHaveText(recorded!);
+  await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await page.getByRole('button', { name: 'Avançar', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText(cursor!);
+  await page.getByLabel('Arquivo de histórico', { exact: true }).setInputFiles({ name: 'corrompido.json', mimeType: 'application/json', buffer: Buffer.from('{') });
+  await expect(page.getByRole('alert')).toContainText('corrompido');
+  await expect(page.getByTestId('step-count')).toHaveText(cursor!);
+  await page.getByRole('button', { name: 'Último', exact: true }).click();
+  await expect(page.getByTestId('result-value')).toHaveText('10');
+  await page.getByRole('button', { name: 'Comparar execuções' }).click();
+  await page.getByLabel('Programa da execução B').selectOption('python-sum-fixed');
+  await page.getByRole('button', { name: 'Preparar comparação' }).click();
+  await expect(page.getByTestId('comparison-final-a')).toHaveText('10');
+  await expect(page.getByTestId('comparison-final-b')).toHaveText('15');
+  await page.getByRole('button', { name: 'Voltar ao debugger' }).click();
+  await expect(page.getByTestId('result-value')).toHaveText('10');
+  await page.getByRole('button', { name: 'Fechar histórico' }).click();
+  await expect(page.getByTestId('recording-banner')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('executa o bug, volta ao início e reaplica o mesmo resultado', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Programa', { exact: true }).selectOption('sum-bug');

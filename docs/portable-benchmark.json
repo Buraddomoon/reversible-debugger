@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-13T14:21:08.463Z",
+  "node": "v24.18.0",
+  "note": "Diagnóstico local, duas fontes, sem DOM. Gaps incluem digest/compilação/parse e espera assíncrona; não são medidas isoladas de CPU. Payload UTF-8 não mede heap. Restauração e replay comparados com a sessão original.",
+  "reports": [
+    {
+      "locals": 2,
+      "steps": 19513,
+      "fileBytes": 7627682,
+      "exportMs": 378.04,
+      "exportMaxYieldGapMs": 76.91,
+      "exportMaxTimerDelayMs": 37.3,
+      "importMs": 859.76,
+      "importMaxYieldGapMs": 79.21,
+      "importMaxTimerDelayMs": 73.56,
+      "forkMs": 0.46,
+      "checkpointCount": 77
+    },
+    {
+      "locals": 2502,
+      "steps": 18013,
+      "fileBytes": 7406796,
+      "exportMs": 368.48,
+      "exportMaxYieldGapMs": 60.35,
+      "exportMaxTimerDelayMs": 27.8,
+      "importMs": 1028.6,
+      "importMaxYieldGapMs": 68.91,
+      "importMaxTimerDelayMs": 64.77,
+      "forkMs": 1.63,
+      "checkpointCount": 71
+    }
+  ]
+}

@@ -49,7 +49,7 @@ export function newSavedScript(data: Omit<SavedScript, 'id'>): SavedScript {
   return { ...data, id: `script:${crypto.randomUUID()}` };
 }
 
-export function uniqueScriptName(base: string, scripts: readonly SavedScript[]): string {
+export function uniqueScriptName(base: string, scripts: readonly Pick<SavedScript, 'name'>[]): string {
   const names = new Set(scripts.map(script => script.name.toLocaleLowerCase()));
   let name = base, suffix = 2;
   while (names.has(name.toLocaleLowerCase())) name = `${base} (${suffix++})`;

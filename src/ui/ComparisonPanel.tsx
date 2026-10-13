@@ -3,7 +3,7 @@ import { ExecutionComparison } from '../core/comparison';
 import type { ComparisonSource } from '../core/comparison-types';
 import { ComparisonLane, DifferenceTable, differenceText, phaseLabels } from './ComparisonLane';
 
-export interface ComparisonCandidate extends ComparisonSource { id: string; group: 'script' | 'example' }
+export interface ComparisonCandidate extends ComparisonSource { id: string; group: 'script' | 'example' | 'history' }
 const pairs: Record<string, string> = { 'python-sum-bug': 'python-sum-fixed', 'python-sum-fixed': 'python-sum-bug', 'sum-bug': 'sum-fixed', 'sum-fixed': 'sum-bug' };
 
 export function ComparisonPanel({ primary, candidates, onClose }: { primary: ComparisonCandidate; candidates: readonly ComparisonCandidate[]; onClose: () => void }) {
@@ -39,8 +39,8 @@ export function ComparisonPanel({ primary, candidates, onClose }: { primary: Com
   return <section className="execution-comparison" aria-label="Comparação entre execuções" data-testid="comparison-panel">
     <div className="comparison-header"><div><p className="eyebrow">DOIS CAMINHOS / UM BUG</p><h2>Encontre onde a execução muda.</h2><p>Alinhamento por escopo, comando e ocorrência. Passos diferentes podem representar a mesma etapa.</p></div><button onClick={onClose}>Voltar ao debugger</button></div>
     <form className="comparison-setup" onSubmit={event => { event.preventDefault(); prepare(); }}>
-      <div><span>EXECUÇÃO A · CÓDIGO ABERTO</span><strong>{primary.name}</strong></div>
-      <label><span>EXECUÇÃO B</span><select aria-label="Programa da execução B" value={targetId} onChange={event => { comparison?.cancel(); setComparison(null); setError(null); setTargetId(event.target.value); }}>{(['script', 'example'] as const).map(group => candidates.some(item => item.group === group) && <optgroup key={group} label={group === 'script' ? 'Seus scripts' : 'Exemplos'}>{candidates.filter(item => item.group === group).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>)}</select></label>
+      <div><span>EXECUÇÃO A · {primary.recording ? 'HISTÓRICO GRAVADO' : 'CÓDIGO ABERTO'}</span><strong>{primary.name}</strong></div>
+      <label><span>EXECUÇÃO B</span><select aria-label="Programa da execução B" value={targetId} onChange={event => { comparison?.cancel(); setComparison(null); setError(null); setTargetId(event.target.value); }}>{(['history', 'script', 'example'] as const).map(group => candidates.some(item => item.group === group) && <optgroup key={group} label={group === 'history' ? 'Históricos importados' : group === 'script' ? 'Seus scripts' : 'Exemplos'}>{candidates.filter(item => item.group === group).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</optgroup>)}</select></label>
       <button className="primary" type="submit" disabled={Boolean(preparing)}>Preparar comparação</button>
     </form>
     {error && <div className="error-banner" role="alert">{error}</div>}

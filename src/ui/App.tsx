@@ -15,6 +15,8 @@ import { actionLabels, BreakpointBar, StepControls } from './DebugControls';
 import { ComparisonPanel, type ComparisonCandidate } from './ComparisonPanel';
 import { ExplanationPanel, type Navigation } from './ExplanationPanel';
 import { VariablesTable } from './VariablesTable';
+import { TraceControls, type OpenHistory } from './TraceControls';
+import type { ImportedHistory } from '../core/portable-history';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -48,6 +50,7 @@ export function App() {
   });
   const store = useScriptLibrary(initial.stored);
   const [session, setSession] = useState(initial.session);
+  const [histories, setHistories] = useState<OpenHistory[]>([]);
   const controller = useMemo(() => new ExecutionControl(session), [session]);
   const [exampleId, setExampleId] = useState(initial.selection);
   const [draft, setDraft] = useState(initial.source);
@@ -68,6 +71,7 @@ export function App() {
   const [revision, refresh] = useReducer(value => value + 1, 0);
   const example = examples.find(item => item.id === exampleId);
   const selectedScript = store.library.scripts.find(item => item.id === exampleId);
+  const selectedHistory = histories.find(item => item.id === exampleId);
   const state = session.state;
   const activeFrame = state.frames.at(-1)!;
   const frame = state.frames.find(item => item.id === selectedFrame) ?? activeFrame;
@@ -78,7 +82,7 @@ export function App() {
   const changedNames = new Set(highlightSteps.flatMap(step => step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '')));
   const breakpoints = controller.breakpoints;
   const breakpointLine = controller.stop?.reason === 'breakpoint' ? controller.stop.line : null;
-  const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : 'Pausado';
+  const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
   const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, session.runtime.language);
 
   const move = (direction: 'forward' | 'backward') => {
@@ -141,6 +145,8 @@ export function App() {
     setComparing(false);
     controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setSelectedFrame(null);
+    const history = histories.find(item => item.id === id);
+    if (history) { openHistory(history); return; }
     store.update(library => ({ ...library, selection: id }));
     const script = store.library.scripts.find(item => item.id === id);
     if (script) {
@@ -157,6 +163,23 @@ export function App() {
     setSession(new DebugSession(item.source, { language })); setExampleId(id); setDraft(item.source);
     setFilename(`${id}${runtime.extension}`);
     setDraftFilename(`${id}${runtime.extension}`); setDraftLanguage(language); setDraftVersion(runtime.versions[0]);
+  };
+  const openHistory = (history: OpenHistory, importedSession?: DebugSession) => {
+    controller.cancel(); setComparing(false); setPlaying(false); setRewinding(false); setEditing(false);
+    setSession(importedSession ?? history.session.forkRecording()); setExampleId(history.id);
+    setFilename(history.filename); setDraftFilename(history.filename); setDraft(history.session.program.source);
+    setDraftLanguage(history.session.runtime.language); setDraftVersion(history.session.runtime.version);
+    setNotice(null); setSelectedFrame(null); setNavigation(history.session.lastStep ? { step: history.session.lastStep, direction: 'seek' } : null);
+  };
+  const importRecording = (history: ImportedHistory) => {
+    const opened: OpenHistory = { ...history, displayName: uniqueScriptName(history.name, histories.map(item => ({ name: item.displayName }))), id: `history:${crypto.randomUUID()}` };
+    // Keep the validated recording separate from the active, navigable VM.
+    const active = history.session.forkRecording();
+    setHistories(items => [...items, opened]); openHistory(opened, active);
+  };
+  const closeHistory = () => {
+    setHistories(items => items.filter(item => item.id !== exampleId));
+    load(store.library.selection ?? initialExample.id);
   };
   const patchSelectedScript = (patch: Partial<SavedScript>) => store.update(library => ({ ...library, scripts: library.scripts.map(script => script.id === exampleId ? { ...script, ...patch } : script) }));
   const changeSource = (source: string) => { setDraft(source); if (selectedScript) patchSelectedScript({ source }); };
@@ -196,10 +219,11 @@ export function App() {
     session.restart(); refresh();
   };
   const comparisonCandidates: ComparisonCandidate[] = [
+    ...histories.map(history => ({ id: history.id, name: history.displayName, source: history.session.program.source, ...history.session.runtime, recording: history.session, group: 'history' as const })),
     ...store.library.scripts.map(script => ({ ...script, group: 'script' as const })),
     ...examples.map(item => ({ id: item.id, name: item.title, source: item.source, language: item.language ?? 'rewind', version: runtimes.find(runtime => runtime.id === (item.language ?? 'rewind'))!.versions[0], group: 'example' as const })),
   ].filter(item => item.language === session.runtime.language && item.version === session.runtime.version);
-  const comparisonPrimary: ComparisonCandidate = { id: exampleId, name: selectedScript?.name ?? example?.title ?? filename, source: session.program.source, language: session.runtime.language, version: session.runtime.version, group: selectedScript ? 'script' : 'example' };
+  const comparisonPrimary: ComparisonCandidate = { id: exampleId, name: selectedHistory?.displayName ?? selectedScript?.name ?? example?.title ?? filename, source: session.program.source, language: session.runtime.language, version: session.runtime.version, group: selectedHistory ? 'history' : selectedScript ? 'script' : 'example', ...(session.replayOnly ? { recording: session } : {}) };
   return <div className="app-shell">
     <header className="app-header">
       <a href="#" className="brand" aria-label="Rewind — início"><span className="brand-icon"><Icon name="rewind" /></span><span>rewind<span className="brand-dot">.</span></span></a>
@@ -209,13 +233,16 @@ export function App() {
     <main>
       <div className="intro-row"><div><p className="eyebrow">LABORATÓRIO DE EXECUÇÃO</p><h1>Veja o programa pensar.<br /><span>E volte quando ele errar.</span></h1></div><div className="intro-note"><span className="note-mark">01 /</span><p>Explore cada decisão.<br />O estado acompanha você nos dois sentidos.</p></div></div>
       <section className="example-bar" aria-label="Escolha do programa">
-        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={exampleId} onChange={event => load(event.target.value)}>{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
-        <p>{example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
-        <span className="example-tag">{example?.tag ?? 'Programa personalizado'}</span>
+        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={exampleId} onChange={event => load(event.target.value)}>{histories.length > 0 && <optgroup label="Históricos importados">{histories.map(history => <option key={history.id} value={history.id}>{history.displayName}</option>)}</optgroup>}{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
+        <p>{selectedHistory ? 'Execução registrada. Navegue pelos estados ou compare com outra versão.' : example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
+        <span className="example-tag">{selectedHistory ? 'Histórico' : example?.tag ?? 'Programa personalizado'}</span>
         <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
         <button className="compare-script" disabled={editing || rewinding || comparing} onClick={() => { pause(); setComparing(true); }}>Comparar execuções</button>
         {selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
+        {selectedHistory && <button disabled={rewinding} onClick={closeHistory}>Fechar histórico</button>}
       </section>
+      <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing} onPause={pause} onImport={importRecording} onError={setNotice} />
+      {session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Para reabrir depois, guarde o arquivo; os históricos abertos ficam nesta página.</span></div>}
       {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
@@ -225,7 +252,7 @@ export function App() {
             <button className="play-button" onClick={() => playing ? pause() : begin('continue')} disabled={(!session.canForward && !playing) || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
             <label className="speed-label"><span className="sr-only">Velocidade de execução</span><select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1×</option><option value={4}>4×</option></select></label>
             <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { controller.cancel(); setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
-            <button onClick={restartProgram} disabled={editing || rewinding} title="Iniciar uma execução nova sem remover o código ou os scripts salvos"><Icon name="reset" /><span>Reiniciar programa</span></button>
+            <button onClick={restartProgram} disabled={editing || rewinding} title="Iniciar uma execução nova sem remover o código ou os scripts salvos"><Icon name="reset" /><span>{session.replayOnly ? 'Executar código de novo' : 'Reiniciar programa'}</span></button>
           </div>
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>

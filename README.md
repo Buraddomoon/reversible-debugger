@@ -10,6 +10,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **O que mudou** explica operações, decisões, leituras e frames com os valores registrados, também ao desfazer. Passos por comando agregam as atribuições e permitem selecionar uma instrução do intervalo sem mover o programa.
 
+**Exportar histórico** guarda a execução num arquivo; **Importar histórico** restaura o mesmo cursor e os estados já gravados. Históricos importados também podem ser comparados sem executar o código novamente.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -80,6 +82,16 @@ Nos controles por comando, consulte **Atribuições no intervalo** e as setas de
 
 ![Explicação no Firefox: a comparação 5 < 5 faz a soma terminar cedo](docs/explanations.png)
 
+## Guardar e reabrir uma execução
+
+Navegue até o passo desejado e clique em **Exportar histórico**. O arquivo `.rewind.json` guarda fonte, runtime, deltas e cursor, incluindo o futuro já registrado. **Importar histórico** valida o arquivo em um Worker local e só então abre a sessão restaurada.
+
+Os arquivos aparecem no grupo **Históricos importados**, inclusive no seletor da comparação. **Fechar histórico** remove a entrada desta página, preservando o arquivo e os scripts salvos. Recarregar fecha essas entradas; para reabrir, importe o arquivo guardado.
+
+Gravações parciais permitem avançar até o último registro disponível. **Executar código de novo** inicia uma execução limpa da fonte. As quotas são 32 MiB por arquivo e até 8 históricos/64 MiB abertos; excedê-las recusa a operação sem descartar dados. [Formato, garantias e medidas](docs/portable-histories.md).
+
+![Firefox: execução Python reaberta com cursor, locais e pilha preservados](docs/portable-history.png)
+
 ## Usar seu próprio script
 
 1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
@@ -115,6 +127,9 @@ src/core/debugger.ts   Sessão, cursor, passos e busca por posição
 src/core/execution-control.ts  Breakpoints, planos em lotes e passos por comando
 src/core/comparison*.ts  Execuções isoladas, pontos, alinhamento e diferenças
 src/core/explanations.ts  Evidências dos deltas e resumos de intervalos
+src/core/portable-history.ts  Codec versionado, quotas e identidade de arquivos
+src/core/trace-validation.ts  Esquema, precondições dos deltas e cadeia de estados
+src/workers/           Parsing/validação local e envio de registros em lotes
 src/ui/               Interface React e estilos responsivos
 examples/             Programas .rw usados pela demo e pelos testes
 tests/core.test.ts    Semântica, reversibilidade e propriedades geradas
@@ -122,6 +137,7 @@ tests/history.test.ts Busca exata, checkpoints, eventos e navegação gerada
 tests/execution-control.test.ts  Paradas, recursão, agrupamento e replay
 tests/comparison.test.ts  Divergência, alinhamento e restauração das duas sessões
 tests/explanations.test.ts  Proveniência, escopos, undo e índice incremental
+tests/portable-history.test.ts  Round trip, corrupção, quotas, forks e comparação
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -168,6 +184,7 @@ npm run build         # TypeScript + build estático em dist/
 npm run test:firefox  # Firefox instalado, sem baixar outro navegador
 npm run bench:history # Payload e latência: deltas, checkpoints e snapshots
 npm run bench:visual  # Explicações, lotes, índice e navegação com 18–19 mil passos
+npm run bench:portable # Arquivos, importação/exportação, forks e atrasos de timer
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -209,6 +226,8 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - No Firefox: comparação dos exemplos e scripts salvos, primeira diferença, eventos exclusivos, saída, versões iguais, teclado, cancelamento, fonte inválida, layout móvel e sessão principal preservada.
 - Explicações sem executor/matemática, ordem dos operandos, proveniência por índices, escopos históricos, frames restaurados, valores especiais e ausência de bindings.
 - No Firefox: diagramas nos dois sentidos, seleção de registro sem mover o cursor, movimento normal/reduzido, ~18 mil passos, 2.502 locais restaurados, paginação e limites de DOM.
+- Arquivos: estado completo em todos os cursores dos exemplos, valores especiais, nomes de propriedades, corrupção/versões, quotas, cancelamento, checkpoints e forks isolados. Comparar/importar/reaplicar registros não chama o executor.
+- No Firefox: download local, importação no mesmo cursor, futuro preservado, comparação de arquivos, parcial/conclusão distintos, Worker cancelado ao trocar programa e importação de 18 mil passos com 2.502 locais sem remover scripts.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -222,5 +241,6 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Breakpoints e controles por comando](docs/breakpoints-stepping.md)
 - [Comparação entre execuções](docs/execution-comparison.md)
 - [Explicações visuais e escala](docs/visual-explanations.md)
+- [Históricos portáveis](docs/portable-histories.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Históricos portáveis, com exportação/importação versionada, são o próximo marco.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; isso não mede o heap. O próximo marco é heap reversível e listas Python.

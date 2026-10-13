@@ -2,15 +2,16 @@ import type { Program } from './compiler';
 import type { Value } from './language';
 import type { DeepReadonly, MachineState, Step } from './machine';
 import type { RuntimeSelection } from './runtime';
+import type { DebugSession } from './debugger';
 
-export interface ComparisonSource { name: string; source: string; language: string; version?: string }
+export interface ComparisonSource { name: string; source: string; language: string; version?: string; recording?: DebugSession }
 export interface RunIdentity {
   readonly fingerprint: string;
   readonly source: string;
   readonly runtime: RuntimeSelection;
   readonly initial: DeepReadonly<MachineState>;
 }
-export type ComparisonPhase = 'initial' | 'write' | 'decision' | 'call' | 'return' | 'output' | 'error' | 'end' | 'limit';
+export type ComparisonPhase = 'initial' | 'write' | 'decision' | 'call' | 'return' | 'output' | 'error' | 'end' | 'limit' | 'pause';
 export interface ComparisonPoint {
   readonly key: string;
   readonly cursor: number;

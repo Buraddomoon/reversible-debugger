@@ -14,6 +14,7 @@ export interface HistoryStore {
   restoreCheckpoint(cursor: number): MachineState;
   clear(): void;
   measurePayload(): { deltaBytes: number; checkpointBytes: number };
+  fork(): HistoryStore;
 }
 
 export class CheckpointHistory implements HistoryStore {
@@ -71,6 +72,12 @@ export class CheckpointHistory implements HistoryStore {
   /** Encoded payload size, measured on demand; this is not a JS heap estimate. */
   measurePayload(): { deltaBytes: number; checkpointBytes: number } {
     return { deltaBytes: encodedBytes(this.records), checkpointBytes: encodedBytes([...this.checkpoints]) };
+  }
+  /** Share frozen payloads, detach mutable indexes and future append/clear operations. */
+  fork(): CheckpointHistory {
+    const copy = new CheckpointHistory(this.origin as MachineState, { checkpointInterval: this.baseInterval, maxCheckpoints: this.maxCheckpoints });
+    copy.records = [...this.records]; copy.checkpoints = new Map(this.checkpoints); copy.interval = this.interval;
+    return copy;
   }
 }
 

@@ -60,10 +60,10 @@ Os dois modos usam somente o perfil de teste no projeto. O teste verifica as ani
 
 ## Próxima evolução do armazenamento
 
-Não há exportação/importação de sessões nesta entrega. O histórico permanece separado da biblioteca de scripts; recarregar ainda inicia uma execução nova. Antes de aumentar limites ou admitir efeitos externos, a proposta é:
+O envelope, codec, validação e quotas dessa proposta foram implementados no marco de [históricos portáveis](portable-histories.md), incluindo Worker para processar importações grandes. O histórico permanece separado da biblioteca de scripts e é reaberto por arquivo. Antes de aumentar limites ou admitir efeitos externos, ainda é necessário evoluir a retenção:
 
-1. Definir um envelope de trace versionado com fonte, identidade de runtime/compilador, estado inicial, deltas ordenados e checkpoints opcionais. Eventos e explicações são derivados e não precisam ser duplicados.
-2. Usar um codec explícito para `bigint`, `-0`, `NaN`, infinitos e referências de funções. `JSON.stringify` comum não preserva esse contrato. Validar esquema, limites, cursores, instruções e cadeia de estados ao importar, antes de publicar a sessão para navegação. A impressão digital curta da comparação não serve como verificação de identidade/integridade.
+1. Evoluir o envelope/codec implementado por versões explícitas quando houver heap ou semântica nova; definir migração ou rejeição de versões anteriores. Eventos e explicações continuam derivados.
+2. Manter as garantias de valores especiais e validação da cadeia ao acrescentar estado. A impressão digital curta da comparação continua sem servir como verificação de identidade/integridade; o arquivo usa SHA-256.
 3. Separar orçamento de bytes da quantidade de passos. Uma transação de retorno com milhares de locais pode ser grande, assim como operandos e saída. Medidas de payload atuais não são medidas do heap JS.
 4. Para retenção parcial, manter um checkpoint na fronteira e indicar o primeiro cursor ainda disponível. Nunca descartar silenciosamente o início e continuar prometendo retrocesso completo. Arquivo em blocos/IndexedDB exige controle de quota, carregamento cancelável e testes de corrupção/versão incompatível.
 

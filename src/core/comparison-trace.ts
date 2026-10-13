@@ -45,7 +45,8 @@ export class RecordedComparisonRun implements ComparisonRunView {
 
   constructor(input: ComparisonSource, private readonly contexts: ComparisonContexts, options: HistoryOptions & { maxSteps?: number; maxFrames?: number }) {
     this.name = input.name;
-    this.session = new DebugSession(input.source, { ...options, language: input.language, version: input.version });
+    if (input.recording && (input.source !== input.recording.program.source || input.language !== input.recording.runtime.language || input.version !== input.recording.runtime.version)) throw new Error('Identidade do histórico não corresponde ao programa selecionado');
+    this.session = input.recording ? input.recording.forkRecording(0) : new DebugSession(input.source, { ...options, language: input.language, version: input.version });
     const initial = freezeInitial(structuredClone(this.session.state) as MachineState);
     this.identity = Object.freeze({ source: input.source, runtime: this.session.runtime, initial, fingerprint: fingerprint(JSON.stringify([input.source, this.session.runtime, initial])) });
     const counts = new Map<string, number>();
@@ -77,6 +78,7 @@ export class RecordedComparisonRun implements ComparisonRunView {
   }
   advance(): void {
     if (this.complete) return;
+    if (!this.session.canForward) { this.finishRecording(); return; }
     let step: DeepReadonly<Step>;
     try { step = this.session.forward()!; }
     catch (error) {
@@ -118,6 +120,13 @@ export class RecordedComparisonRun implements ComparisonRunView {
       const occurrence = terminal ? 1 : this.occurrence(base);
       this.recordedPoints.push(Object.freeze({ key: terminal ? 'terminal' : `${base}#${occurrence}`, cursor: this.cursor, phase, line: phase === 'error' ? step.span.line : location?.span.line ?? step.span.line, occurrence, description: step.description, outcome }));
     }
-    if (!this.session.canForward) this.finish();
+    if (!this.session.canForward) this.finishRecording();
+  }
+  private finishRecording(): void {
+    if (this.state.control.status === 'running') {
+      this.limited = this.history.length >= this.session.maxSteps;
+      this.recordedPoints.push(Object.freeze({ key: 'terminal', cursor: this.cursor, phase: this.limited ? 'limit' : 'pause', line: null, occurrence: 1, description: this.limited ? 'Limite da gravação registrado' : 'Fim do histórico parcial; o programa não foi concluído', outcome: null }));
+    }
+    this.finish();
   }
 }

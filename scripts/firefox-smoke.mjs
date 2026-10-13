@@ -1,7 +1,7 @@
 /** Smoke test against an existing Firefox, using standard WebDriver BiDi and no browser downloads. */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { createServer } from 'vite';
@@ -10,6 +10,8 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = join(root, '.artifacts');
 await mkdir(artifacts, { recursive: true });
 const profile = await mkdtemp(join(artifacts, 'firefox-profile-'));
+const downloads = join(profile, 'downloads');
+await mkdir(downloads, { recursive: true });
 const reducedMotion = process.env.REWIND_REDUCED_MOTION === '1' || process.argv.includes('--reduced-motion');
 await writeFile(join(profile, 'user.js'), [
   `user_pref("ui.prefersReducedMotion", ${reducedMotion ? 1 : 0});`,
@@ -20,6 +22,10 @@ await writeFile(join(profile, 'user.js'), [
   'user_pref("app.update.auto", false);',
   'user_pref("extensions.update.enabled", false);',
   'user_pref("datareporting.policy.dataSubmissionEnabled", false);',
+  'user_pref("browser.download.folderList", 2);',
+  `user_pref("browser.download.dir", ${JSON.stringify(downloads)});`,
+  'user_pref("browser.download.useDownloadDir", true);',
+  'user_pref("browser.helperApps.neverAsk.saveToDisk", "application/json");',
 ].join('\n'));
 const server = await createServer({ root, server: { host: '127.0.0.1', port: 5178, strictPort: true } });
 await server.listen();
@@ -88,6 +94,19 @@ try {
     const screenshot = await command('browsingContext.captureScreenshot', { context, origin: 'document', format: { type: 'image/png' } });
     await writeFile(join(artifacts, name), Buffer.from(screenshot.data, 'base64'));
   };
+  const exportDownload = async () => {
+    const before = new Set(await readdir(downloads));
+    await click('Exportar histórico');
+    await waitFor("document.querySelector('.trace-message')?.textContent.includes('exportado')");
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline) {
+      const name = (await readdir(downloads)).find(name => name.endsWith('.json') && !before.has(name));
+      if (name) return readFile(join(downloads, name), 'utf8');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error('Arquivo de histórico não foi baixado no perfil isolado');
+  };
+  const uploadHistory = (content, name = 'execucao.rewind.json') => evaluate(`(() => { const input = document.querySelector('#trace-file'); const data = new DataTransfer(); data.items.add(new File([${JSON.stringify(content)}], ${JSON.stringify(name)}, { type: 'application/json' })); input.files = data.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
   await command('browsingContext.navigate', { context, url: 'http://127.0.0.1:5178/', wait: 'complete' });
   await waitFor("document.querySelector('[data-testid=step-count]')");
@@ -297,6 +316,55 @@ try {
   await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
   console.log(`PASS: diagramas de chamada, retorno restaurado, decisão, operação desfeita, seleção sem mover a VM e movimento ${reducedMotion ? 'reduzido' : 'normal'}.`);
 
+  const bugTrace = await exportDownload();
+  assert.equal(JSON.parse(bugTrace).payload.cursor, 64);
+  await choose('python-sum-fixed'); await click('Executar');
+  await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
+  const fixedTrace = await exportDownload();
+  const scriptCountBeforeImport = await evaluate("document.querySelectorAll('#example optgroup[label=\"Seus scripts\"] option').length");
+  await uploadHistory(bugTrace);
+  await waitFor("document.querySelector('[data-testid=recording-banner]') && document.querySelector('[data-testid=step-count]').textContent === '064'");
+  const importedBugId = await evaluate("document.querySelector('#example').value");
+  assert.deepEqual(await locals(), { n: '5', total: '10', i: '5' });
+  assert.equal(await evaluate("document.querySelectorAll('#example optgroup[label=\"Seus scripts\"] option').length"), scriptCountBeforeImport);
+  await shot('firefox-portable-history.png');
+  await click('Voltar'); await click('Avançar');
+  assert.equal(await text('[data-testid=step-count]'), '064');
+  await click('Último'); assert.equal(await text('[data-testid=result-value]'), '10');
+  const currentHistory = await text('[data-testid=history-length]');
+  await uploadHistory('{'); await waitFor("document.querySelector('[role=alert]')");
+  assert.match(await text('[role=alert]'), /corrompido/);
+  assert.equal(await evaluate("document.querySelector('#example').value"), importedBugId);
+  assert.equal(await text('[data-testid=history-length]'), currentHistory);
+  const corrupted = JSON.parse(bugTrace); corrupted.payload.cursor = 3;
+  await uploadHistory(JSON.stringify(corrupted)); await waitFor("document.querySelector('[role=alert]')?.textContent.includes('checksum')");
+  assert.equal(await text('[data-testid=result-value]'), '10');
+  await uploadHistory(fixedTrace); await waitFor("document.querySelector('[data-testid=result-value]').textContent === '15' && !document.querySelector('.trace-progress')");
+  const importedFixedId = await evaluate("document.querySelector('#example').value");
+  await click('Comparar execuções');
+  await evaluate(`(() => { const select = document.querySelector('[aria-label="Programa da execução B"]'); select.value = ${JSON.stringify(importedBugId)}; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  await click('Preparar comparação'); await waitFor("document.querySelector('[data-testid=comparison-final-a]')");
+  assert.equal(await text('[data-testid=comparison-final-a]'), '15'); assert.equal(await text('[data-testid=comparison-final-b]'), '10');
+  await click('Primeira diferença'); await shot('firefox-portable-comparison.png');
+  await click('Voltar ao debugger');
+  assert.equal(await evaluate("document.querySelector('#example').value"), importedFixedId);
+  await choose('python-sum-bug'); await click('Avançar');
+  const partialTrace = await exportDownload();
+  await uploadHistory(partialTrace); await waitFor("document.querySelector('[role=status]').textContent === 'Fim do histórico parcial'");
+  assert.equal(await evaluate("Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Avançar').disabled"), true);
+  await click('Início'); await click('Avançar');
+  assert.equal(await text('[data-testid=step-count]'), '001');
+  await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
+  assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+  await shot('firefox-portable-mobile.png');
+  await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
+  await click('Executar código de novo');
+  assert.equal(await text('[data-testid=step-count]'), '000');
+  assert.equal(await evaluate("document.querySelector('[data-testid=recording-banner]') === null"), true);
+  await click('Fechar histórico'); await choose(importedFixedId); await click('Fechar histórico'); await choose(importedBugId); await click('Fechar histórico');
+  assert.equal(await evaluate("document.querySelectorAll('#example optgroup[label=\"Históricos importados\"] option').length"), 0);
+  console.log('PASS: baixar/importar históricos, cursor e futuro preservados, corrupção rejeitada sem perder a sessão, comparação dos arquivos, replay parcial, execução nova e remoção sem alterar scripts.');
+
   await choose('sum-fixed');
   await click('Executar');
   await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
@@ -369,7 +437,7 @@ try {
   assert.equal(await text('[data-testid=result-value]'), '—');
   assert.equal(await evaluate("document.querySelector('#example').selectedOptions[0].textContent"), 'Meu script');
   console.log('PASS: modal acessível, nome/linguagem/versão, cancelamento com Escape e script vazio sem estado anterior.');
-  const upload = (name, source) => evaluate(`(() => { const input = document.querySelector('input[type=file]'); const transfer = new DataTransfer(); transfer.items.add(new File([${JSON.stringify(source)}], ${JSON.stringify(name)}, { type: 'text/plain' })); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
+  const upload = (name, source) => evaluate(`(() => { const input = document.querySelector('input[aria-label="Arquivo do script"]'); const transfer = new DataTransfer(); transfer.items.add(new File([${JSON.stringify(source)}], ${JSON.stringify(name)}, { type: 'text/plain' })); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   const personal = 'def double(n):\n    return n * 2\nresult = double(21)\nprint(result)';
   await upload('meu-script.py', personal);
   await waitFor(`document.querySelector('#source-editor').value === ${JSON.stringify(personal)}`);
@@ -492,12 +560,39 @@ try {
   await writeFile(join(artifacts, reducedMotion ? 'visual-browser-reduced.json' : 'visual-browser.json'), JSON.stringify(denseReport, null, 2));
   await input('#timeline-target', restoredDenseCursor); await click('Ir');
   assert.match(await text('.variable-pagination'), /2502 variáveis/);
+  const denseScriptId = await evaluate("document.querySelector('#example').value");
+  const denseFile = await exportDownload();
+  const beforeCancel = await text('[data-testid=step-count]');
+  await uploadHistory(denseFile); await waitFor("document.querySelector('.trace-progress progress')?.value > 0");
+  await click('Cancelar transferência');
+  await waitFor("document.querySelector('.trace-message')?.textContent.includes('cancelada')");
+  assert.equal(await text('[data-testid=step-count]'), beforeCancel);
+  assert.equal(await evaluate("document.querySelector('#example').value"), denseScriptId);
+  await uploadHistory(denseFile); await waitFor("document.querySelector('.trace-progress progress')?.value > 0");
+  await choose('python-sum-fixed');
+  await waitFor("!document.querySelector('.trace-progress')");
+  await evaluate('new Promise(resolve => setTimeout(resolve, 150))');
+  assert.equal(await evaluate("document.querySelector('#example').value"), 'python-sum-fixed');
+  assert.equal(await text('[data-testid=step-count]'), '000');
+  assert.equal(await evaluate("document.querySelectorAll('#example optgroup[label=\"Históricos importados\"] option').length"), 0);
+  const transferStart = performance.now();
+  await uploadHistory(denseFile);
+  await waitFor("document.querySelector('[data-testid=recording-banner]') && !document.querySelector('.trace-progress')", 30_000);
+  const importWallMs = performance.now() - transferStart;
+  assert.equal(await text('[data-testid=step-count]'), beforeCancel);
+  assert.match(await text('.variable-pagination'), /2502 variáveis/);
+  await click('Último'); await click('Voltar');
+  assert.match(await text('[data-testid=frame-diagram]'), /Frame restaurado/);
+  assert.match(await text('.variable-pagination'), /2502 variáveis/);
+  await shot('firefox-portable-large.png');
+  await writeFile(join(artifacts, 'portable-browser.json'), JSON.stringify({ browser: session.capabilities.browserVersion, bytes: Buffer.byteLength(denseFile), steps: await text('[data-testid=history-length]'), locals: 2502, importWallMs: +importWallMs.toFixed(2), note: 'Inclui envio da fonte do arquivo por BiDi, leitura, validação e renderização; não isola custo de CPU. Cancelamento preservou sessão e cursor.' }, null, 2));
   await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
   assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
   await shot('firefox-scale-mobile.png');
   await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
+  await click('Fechar histórico'); await choose(denseScriptId);
   await click('Excluir script'); await click('Excluir');
-  console.log('PASS: ~18 mil passos, 2502 locais, tabelas limitadas, frame restaurado, saltos grandes e layout móvel.');
+  console.log('PASS: ~18 mil passos, 2502 locais, tabelas limitadas, frame restaurado, saltos grandes, exportação/importação grande cancelável e layout móvel.');
 
   await createScript('Arquivo grande');
   const largeSource = '# comentário\n'.repeat(10000) + 'result = 42\n';

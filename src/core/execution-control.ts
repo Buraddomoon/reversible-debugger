@@ -3,7 +3,7 @@ import type { DeepReadonly, Step } from './machine';
 
 export type RunMode = 'continue' | 'reverse-continue' | 'into' | 'over' | 'out' | 'back-statement';
 export interface DebugStop {
-  readonly reason: 'breakpoint' | 'step' | 'start' | 'halted' | 'error';
+  readonly reason: 'breakpoint' | 'step' | 'start' | 'halted' | 'error' | 'recorded-end';
   readonly cursor: number;
   readonly mode: RunMode;
   readonly line: number | null;
@@ -63,7 +63,7 @@ export class ExecutionControl {
       try {
         while (moved < size && this.plan) {
           if (direction === 'forward') {
-            if (!this.session.canForward) { this.finish(this.session.state.control.status === 'error' ? 'error' : 'halted', plan); break; }
+            if (!this.session.canForward) { this.finish(this.session.state.control.status === 'running' ? 'recorded-end' : this.session.state.control.status, plan); break; }
             const point = this.breakpointLine();
             if (point !== null && !(plan.skipOrigin && this.session.cursor === plan.origin)) { this.finish('breakpoint', plan, point); break; }
             lastStep = this.session.forward(); moved++;

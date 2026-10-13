@@ -96,7 +96,7 @@ Reiniciar conserva os breakpoints e a opção de ativação do mesmo controlador
 
 ## Comparação entre execuções
 
-`ExecutionComparison` cria duas sessões próprias a partir de fontes imutáveis. A execução principal da interface é pausada e permanece com seu estado, cursor e histórico. Identidades guardam o código completo, runtime e uma cópia congelada do estado inicial. Um fingerprint curto rotula a identidade; ele não é usado como prova de igualdade nem como chave do alinhamento.
+`ExecutionComparison` cria duas sessões próprias a partir de fontes imutáveis ou gravações importadas. Para uma gravação, faz fork dos payloads congelados e navega somente pelos registros existentes; para uma fonte comum, registra uma execução nova. A execução principal da interface é pausada e permanece com seu estado, cursor e histórico. Identidades guardam o código completo, runtime e uma cópia congelada do estado inicial. Um fingerprint curto rotula a identidade; ele não é usado como prova de igualdade nem como chave do alinhamento.
 
 O compilador acrescenta `semanticKey` e `flowDecision` aos metadados de comandos. A chave combina escopo, caminho do bloco, tipo/alvo do comando e sua ocorrência entre comandos semelhantes. Condições consideram os nomes lidos/chamados, preservando a correspondência ao trocar `<` por `<=`. Espaços, comentários e números físicos de linha não fazem parte da chave. `flowDecision` distingue a decisão de `if`/`while` dos saltos internos de curto-circuito.
 
@@ -104,7 +104,7 @@ O compilador acrescenta `semanticKey` e `flowDecision` aos metadados de comandos
 
 `alignComparison` encontra chaves comuns e mantém uma subsequência crescente de posições da segunda execução, usando busca binária. O custo é O(P log P) em tempo e O(P) em espaço para P pontos, sem matriz quadrática. Eventos que ficam entre âncoras são apresentados em apenas um lado; o outro permanece em seu último ponto representado. Essa ordem não inventa simultaneidade entre eventos exclusivos. O algoritmo pode reencontrar o mesmo retorno após uma iteração adicional.
 
-Início e término são âncoras globais comuns; término pode corresponder a conclusão, erro ou limite. Os motivos permanecem distintos nos dados do ponto e na comparação.
+Início e término são âncoras globais comuns; término pode corresponder a conclusão, erro, limite ou fim de uma gravação parcial. Os motivos permanecem distintos nos dados do ponto e na comparação.
 
 Os estados são restaurados por `seek()` para analisar cada par. São comparados resultado das decisões, controle de término/erro, pilha por contexto de chamada, bindings presentes/ausentes em frames correspondentes, valores/tipos, operandos e saída. PC, endereços de retorno e contador de alocação não são comparados como valores entre fontes diferentes; a restauração de cada sessão continua incluindo esses campos exatamente. A análise guarda somente a contagem de diferenças e o índice da primeira. Detalhes são calculados no ponto selecionado.
 
@@ -116,7 +116,7 @@ O alinhamento é uma heurística estrutural, não uma prova de equivalência ent
 
 O histórico ocupa espaço proporcional à soma dos payloads alterados, mais os metadados constantes de cada passo. Uma atribuição preserva seu binding e os operandos usados; seu tamanho não depende de quantas outras variáveis existem. Chamadas e retornos podem ter custo proporcional ao tamanho do frame afetado. A versão inicial não promete memória constante: o histórico continua crescendo e possui um limite explícito.
 
-`HistoryStore` separa armazenamento e execução. `CheckpointHistory` guarda os deltas congelados e cópias completas **esparsas**, feitas com `structuredClone`. Restaurar também produz uma cópia: continuar uma execução nunca altera o checkpoint salvo. Isso preserva `bigint`, `-0`, infinitos e `NaN`, além de frames, IDs, retornos, temporários, bindings ausentes, controle e saída. JSON com tags serve apenas para medir o payload, não para restaurar valores.
+`HistoryStore` separa armazenamento e execução. `CheckpointHistory` guarda os deltas congelados e cópias completas **esparsas**, feitas com `structuredClone`. Restaurar também produz uma cópia: continuar uma execução nunca altera o checkpoint salvo. Isso preserva `bigint`, `-0`, infinitos e `NaN`, além de frames, IDs, retornos, temporários, bindings ausentes, controle e saída. `encodedBytes` serve apenas para medir payload; o codec portável é uma implementação separada com validação.
 
 O padrão é um checkpoint a cada 128 instruções, com teto de 128 checkpoints incluindo o inicial. Antes de ultrapassar esse teto, o intervalo dobra e checkpoints intermediários são removidos uniformemente. O inicial permanece; nenhum delta é descartado. Assim, estados antigos continuam acessíveis, com um custo maior de replay conforme aumenta o espaçamento. `restart()` limpa registros e checkpoints e recupera o intervalo configurado inicialmente. O limite de passos da sessão continua independente.
 
@@ -124,7 +124,7 @@ O padrão é um checkpoint a cada 128 instruções, com teto de 128 checkpoints 
 
 O teto limita a quantidade de cópias, não seus bytes nem o heap total. Deltas continuam crescendo até o limite explícito do histórico. [As medições](history-performance.md) mostram o ganho com muitos locais e também o caso em que snapshots minúsculos ocupam menos bytes que os deltas ricos em metadados. Snapshots por passo permanecem uma referência nos testes e no benchmark.
 
-A VM suporta estados que podem futuramente ser serializados e enviados por um Web Worker. A UI atual usa lotes limitados, limite de histórico e limite de frames. Não se usa `eval` nem `Function` para executar a linguagem.
+A VM suporta estados serializados pelo codec portável. Um Worker local valida arquivos e envia deltas em lotes para a UI; execução normal e navegação continuam em lotes no núcleo existente. Não se usa `eval` nem `Function` para executar a linguagem.
 
 ## Garantias verificadas
 
@@ -159,7 +159,15 @@ O DOM da linha do tempo é limitado a oito cartões próximos do cursor e até 9
 
 `ExplanationPanel` apresenta essas evidências. Selecionar um registro num intervalo mantém o estado no cursor final. Animações CSS respeitam movimento reduzido e não comandam a VM. Variáveis têm páginas de 24; atribuições, de 12. `HistoryEventIndex` evita reclassificar o histórico inteiro a cada lote; buscar o próximo evento usa busca binária, mantendo os limites de cartões/marcadores.
 
-As [medidas e decisões de escala](visual-explanations.md) mantêm a execução em lotes nos limites atuais, com critérios para reconsiderar um Worker. O mesmo documento propõe codec versionado e retenção explícita por bytes; exportação/importação de sessões ainda não está implementada.
+As [medidas e decisões de escala](visual-explanations.md) mantêm a execução em lotes nos limites atuais. O marco seguinte implementou o codec e as quotas de arquivos, usando um Worker para importações após medir seus custos. Retenção de sessões maiores em disco/heap continua exigindo uma política própria.
+
+## Históricos portáveis
+
+`portable-history.ts` define envelope v1, codec de valores, identidade SHA-256 de programa/arquivo e quotas. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
+
+`DebugSession.replayOnly` impede gravar além de uma importação parcial. `restart()` cria uma execução gravável nova. `forkRecording()` compartilha programa e payloads congelados, copia os índices de armazenamento e mantém VM/cursor próprios, sem reprocessar a execução inteira. A comparação usa esse fork para consumir arquivos sem executar código de novo.
+
+`history-import.worker.ts` recebe o JSON, verifica a gravação e envia blocos de até 256 registros com confirmação da UI. `import-history.ts` encerra o Worker no cancelamento e restaura sua sessão privada em lotes de até 256 ou aproximadamente 8 ms. Quotas: 32 MiB por arquivo e 8 históricos/64 MiB abertos; são bytes de arquivos, não heap. Recusa/cancelamento preservam a sessão principal. Históricos ficam na página e são reabertos por arquivo; não alteram `localStorage` dos scripts. [Contrato e medidas](portable-histories.md).
 
 ## Criação e biblioteca de scripts
 

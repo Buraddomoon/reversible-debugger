@@ -1,0 +1,8 @@
+{
+  "browser": "150.0",
+  "bytes": 7490148,
+  "steps": "18013 passos registrados",
+  "locals": 2502,
+  "importWallMs": 2185.19,
+  "note": "Inclui envio da fonte do arquivo por BiDi, leitura, validação e renderização; não isola custo de CPU. Cancelamento preservou sessão e cursor."
+}

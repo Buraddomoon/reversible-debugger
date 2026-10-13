@@ -81,12 +81,25 @@ Critério atendido: a comparação evidencia a decisão divergente e os resultad
 
 Critério atendido: observar `5 < 5 → False`, desfazer a decisão e a comparação, restaurar uma função com seus locais e reaplicar os mesmos registros. Explicar e selecionar instruções não altera o estado da VM. Núcleo e Firefox validaram essas garantias, movimento reduzido e navegação com milhares de variáveis.
 
-## Próximo marco — históricos portáveis
+## Históricos portáveis — implementado
 
-- Codec versionado para valores e transações, preservando todos os tipos especiais.
-- Exportação/importação de uma execução registrada, com identidade de fonte/runtime e validação de integridade/limites.
-- Reabrir uma execução no mesmo cursor e comparar execuções salvas, mantendo a biblioteca de scripts separada.
-- Testes de round trip, versões incompatíveis, arquivos corrompidos e replay sem execução.
-- Medir orçamento de bytes e definir comportamento explícito ao atingir quota; aumentar limites somente depois desses critérios.
+- Codec/envelope v1, identidade de VM/programa e checksum SHA-256; tipos especiais, referências de funções e ausência de bindings preservados.
+- **Exportar histórico** / **Importar histórico** reabrem fonte, deltas, cursor e futuro já registrado; checkpoints reconstruídos esparsamente.
+- Comparação de duas gravações importadas sem executar instruções, isolando VM/cursor e compartilhando apenas payloads congelados.
+- Fim de histórico parcial distinto de conclusão; **Executar código de novo** começa uma sessão gravável nova.
+- Quotas de 32 MiB por arquivo, 8 históricos/64 MiB abertos; recusa explícita sem truncar/descartar dados. Biblioteca de scripts separada; arquivos são reabertos após recarga.
+- Parsing e validação em Worker local; transferência com confirmação por lote, cancelamento e rejeição de respostas obsoletas. UI restaura em lotes de 256 ou aproximadamente 8 ms.
+- Testes de todos os estados, round trip, corrupção, versões, tags, quotas, navegação gerada, histórico parcial, forks isolados e comparação sem executor. Firefox validou downloads restritos ao perfil de teste, importação grande, cancelamento/troca e layout móvel.
+- [Contrato, medidas e limitações](portable-histories.md) documentados; nenhum limite de execução ampliado.
+
+Critério atendido: exportar a soma no passo 64, reabrir com `n = 5`, `total = 10`, `i = 5`, navegar até o resultado e comparar os registros 10/15 sem reexecução. Arquivos inválidos ou cancelados preservam a execução aberta e os scripts.
+
+## Próximo marco — heap reversível e coleções Python
+
+- Modelar objetos do heap com IDs estáveis e referências preservadas nos dois sentidos.
+- Começar por listas Python: literais, leitura/escrita por índice e append, com escopo documentado.
+- Deltas de alocação e mutação, aliasing entre variáveis/argumentos e restauração de objetos após retornos.
+- Versionar o codec para o novo estado; rejeitar incompatibilidade ou oferecer migração explícita.
+- Exemplos de algoritmo sobre listas com bug e testes de referências/valores em todas as posições do histórico.
 
 Cada marco preserva os testes de reversibilidade. Arrays, objetos e closures exigirão uma modelagem explícita de heap e identidades, e devem ser uma evolução própria da linguagem.

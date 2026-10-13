@@ -4,7 +4,7 @@ import { formatValue, type LanguageId } from '../core/runtime';
 import type { Value } from '../core/language';
 import { highlightSyntax } from './SourceView';
 
-export const phaseLabels: Record<ComparisonPhase, string> = { initial: 'Início', write: 'Atribuição', decision: 'Decisão', call: 'Chamada', return: 'Retorno', output: 'Saída', error: 'Erro', end: 'Fim', limit: 'Limite da gravação' };
+export const phaseLabels: Record<ComparisonPhase, string> = { initial: 'Início', write: 'Atribuição', decision: 'Decisão', call: 'Chamada', return: 'Retorno', output: 'Saída', error: 'Erro', end: 'Fim', limit: 'Limite da gravação', pause: 'Fim do histórico parcial' };
 const statusLabels: Record<string, string> = { running: 'Em andamento', halted: 'Concluída', error: 'Erro' };
 export function differenceText(binding: DifferenceValue, language: LanguageId): string {
   if (!binding.present) return '—';
