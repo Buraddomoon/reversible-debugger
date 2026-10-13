@@ -118,11 +118,23 @@ Critério: executar o bug, observar aliases no mesmo objeto, desfazer escrita/ap
 
 Critério atendido: em 64 KiB a demo pausa dentro da função, volta ao início e recupera o futuro; em 4 MiB continua até 120 sem duplicar registros/saída. Firefox verifica também importação recusada preservando scripts, exportação parcial, reinício/recarga e layout móvel. [Contrato e medidas](storage-budget.md).
 
-## Próximo marco — navegação cancelável e histórico em blocos
+## Navegação cancelável — implementado
 
-- Primeiro, navegação em lotes/Worker com pedidos numerados, pausa/cancelamento e rejeição de respostas obsoletas. O benchmark com orçamento apertado e sem checkpoints passou de 16 ms em saltos longos.
-- Depois, armazenamento em blocos/IndexedDB, quota do navegador, integridade, retomada após recarga e carregamento cancelável.
+- Busca em lotes de até 128 transações ou alvo de 6 ms, usando estado atual/checkpoint próximo e somente deltas gravados.
+- Pedidos numerados, progresso, cancelamento no último cursor válido e substituição pelo último destino escolhido.
+- Ações manuais, reinício, orçamento e troca de sessão invalidam trabalho anterior; callbacks antigos não restauram outra execução.
+- Comparação prepara os dois destinos em VMs privadas e publica o par atomicamente. Cancelar preserva o ponto/estados anteriores.
+- Gravação/análise da comparação e restauração final de arquivos usam trabalho em lotes. APIs síncronas continuam para consumidores antigos.
+- Demo de salto longo, testes de estados intermediários/AbortSignal/supersessão/pares e benchmark com heartbeat. Não houve ampliação dos limites ou nova persistência.
+
+Critério atendido: Firefox restaura milhares de passos com heartbeat/renderização entre lotes, cancela preservando o estado, substitui o destino e reinicia/troca programa sem callbacks obsoletos. O par da comparação permanece consistente. [Contrato, limitações e medidas](cancellable-navigation.md).
+
+## Próximo marco — histórico em blocos/IndexedDB
+
+- Blocos versionados e íntegros, quota do navegador, recuperação após recarga e carregamento cancelável.
+- Separar dados em disco dos registros carregados em memória e definir o orçamento agregado, além da quota por sessão.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível visível, sem descartar o início silenciosamente.
-- Ampliar os 20.000 passos somente depois dessas garantias e medidas; não prometer teto agregado de RAM com o orçamento por sessão atual.
+- Avaliar Worker para cópia/transações/renderização que excedam o alvo cooperativo; operações individuais continuam indivisíveis no marco atual.
+- Ampliar os 20.000 passos somente depois dessas garantias e medidas, com reversibilidade e arquivos antigos verificados.
 
 Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.

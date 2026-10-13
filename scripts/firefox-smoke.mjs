@@ -87,7 +87,11 @@ try {
     return response.result.value;
   };
   const text = selector => evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent.trim()`);
-  const click = name => evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === ${JSON.stringify(name)} || b.getAttribute('aria-label') === ${JSON.stringify(name)}); if (!button || button.disabled) throw new Error('Botão indisponível: ' + ${JSON.stringify(name)}); button.click(); return true; })()`);
+  const activate = name => evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === ${JSON.stringify(name)} || b.getAttribute('aria-label') === ${JSON.stringify(name)}); if (!button || button.disabled) throw new Error('Botão indisponível: ' + ${JSON.stringify(name)}); button.click(); return true; })()`);
+  const click = async name => {
+    await activate(name);
+    if (['Início', 'Último', 'Ir', 'Evento anterior', 'Próximo evento', 'Primeira diferença', 'Próxima diferença', 'Diferença anterior', 'Final da comparação', 'Início da comparação', 'Próximo ponto', 'Ponto anterior'].includes(name)) await waitFor("!document.querySelector('[data-testid=seek-progress]')");
+  };
   const waitFor = async (expression, timeout = 15_000) => {
     try {
       return await evaluate(`new Promise((resolve, reject) => { const deadline = Date.now() + ${timeout}; const check = () => { if (${expression}) return resolve(true); if (Date.now() > deadline) return reject(new Error('Condição não satisfeita')); setTimeout(check, 30); }; check(); })`);
@@ -752,6 +756,55 @@ try {
   assert.equal(await evaluate("document.querySelector('#example').value"), budgetScriptId); assert.match(await text('.source-scroll'), /def collect/);
   await click('Excluir script'); await click('Excluir');
   console.log('PASS: orçamento 64 KiB, pausa atômica, início/futuro preservados, reserva estável, exportação parcial, importação recusada sem perder scripts, aumento do limite e resultado 120, reinício e layout móvel.');
+  await choose('python-cancellable-navigation'); await setBudget(4 * 1024 * 1024);
+  await click('Entrar'); await click('Passar sobre');
+  await waitFor("document.querySelector('[role=status]').textContent === 'Orçamento atingido'");
+  const navigationEnd = await text('[data-testid=step-count]'), navigationLength = await text('[data-testid=history-length]'), navigationTotal = await text('[data-testid=storage-total]');
+  await click('Início');
+  const navigationEvidence = JSON.parse(await evaluate(`(async () => {
+    let heartbeats = 0; const timer = setInterval(() => heartbeats++, 0);
+    Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Último').click();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const visible = Boolean(document.querySelector('[data-testid=seek-progress]'));
+    Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Cancelar navegação')?.click();
+    clearInterval(timer);
+    return JSON.stringify({ heartbeats, visible, cursor: document.querySelector('[data-testid=step-count]').textContent });
+  })()`));
+  assert.equal(navigationEvidence.visible, true); assert.ok(navigationEvidence.heartbeats > 0);
+  await waitFor("document.querySelector('[data-testid=seek-message]')?.textContent.includes('cancelada')");
+  const cancelledNavigation = await text('[data-testid=step-count]');
+  assert.ok(Number(cancelledNavigation) > 0 && Number(cancelledNavigation) < Number(navigationEnd));
+  await evaluate('new Promise(resolve => setTimeout(resolve, 150))');
+  assert.equal(await text('[data-testid=step-count]'), cancelledNavigation);
+  assert.equal(await text('[data-testid=history-length]'), navigationLength); assert.equal(await text('[data-testid=storage-total]'), navigationTotal);
+  await shot('firefox-navigation-cancelled.png');
+  await click('Início'); await activate('Último'); await waitFor("document.querySelector('[data-testid=seek-progress]')");
+  await input('#timeline-target', '123'); await click('Ir');
+  await waitFor("document.querySelector('[data-testid=step-count]').textContent === '123'");
+  await evaluate('new Promise(resolve => setTimeout(resolve, 150))'); assert.equal(await text('[data-testid=step-count]'), '123');
+  await click('Início'); await activate('Último'); await waitFor("document.querySelector('[data-testid=seek-progress]')");
+  await choose('python-sum-fixed'); await evaluate('new Promise(resolve => setTimeout(resolve, 150))');
+  assert.equal(await text('[data-testid=step-count]'), '000'); assert.equal(await text('[data-testid=history-length]'), '0 passos registrados');
+  await choose('python-cancellable-navigation'); await setBudget(4 * 1024 * 1024); await click('Entrar'); await click('Passar sobre');
+  await waitFor("document.querySelector('[role=status]').textContent === 'Orçamento atingido'");
+  await click('Início'); await click('Último'); assert.equal(await text('[data-testid=step-count]'), navigationEnd);
+  await click('Comparar execuções');
+  await evaluate("(() => { const select = document.querySelector('[aria-label=\"Programa da execução B\"]'); select.value = 'python-cancellable-navigation'; select.dispatchEvent(new Event('change', { bubbles: true })); })()");
+  await click('Preparar comparação'); await waitFor("document.querySelector('[data-testid=comparison-final-a]')", 30_000);
+  const navigationComparisonA = await text('[data-testid=comparison-step-a]'), navigationComparisonB = await text('[data-testid=comparison-step-b]');
+  await activate('Final da comparação'); await waitFor("document.querySelector('[data-testid=seek-progress]')");
+  await click('Cancelar navegação');
+  assert.equal(await text('[data-testid=comparison-step-a]'), navigationComparisonA); assert.equal(await text('[data-testid=comparison-step-b]'), navigationComparisonB);
+  await click('Final da comparação'); assert.equal(await text('[data-testid=comparison-step-a]'), navigationEnd);
+  assert.equal(await text('[data-testid=comparison-step-b]'), navigationEnd);
+  await click('Voltar ao debugger'); assert.equal(await text('[data-testid=step-count]'), navigationEnd);
+  await click('Início'); await activate('Último'); await waitFor("document.querySelector('[data-testid=seek-progress]')");
+  await click('Reiniciar programa'); await evaluate('new Promise(resolve => setTimeout(resolve, 150))');
+  assert.equal(await text('[data-testid=step-count]'), '000'); assert.equal(await text('[data-testid=history-length]'), '0 passos registrados');
+  await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
+  assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+  await writeFile(join(artifacts, 'navigation-browser.json'), JSON.stringify({ browser: session.capabilities.browserVersion, frontier: Number(navigationEnd), ...navigationEvidence, cancelledAt: Number(cancelledNavigation), note: 'Heartbeat e dois frames entre iniciar/cancelar o salto; estado intermediário preservado. Não mede RAM nem tempo isolado de CPU.' }, null, 2));
+  console.log('PASS: salto longo responsivo, heartbeat/paint entre lotes, cancelar e substituir destino, troca/reinício sem callbacks antigos, comparação publicada em par e histórico/orçamento preservados.');
   assert.deepEqual(pageErrors, []);
   console.log('PASS: ausência de erros no console.');
   await command('session.end');

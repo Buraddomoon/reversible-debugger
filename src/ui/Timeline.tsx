@@ -6,10 +6,11 @@ const labels: Record<EventKind, string> = { call: 'Chamada', return: 'Retorno', 
 const symbols: Record<EventKind, string> = { call: '↳', return: '↰', mutation: '▦', decision: '◇', output: '▤', error: '!', end: '■' };
 const priority: Record<EventKind, number> = { decision: 0, mutation: 1, output: 1, call: 2, return: 3, end: 4, error: 5 };
 
-export function Timeline({ history, cursor, disabled, onSeek }: {
+export function Timeline({ history, cursor, disabled, pendingTarget, onSeek }: {
   history: readonly DeepReadonly<Step>[];
   cursor: number;
   disabled: boolean;
+  pendingTarget?: number;
   onSeek: (cursor: number) => void;
 }) {
   const length = history.length;
@@ -38,14 +39,14 @@ export function Timeline({ history, cursor, disabled, onSeek }: {
   return <section className="timeline" aria-label="Linha do tempo">
     <div className="timeline-heading"><div><h2>Linha do tempo</h2><span data-testid="history-length">{length} passos registrados</span></div><span className="timeline-mode">{cursor < length ? 'Explorando o histórico' : 'Último estado registrado'}</span></div>
     <div className="timeline-controls">
-      <button onClick={() => onSeek(0)} disabled={disabled || cursor === 0} title="Restaurar o estado inicial">Início</button>
+      <button onClick={() => onSeek(0)} disabled={disabled || cursor === 0 && pendingTarget === undefined} title="Restaurar o estado inicial">Início</button>
       <div className="timeline-scrubber">
         <label className="sr-only" htmlFor="timeline-position">Posição na linha do tempo</label>
-        <input id="timeline-position" type="range" min={0} max={length} step={1} value={cursor} disabled={disabled || length === 0} aria-valuetext={`Passo ${cursor} de ${length}`} onChange={event => onSeek(Number(event.target.value))} style={{ background: `linear-gradient(to right, var(--accent) ${length ? cursor / length * 100 : 0}%, #344459 0%)` }} />
+        <input id="timeline-position" type="range" min={0} max={length} step={1} value={pendingTarget ?? cursor} disabled={disabled || length === 0} aria-valuetext={pendingTarget === undefined ? `Passo ${cursor} de ${length}` : `Destino ${pendingTarget}; estado atual no passo ${cursor}`} onChange={event => onSeek(Number(event.target.value))} style={{ background: `linear-gradient(to right, var(--accent) ${length ? cursor / length * 100 : 0}%, #344459 0%)` }} />
         <div className="timeline-markers" aria-hidden="true">{markers.map(({ bin, event }) => <span key={bin} className={`event-${event.kind}`} style={{ left: `${bin / 95 * 100}%` }} />)}</div>
         <div className="timeline-scale"><span>0</span><strong>Passo {cursor}</strong><span>{length}</span></div>
       </div>
-      <button onClick={() => onSeek(length)} disabled={disabled || cursor === length} title="Restaurar o último estado registrado">Último</button>
+      <button onClick={() => onSeek(length)} disabled={disabled || cursor === length && pendingTarget === undefined} title="Restaurar o último estado registrado">Último</button>
       <form className="timeline-jump" onSubmit={event => { event.preventDefault(); if (valid && !disabled) { onSeek(number); setTarget(''); } }}>
         <label htmlFor="timeline-target">Ir ao passo</label>
         <input id="timeline-target" type="number" min={0} max={length} step={1} value={target} placeholder={String(cursor)} onChange={event => setTarget(event.target.value)} disabled={disabled} aria-invalid={!valid} />

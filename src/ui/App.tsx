@@ -21,6 +21,8 @@ import { HeapInspector } from './HeapInspector';
 import { isList } from '../core/heap';
 import { previewValue } from '../core/runtime';
 import { StoragePanel } from './StoragePanel';
+import { useHistorySeek } from './useHistorySeek';
+import { SeekStatus } from './SeekStatus';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -75,6 +77,7 @@ export function App() {
   const [selectedObject, setSelectedObject] = useState<number | null>(null);
   useEffect(() => setSelectedObject(null), [session]);
   const [revision, refresh] = useReducer(value => value + 1, 0);
+  const seeker = useHistorySeek(session, { onUpdate: () => { setNavigation(session.lastStep ? { step: session.lastStep, direction: 'seek' } : null); refresh(); }, onDone: restored => setNavigation(restored.lastStep ? { step: restored.lastStep, direction: 'seek' } : null), onError: setNotice });
   const example = examples.find(item => item.id === exampleId);
   const selectedScript = store.library.scripts.find(item => item.id === exampleId);
   const selectedHistory = histories.find(item => item.id === exampleId);
@@ -90,11 +93,12 @@ export function App() {
   for (const [name, value] of Object.entries(frame.locals)) if (isList(value) && changedObjects.has(value.id)) changedNames.add(name);
   const breakpoints = controller.breakpoints;
   const breakpointLine = controller.stop?.reason === 'breakpoint' ? controller.stop.line : null;
-  const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.recordingStop && session.cursor === session.history.length ? 'Orçamento atingido' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
+  const status = seeker.progress ? 'Restaurando histórico' : rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.recordingStop && session.cursor === session.history.length ? 'Orçamento atingido' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
   const format = (value: Parameters<typeof formatValue>[0]) => previewValue(value, session.runtime.language, state.heap);
 
   const move = (direction: 'forward' | 'backward') => {
     if (rewinding) return;
+    seeker.cancel();
     controller.cancel(); setPlaying(false); setNotice(null); setSelectedFrame(null);
     try {
       const step = direction === 'forward' ? session.forward() : session.backward();
@@ -105,17 +109,16 @@ export function App() {
   const seek = (cursor: number) => {
     controller.cancel();
     setPlaying(false); setRewinding(false); setNotice(null); setSelectedFrame(null); setNavigation(null);
-    try { session.seek(cursor); if (session.lastStep) setNavigation({ step: session.lastStep, direction: 'seek' }); }
-    catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
-    refresh();
+    seeker.seek(cursor);
   };
   const begin = (mode: RunMode) => {
+    seeker.cancel();
     setNotice(null); setSelectedFrame(null); setNavigation(null);
     try { controller.start(mode); setPlaying(true); }
     catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
     refresh();
   };
-  const pause = () => { controller.cancel(); setPlaying(false); setRewinding(false); refresh(); };
+  const pause = () => { seeker.cancel(); controller.cancel(); setPlaying(false); setRewinding(false); refresh(); };
   const toggleBreakpoint = (line: number) => { pause(); controller.toggleBreakpoint(line); };
   useEffect(() => {
     if (!playing && !rewinding) return;
@@ -150,6 +153,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKey);
   });
   const load = (id: string) => {
+    seeker.cancel();
     setComparing(false);
     controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setSelectedFrame(null);
@@ -173,6 +177,7 @@ export function App() {
     setDraftFilename(`${id}${runtime.extension}`); setDraftLanguage(language); setDraftVersion(runtime.versions[0]);
   };
   const openHistory = (history: OpenHistory, importedSession?: DebugSession) => {
+    seeker.cancel();
     controller.cancel(); setComparing(false); setPlaying(false); setRewinding(false); setEditing(false);
     setSession(importedSession ?? history.session.forkRecording()); setExampleId(history.id);
     setFilename(history.filename); setDraftFilename(history.filename); setDraft(history.session.program.source);
@@ -201,6 +206,7 @@ export function App() {
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };
   const newScript = () => {
+    seeker.cancel();
     controller.cancel();
     setPlaying(false); setRewinding(false); setCreating(true);
   };
@@ -222,6 +228,7 @@ export function App() {
     load(nextId); store.flush(); setDeleting(null);
   };
   const restartProgram = () => {
+    seeker.cancel();
     controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setNotice(null); setSelectedFrame(null);
     session.restart(); refresh();
@@ -259,12 +266,14 @@ export function App() {
             <span className="control-divider" />
             <button className="play-button" onClick={() => playing ? pause() : begin('continue')} disabled={(!session.canForward && !playing) || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
             <label className="speed-label"><span className="sr-only">Velocidade de execução</span><select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1×</option><option value={4}>4×</option></select></label>
-            <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { controller.cancel(); setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
+            <button title="Desfazer todos os passos mantendo o histórico" onClick={() => { seeker.cancel(); controller.cancel(); setPlaying(false); setRewinding(true); setNavigation(null); setNotice(null); setSelectedFrame(null); }} disabled={!session.canBackward || editing || rewinding}><Icon name="rewind" /><span>Retroceder tudo</span></button>
             <button onClick={restartProgram} disabled={editing || rewinding} title="Iniciar uma execução nova sem remover o código ou os scripts salvos"><Icon name="reset" /><span>{session.replayOnly ? 'Executar código de novo' : 'Reiniciar programa'}</span></button>
           </div>
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>
         <StepControls disabled={editing || rewinding} canForward={session.canForward} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
+        {seeker.progress && <SeekStatus current={seeker.progress.cursor} target={seeker.progress.to} completed={seeker.progress.appliedSteps} total={seeker.progress.totalSteps} onCancel={() => { seeker.cancel(true); refresh(); }} />}
+        {seeker.message && <p className="seek-message" aria-live="polite" data-testid="seek-message">{seeker.message}</p>}
         <StoragePanel key={exampleId} session={session} disabled={editing || rewinding} onBudget={bytes => { pause(); setNotice(null); try { session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
         {breakpointLine !== null && <div className="breakpoint-pause" data-testid="debug-pause"><strong>Breakpoint na linha {breakpointLine}</strong><span>Parado antes do comando. Executar retoma esta passagem; o breakpoint continua ativo nas próximas.</span></div>}
         {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
@@ -289,7 +298,7 @@ export function App() {
             <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ExplanationPanel navigation={navigation} session={session} /></section>
           </aside>
         </div>
-        <Timeline key={`${exampleId}:${editing}`} history={session.history} cursor={session.cursor} disabled={editing || rewinding} onSeek={seek} />
+        <Timeline key={`${exampleId}:${editing}`} history={session.history} cursor={session.cursor} disabled={editing || rewinding} pendingTarget={seeker.progress?.to} onSeek={seek} />
       </section>}
       <footer className="page-footer"><span>REWIND / uma pequena linguagem, um estado exato.</span><span>{store.library.scripts.length ? `${store.library.scripts.length} ${store.library.scripts.length === 1 ? 'script salvo' : 'scripts salvos'} neste navegador` : 'Variáveis · Decisões · Chamadas'}</span></footer>
     </main>

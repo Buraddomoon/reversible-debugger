@@ -1,0 +1,9 @@
+{
+  "browser": "150.0",
+  "frontier": 9261,
+  "heartbeats": 2,
+  "visible": true,
+  "cursor": "384",
+  "cancelledAt": 384,
+  "note": "Heartbeat e dois frames entre iniciar/cancelar o salto; estado intermediário preservado. Não mede RAM nem tempo isolado de CPU."
+}

@@ -56,6 +56,8 @@ Para investigar a soma Python com bug, execute até o resultado `10` e escolha a
 
 Só existem destinos até o último passo registrado. Para descobrir estados novos, continue com **Avançar** ou **Executar**. Reiniciar limpa também a linha do tempo e os checkpoints, preservando os scripts salvos.
 
+Saltos longos mostram progresso e **Cancelar navegação**. Cada lote publica um estado válido; cancelar mantém o último passo mostrado. Escolher outro destino substitui o pedido anterior, e reiniciar/trocar programa impede callbacks antigos de alterar a nova sessão. Na comparação, o ponto muda somente depois de restaurar os dois lados. [Demo, contrato e medidas](docs/cancellable-navigation.md).
+
 ![Linha do tempo no Firefox: restaurando a decisão que encerra cedo a soma Python](docs/timeline.png)
 
 ## Breakpoints e comandos
@@ -151,6 +153,7 @@ src/core/compiler.ts   Instruções, funções e metadados de origem
 src/core/machine.ts    Estado explícito, transações e deltas
 src/core/history.ts    HistoryStore, checkpoints e política de retenção
 src/core/storage-accounting.ts  Payload incremental, estado atual e reserva
+src/ui/useHistorySeek.ts  Pedidos, lotes, progresso e cancelamento da navegação
 src/core/history-events.ts  Eventos projetados das transações
 src/core/debugger.ts   Sessão, cursor, passos e busca por posição
 src/core/execution-control.ts  Breakpoints, planos em lotes e passos por comando
@@ -169,6 +172,7 @@ tests/explanations.test.ts  Proveniência, escopos, undo e índice incremental
 tests/portable-history.test.ts  Round trip, corrupção, quotas, forks e comparação
 tests/lists.test.ts   Heap, aliases, ciclos, mutações, codec e reversibilidade
 tests/storage-budget.test.ts  Fronteiras, rollback, reserva, retomada e quotas
+tests/cancellable-navigation.test.ts  Lotes exatos, abort, pedidos antigos e pares
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -218,6 +222,7 @@ npm run bench:visual  # Explicações, lotes, índice e navegação com 18–19 
 npm run bench:portable # Arquivos, importação/exportação, forks e atrasos de timer
 npm run bench:heap    # Mutação por item, busca exata e custo dos checkpoints
 npm run bench:storage # Orçamento, checkpoints reduzidos, busca e retomada
+npm run bench:navigation # Lotes, latência total e heartbeat em saltos longos
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -265,6 +270,8 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - No Firefox: mutações e append nos dois sentidos, retorno com referência, comparação 99/2, ciclo, importação v2, rejeição v1 sem perder a sessão, lista de 3.000 itens paginada e layout móvel.
 - Orçamento: fronteira exata, recusa atômica de instruções, contadores incrementais, reserva estável, checkpoints reduzidos, navegação gerada, retomada, reinício, forks, importação/comparação e ausência de varredura completa por instrução.
 - No Firefox: pausa em 64 KiB, futuro/consumo preservados, exportação parcial, importação recusada sem perder scripts, limite ampliado com resultado 120, reinício/recarga e layout móvel.
+- Navegação: estado exato em cada lote, cancelar/substituir destinos, AbortSignal, callback obsoleto após ações manuais/reinício, importação interrompida e publicação atômica dos dois lados da comparação.
+- No Firefox: salto de milhares de passos com heartbeat/renderização, cancelamento no estado intermediário, destino substituído, troca/reinício sem callbacks antigos e comparação preservada.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -281,5 +288,6 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Históricos portáveis](docs/portable-histories.md)
 - [Listas e heap reversível](docs/reversible-lists.md)
 - [Orçamento do histórico](docs/storage-budget.md)
+- [Navegação cancelável](docs/cancellable-navigation.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo, respeitando também o orçamento de payload (64 MiB por padrão). Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; essas medidas não são heap JavaScript. O próximo marco é navegação cancelável e armazenamento em blocos/IndexedDB antes de ampliar sessões.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo, respeitando também o orçamento de payload (64 MiB por padrão). Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; essas medidas não são heap JavaScript. O próximo marco é armazenamento em blocos/IndexedDB antes de ampliar sessões.

@@ -31,7 +31,7 @@ function freezeInitial(initial: MachineState): DeepReadonly<MachineState> {
 export class RecordedComparisonRun implements ComparisonRunView {
   readonly name: string;
   readonly identity: RunIdentity;
-  private readonly session: DebugSession;
+  private session: DebugSession;
   private recordedPoints: ComparisonPoint[] = [];
   private activeFrames = [0];
   private frameContexts = new Map<number, number>([[0, 0]]);
@@ -67,6 +67,8 @@ export class RecordedComparisonRun implements ComparisonRunView {
   contextForFrame(id: number): number { return this.frameContexts.get(id)!; }
   frameLabel(id: number): string { return this.frameNames.get(id)!; }
   seek(cursor: number): void { this.session.seek(cursor); }
+  forkForSeek(cursor: number): DebugSession { return this.session.forkForSeek(cursor); }
+  publishNavigation(session: DebugSession): void { this.session = session; }
   private finish(): void {
     this.complete = true;
     const globals = this.state.frames[0]!.locals;

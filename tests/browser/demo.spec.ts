@@ -75,6 +75,34 @@ test('exporta e importa a mesma posição, rejeita corrupção e compara registr
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('cancela/substitui um salto longo e invalida navegação após reiniciar', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Programa', { exact: true }).selectOption('python-cancellable-navigation');
+  await page.getByLabel('Limite do histórico', { exact: true }).selectOption(String(4 * 1024 * 1024));
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Orçamento atingido');
+  const history = await page.getByTestId('history-length').textContent();
+  await page.getByRole('button', { name: 'Início', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText('000');
+  await page.getByRole('button', { name: 'Último', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancelar navegação', exact: true }).click();
+  await expect(page.getByTestId('seek-message')).toContainText('cancelada');
+  const cancelled = await page.getByTestId('step-count').textContent();
+  await page.waitForTimeout(150); await expect(page.getByTestId('step-count')).toHaveText(cancelled!);
+  await expect(page.getByTestId('history-length')).toHaveText(history!);
+  await page.getByRole('button', { name: 'Início', exact: true }).click();
+  await page.getByRole('button', { name: 'Último', exact: true }).click();
+  await page.getByLabel('Ir ao passo', { exact: true }).fill('123');
+  await page.getByRole('button', { name: 'Ir', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText('123');
+  await page.getByRole('button', { name: 'Início', exact: true }).click();
+  await page.getByRole('button', { name: 'Último', exact: true }).click();
+  await page.getByRole('button', { name: 'Reiniciar programa', exact: true }).click();
+  await page.waitForTimeout(150); await expect(page.getByTestId('step-count')).toHaveText('000');
+  await expect(page.getByTestId('history-length')).toHaveText('0 passos registrados');
+});
+
 test('pausa pelo orçamento, mantém o futuro e retoma ao ampliar o limite', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Programa', { exact: true }).selectOption('python-storage-growth');

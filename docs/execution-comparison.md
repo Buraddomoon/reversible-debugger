@@ -27,6 +27,8 @@ Os cartões superiores mostram os resultados ao terminar ou parar a gravação. 
 
 **Primeira diferença**, **Diferença anterior** e **Próxima diferença** navegam entre pontos divergentes. A tabela compara decisões, bindings/valores/tipos, pilhas, saída e situação da execução. Uma diferença de tipo entre inteiro e float, a distinção entre `-0.0` e `0.0`, ou uma variável ausente também é observável. `NaN` igual a `NaN` é tratado como o mesmo valor armazenado, sem usar a regra de igualdade aritmética do Python.
 
+Saltos longos mostram progresso e **Cancelar navegação**. Ambos os estados são preparados em VMs privadas e publicados juntos; cancelar mantém o ponto/par anterior. Selecionar outro destino substitui o pedido. Gravação/análise também devolvem controle entre lotes. [Contrato cooperativo e limites das operações individuais](cancellable-navigation.md).
+
 ## Como o alinhamento funciona
 
 Listas acrescentam pontos de alocação/mutação e um inspetor de heap em cada lado. A comparação associa objetos a partir das variáveis e operandos correspondentes, preservando uma correspondência bijetiva entre referências. IDs numéricos distintos não bastam para marcar divergência; itens, comprimentos, ciclos e compartilhamento são comparados. Objetos sem referências nos escopos/operandos correspondentes não influenciam essa comparação.

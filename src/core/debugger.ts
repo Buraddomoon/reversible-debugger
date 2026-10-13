@@ -23,6 +23,25 @@ export interface SeekResult {
   readonly checkpoint: number | null;
   readonly appliedSteps: number;
 }
+export interface SeekProgress extends SeekResult {
+  readonly id: number;
+  readonly cursor: number;
+  readonly totalSteps: number;
+  readonly done: boolean;
+}
+export interface SeekJob {
+  signal?: AbortSignal;
+  onProgress?: (progress: SeekProgress) => void;
+  yieldControl?: () => Promise<void>;
+  batchSize?: number;
+  maxMilliseconds?: number;
+}
+export function validateSeekBatch(size: number, milliseconds: number): void {
+  if (!Number.isSafeInteger(size) || size < 1 || size > 1000 || !Number.isFinite(milliseconds) || milliseconds <= 0 || milliseconds > 16) throw new Error('Navegação deve usar 1 a 1.000 passos por lote e orçamento de tempo entre 0 e 16 ms');
+}
+export class SeekSupersededError extends Error {
+  constructor() { super('Navegação substituída por outra ação'); this.name = 'AbortError'; }
+}
 
 export class HistoryLimitError extends Error {
   constructor(limit: number) {
@@ -43,6 +62,8 @@ export class DebugSession {
   private recordingOnly = false;
   private payload = measureMachine(this.machine);
   private budgetPause: Readonly<{ reason: 'budget'; requiredBytes: number }> | null = null;
+  private seekEpoch = 0;
+  private seeking: SeekProgress | null = null;
 
   constructor(source: string, options: HistoryOptions & { maxSteps?: number; maxFrames?: number; language?: string; version?: string } = {}) {
     this.runtime = getRuntime(options.language ?? 'rewind', options.version);
@@ -62,6 +83,7 @@ export class DebugSession {
   get recordingStop() { return this.budgetPause; }
   setHistoryBudget(bytes: number): void {
     this.storage.setBudget(bytes);
+    this.cancelSeek();
     if (this.budgetPause && bytes >= this.budgetPause.requiredBytes) this.budgetPause = null;
   }
   measureHistory() { return this.storage.measurePayload(); }
@@ -72,6 +94,7 @@ export class DebugSession {
   get lastStep(): DeepReadonly<Step> | null { return this.history[this.position - 1] ?? null; }
 
   forward(): DeepReadonly<Step> | null {
+    this.cancelSeek();
     if (!this.canForward) return null;
     let step = this.history[this.position];
     if (step) {
@@ -96,6 +119,7 @@ export class DebugSession {
     return step;
   }
   backward(): DeepReadonly<Step> | null {
+    this.cancelSeek();
     if (!this.canBackward) return null;
     const step = this.history[this.position - 1]!;
     applyStep(this.machine, step, 'backward');
@@ -117,21 +141,72 @@ export class DebugSession {
     while (count < size && this.canBackward) { this.backward(); count++; }
     return count;
   }
-  /** Seek recorded states only. Replay never executes program instructions. */
-  seek(target: number): SeekResult {
+  get seekProgress(): SeekProgress | null { return this.seeking; }
+  cancelSeek(id?: number): void {
+    if (id !== undefined && id !== this.seekEpoch) return;
+    this.seekEpoch++; this.seeking = null;
+  }
+  /** The checkpoint copy and each transaction are indivisible. Every published
+   * cursor is an exact recorded state, including when cancellation interrupts. */
+  beginSeek(target: number): SeekProgress {
     if (!Number.isSafeInteger(target) || target < 0 || target > this.history.length) throw new RangeError('Escolha um passo já registrado no histórico');
+    this.cancelSeek();
     const from = this.position;
     const closest = this.storage.nearestCheckpoint(target);
     const useCheckpoint = Math.abs(target - closest) < Math.abs(target - from);
     if (useCheckpoint) { this.machine = this.storage.restoreCheckpoint(closest); this.payload = measureMachine(this.machine); this.position = closest; }
-    const appliedSteps = Math.abs(target - this.position);
-    while (this.position < target) this.forward();
-    while (this.position > target) this.backward();
-    return { from, to: target, checkpoint: useCheckpoint ? closest : null, appliedSteps };
+    const progress = Object.freeze({ id: this.seekEpoch, from, to: target, cursor: this.position, checkpoint: useCheckpoint ? closest : null, appliedSteps: 0, totalSteps: Math.abs(target - this.position), done: target === this.position });
+    this.seeking = progress.done ? null : progress;
+    return progress;
+  }
+  seekBatch(id: number, size = 128, maxMilliseconds = 6): SeekProgress | null {
+    validateSeekBatch(size, maxMilliseconds);
+    const plan = this.seeking;
+    if (!plan || plan.id !== id) return null;
+    const started = performance.now();
+    let count = 0;
+    while (this.position !== plan.to && count < size) {
+      const forward = this.position < plan.to;
+      const step = this.history[forward ? this.position : this.position - 1]!;
+      applyStep(this.machine, step, forward ? 'forward' : 'backward');
+      this.payload = accountStep(this.payload, step, forward ? 'forward' : 'backward');
+      this.position += forward ? 1 : -1; count++;
+      if (performance.now() - started >= maxMilliseconds) break;
+    }
+    const progress = Object.freeze({ ...plan, cursor: this.position, appliedSteps: plan.appliedSteps + count, done: this.position === plan.to });
+    this.seeking = progress.done ? null : progress;
+    return progress;
+  }
+  /** Compatibility API for synchronous consumers. UI uses bounded batches. */
+  seek(target: number): SeekResult {
+    let progress = this.beginSeek(target);
+    while (!progress.done) progress = this.seekBatch(progress.id, 1000, 8)!;
+    return { from: progress.from, to: progress.to, checkpoint: progress.checkpoint, appliedSteps: progress.appliedSteps };
+  }
+  async seekAsync(target: number, job: SeekJob = {}): Promise<SeekProgress> {
+    validateSeekBatch(job.batchSize ?? 128, job.maxMilliseconds ?? 6);
+    job.signal?.throwIfAborted();
+    let progress = this.beginSeek(target);
+    try {
+      do {
+        job.signal?.throwIfAborted();
+        if (progress.id !== this.seekEpoch) throw new SeekSupersededError();
+        if (!progress.done) {
+          const next = this.seekBatch(progress.id, job.batchSize ?? 128, job.maxMilliseconds ?? 6);
+          if (!next) throw new SeekSupersededError();
+          progress = next;
+        }
+        job.onProgress?.(progress);
+        job.signal?.throwIfAborted();
+        if (progress.id !== this.seekEpoch) throw new SeekSupersededError();
+        if (!progress.done) await recordingYield({ signal: job.signal, yieldControl: job.yieldControl });
+      } while (!progress.done);
+      return progress;
+    } catch (error) { this.cancelSeek(progress.id); throw error; }
   }
   rewind(): void { this.seek(0); }
   /** Start a fresh execution without replacing the immutable program or its source. */
-  restart(): void { this.machine = initialState(); this.payload = measureMachine(this.machine); this.storage.clear(); this.position = 0; this.recordingOnly = false; this.budgetPause = null; }
+  restart(): void { this.cancelSeek(); this.machine = initialState(); this.payload = measureMachine(this.machine); this.storage.clear(); this.position = 0; this.recordingOnly = false; this.budgetPause = null; }
 
   /** Private staging session; every imported transaction is checked before publication.
    * Partial recordings stop at their last record instead of executing new code. */
@@ -147,18 +222,24 @@ export class DebugSession {
       session.storage.append(step, session.machine, payload); session.payload = payload; session.position++;
       if ((i + 1) % 256 === 0 || performance.now() - batchStart >= 8) { job.onProgress?.(i + 1, records.length); await recordingYield(job); batchStart = performance.now(); }
     }
-    job.signal?.throwIfAborted(); session.seek(cursor);
+    job.signal?.throwIfAborted(); await session.seekAsync(cursor, { signal: job.signal, yieldControl: job.yieldControl });
     job.onProgress?.(records.length, records.length);
     return session;
   }
   /** Fork already-owned immutable payloads; the VM and checkpoint indexes are detached. */
-  forkRecording(cursor = this.cursor): DebugSession {
+  forkForSeek(cursor: number): DebugSession {
     if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > this.history.length) throw new RangeError('Cursor do histórico inválido');
     const fork = new DebugSession('', { ...this.runtime, maxSteps: this.maxSteps, maxFrames: this.maxFrames });
     fork.compiled = this.program; fork.storage = this.storage.fork();
-    fork.machine = structuredClone(this.machine); fork.position = this.position;
-    fork.payload = { ...this.payload }; fork.budgetPause = this.budgetPause;
+    const closest = this.storage.nearestCheckpoint(cursor);
+    const useCheckpoint = Math.abs(cursor - closest) < Math.abs(cursor - this.cursor);
+    fork.machine = useCheckpoint ? this.storage.restoreCheckpoint(closest) : structuredClone(this.machine);
+    fork.position = useCheckpoint ? closest : this.position;
+    fork.payload = useCheckpoint ? measureMachine(fork.machine) : { ...this.payload }; fork.budgetPause = this.budgetPause;
     fork.recordingOnly = true;
-    fork.seek(cursor); return fork;
+    return fork;
+  }
+  forkRecording(cursor = this.cursor): DebugSession {
+    const fork = this.forkForSeek(cursor); fork.seek(cursor); return fork;
   }
 }

@@ -16,6 +16,7 @@
     "bench:portable": "node scripts/portable-benchmark.mjs",
     "bench:heap": "node scripts/heap-benchmark.mjs",
     "bench:storage": "node scripts/storage-benchmark.mjs",
+    "bench:navigation": "node scripts/navigation-benchmark.mjs",
     "check": "tsc --noEmit && vitest run"
   },
   "dependencies": {
