@@ -16,7 +16,7 @@ export interface ImportedHistory extends TraceMetadata { session: DebugSession; 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 
 /** Reserved tags occur only in VM value positions; dictionary names cannot contain $. */
-function encode(input: unknown): Json {
+export function encode(input: unknown): Json {
   if (typeof input === 'bigint') return { $bigint: input.toString() };
   if (typeof input === 'number') {
     if (Object.is(input, -0)) return { $number: '-0' };
@@ -28,7 +28,7 @@ function encode(input: unknown): Json {
   requireTrace(typeof input === 'object' && input !== null, 'tipo não serializável');
   return Object.fromEntries(Object.entries(input).map(([key, value]) => [key, encode(value)]));
 }
-function decode(input: unknown, depth = 0): unknown {
+export function decode(input: unknown, depth = 0): unknown {
   requireTrace(depth <= 32, 'estrutura muito profunda');
   if (input === null || typeof input === 'boolean' || typeof input === 'string') return input;
   if (typeof input === 'number') { requireTrace(Number.isFinite(input) && !Object.is(input, -0), 'número especial sem tag'); return input; }
@@ -48,7 +48,7 @@ function decode(input: unknown, depth = 0): unknown {
   for (const [key, value] of Object.entries(item)) result[key] = decode(value, depth + 1);
   return result;
 }
-async function digest(input: string): Promise<string> {
+export async function digest(input: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
   return Array.from(new Uint8Array(bytes), value => value.toString(16).padStart(2, '0')).join('');
 }
@@ -57,7 +57,7 @@ function byteLength(content: string): number {
   const bytes = new TextEncoder().encode(content).byteLength;
   requireTrace(bytes <= MAX_TRACE_BYTES, 'arquivo excede 32 MiB'); return bytes;
 }
-function metadata(input: unknown): TraceMetadata {
+export function metadata(input: unknown): TraceMetadata {
   const data = fields(input, ['name', 'filename']); text(data.name, 160); text(data.filename, 240);
   requireTrace(data.name.trim().length > 0 && data.filename.trim().length > 0, 'nome/arquivo vazios');
   return { name: data.name, filename: data.filename };

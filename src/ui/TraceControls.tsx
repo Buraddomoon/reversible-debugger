@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { DebugSession } from '../core/debugger';
 import { checkImportBudget, exportHistory, MAX_TRACE_BYTES, type ImportedHistory, type TraceMetadata } from '../core/portable-history';
 import { importHistoryInWorker } from './import-history';
+import { stagingHistoryBudget } from '../core/page-budget';
 
-export interface OpenHistory extends ImportedHistory { id: string; displayName: string }
-export function TraceControls({ session, metadata, histories, disabled, onPause, onImport, onError }: {
+export interface OpenHistory extends ImportedHistory { id: string; displayName: string; savedId?: string }
+export function TraceControls({ session, metadata, histories, disabled, onBusyChange, onPause, onImport, onError }: {
   session: DebugSession; metadata: TraceMetadata; histories: readonly OpenHistory[]; disabled: boolean;
   onPause: () => void; onImport: (history: ImportedHistory) => void; onError: (message: string | null) => void;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const abort = useRef<AbortController | null>(null);
@@ -14,6 +16,7 @@ export function TraceControls({ session, metadata, histories, disabled, onPause,
   const [busy, setBusy] = useState<'import' | 'export' | null>(null);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [message, setMessage] = useState<string | null>(null);
+  useEffect(() => { onBusyChange(Boolean(busy)); return () => onBusyChange(false); }, [busy, onBusyChange]);
   useEffect(() => {
     generation.current++; abort.current?.abort(); setBusy(null); setMessage(null);
     return () => { generation.current++; abort.current?.abort(); };
@@ -28,7 +31,7 @@ export function TraceControls({ session, metadata, histories, disabled, onPause,
         if (!file) throw new Error('Selecione um arquivo de histórico');
         if (file.size > MAX_TRACE_BYTES) throw new Error('O histórico excede 32 MiB. A sessão aberta foi preservada.');
         checkImportBudget(histories, file.size);
-        const restored = await importHistoryInWorker(await file.text(), { ...job, maxHistoryBytes: session.storageStats.limitBytes });
+        const restored = await importHistoryInWorker(await file.text(), { ...job, maxHistoryBytes: stagingHistoryBudget(histories, session, 2) });
         controller.signal.throwIfAborted();
         if (generation.current === id) { checkImportBudget(histories, restored.bytes); onImport(restored); }
       } else {

@@ -16,6 +16,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Armazenamento desta execução** acompanha o payload reservado e permite ajustar o orçamento. A gravação pausa se a próxima instrução não couber, mantendo todos os passos para navegação e exportação.
 
+**Salvar execução** guarda o histórico em blocos no navegador. A biblioteca preserva execuções após recarregar; **Abrir** recupera o cursor e o futuro gravado, com validação e cancelamento. Scripts continuam separados.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -92,11 +94,15 @@ Nos controles por comando, consulte **Atribuições no intervalo** e as setas de
 
 Navegue até o passo desejado e clique em **Exportar histórico**. O arquivo `.rewind.json` guarda fonte, runtime, deltas e cursor, incluindo o futuro já registrado. **Importar histórico** valida o arquivo em um Worker local e só então abre a sessão restaurada.
 
-Os arquivos aparecem no grupo **Históricos importados**, inclusive no seletor da comparação. **Fechar histórico** remove a entrada desta página, preservando o arquivo e os scripts salvos. Recarregar fecha essas entradas; para reabrir, importe o arquivo guardado.
+Os arquivos aparecem no grupo **Históricos importados**, inclusive no seletor da comparação. **Fechar histórico** remove a entrada carregada nesta página, preservando arquivos, execuções salvas e scripts. Recarregar fecha essas entradas; para reabrir, importe o arquivo ou abra uma captura salva na biblioteca.
 
 Gravações parciais permitem avançar até o último registro disponível. **Executar código de novo** inicia uma execução limpa da fonte. As quotas são 32 MiB por arquivo e até 8 históricos/64 MiB abertos; excedê-las recusa a operação sem descartar dados. [Formato, garantias e medidas](docs/portable-histories.md).
 
 ![Firefox: execução Python reaberta com cursor, locais e pilha preservados](docs/portable-history.png)
+
+**Salvar execução** abre um modal para nomear uma captura de todos os passos e da posição atual. Depois de reiniciar/recarregar, clique em **Abrir** na biblioteca para restaurá-la. **Excluir** remove somente aquela captura, com confirmação. São até 16 execuções/128 MiB de payload em IndexedDB, com checksums, gravação atômica ao publicar e carregamento cancelável em Worker. A lista usa metadados; os deltas são carregados quando você abre uma execução. [Formato, quotas, recuperação e medidas](docs/persistent-histories.md).
+
+![Firefox: biblioteca de execuções preservada e histórico reaberto](docs/execution-library.png)
 
 ## Listas e referências compartilhadas
 
@@ -114,7 +120,7 @@ Cada mutação guarda somente os itens removidos/adicionados. Checkpoints comple
 
 Escolha **Python · Crescimento do histórico**, selecione **64 KiB** no painel de armazenamento e use **Entrar**, depois **Passar sobre**. A gravação pausa dentro de `collect`, preservando lista, variáveis, pilha e saída. **Início** e **Último** continuam disponíveis; o consumo reservado não cai ao voltar, porque o futuro ainda está guardado.
 
-Selecione **4 MiB**, use **Sair da função** e **Executar** para concluir com `120`, sem duplicar passos ou saída. O padrão é **64 MiB por sessão**, ajustável até 256 MiB. Reiniciar conserva o limite; trocar/aplicar código ou recarregar restaura o padrão, preservando os scripts.
+Selecione **4 MiB**, use **Sair da função** e **Executar** para concluir com `120`, sem duplicar passos ou saída. O padrão é **até 64 MiB por sessão**, ajustável até 256 MiB conforme a reserva disponível na página. Reiniciar conserva o limite; trocar/aplicar código ou recarregar restaura o padrão disponível, preservando os scripts. A página reserva até **256 MiB de payload** entre sessões abertas e VMs temporárias; esses valores não medem RAM real.
 
 ![Firefox: gravação pausada pelo orçamento com todos os 145 passos disponíveis](docs/storage-budget.png)
 
@@ -272,11 +278,14 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - No Firefox: pausa em 64 KiB, futuro/consumo preservados, exportação parcial, importação recusada sem perder scripts, limite ampliado com resultado 120, reinício/recarga e layout móvel.
 - Navegação: estado exato em cada lote, cancelar/substituir destinos, AbortSignal, callback obsoleto após ações manuais/reinício, importação interrompida e publicação atômica dos dois lados da comparação.
 - No Firefox: salto de milhares de passos com heartbeat/renderização, cancelamento no estado intermediário, destino substituído, troca/reinício sem callbacks antigos e comparação preservada.
+- IndexedDB: reversibilidade ao reabrir, captura consistente, quotas entre abas, recuperação de gravações interrompidas, versões/corrupção, exclusão isolada, builders privados e orçamento agregado de payload.
+- No Firefox: salvar/recarregar/abrir no cursor original, futuro e comparação preservados, 9.261 passos em 37 blocos, gravação/leitura cancelável, troca sem callbacks antigos, scripts intactos e layout móvel.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
 ## Documentação
 
+- [Biblioteca persistida em blocos, quotas e recuperação](docs/persistent-histories.md)
 - [Arquitetura e decisões](docs/architecture.md)
 - [Especificação da linguagem](docs/language.md)
 - [Python 3: recursos e limitações](docs/python.md)
@@ -290,4 +299,4 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Orçamento do histórico](docs/storage-budget.md)
 - [Navegação cancelável](docs/cancellable-navigation.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo, respeitando também o orçamento de payload (64 MiB por padrão). Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; essas medidas não são heap JavaScript. O próximo marco é armazenamento em blocos/IndexedDB antes de ampliar sessões.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo, respeitando também o orçamento de payload (até 64 MiB por padrão). Arquivos/execuções salvas têm teto de 32 MiB, até 8 históricos/64 MiB abertos e biblioteca de até 16 execuções/128 MiB; essas medidas não são heap JavaScript. O próximo marco é um histórico paginado sob demanda, com cache e checkpoints persistidos, antes de ampliar sessões.

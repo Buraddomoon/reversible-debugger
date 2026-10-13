@@ -1,0 +1,17 @@
+{
+  "browser": "150.0",
+  "entry": {
+    "id": "4b5e7969-30e8-4aaf-b91c-13198a480fc5",
+    "count": 9261,
+    "cursor": 123,
+    "bytes": 4199095,
+    "blocks": 37,
+    "status": "ready"
+  },
+  "saveWallMs": 418.82,
+  "loadWallMs": 1103.19,
+  "cancellation": true,
+  "reload": true,
+  "cursor": 123,
+  "note": "IndexedDB real e Worker local; tempos incluem BiDi, modal/paint, validação e restauração. Payload salvo, não espaço físico nem RAM. Reinício, reload, futuro, comparação e exclusão preservaram scripts."
+}

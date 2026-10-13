@@ -4,7 +4,7 @@
 
 **Stack:** TypeScript estrito em todo o projeto; React + Vite para a interface; Vitest + fast-check para o núcleo. Playwright define a matriz de Firefox, Chromium, WebKit e layout móvel. Um smoke test adicional usa o Firefox existente por WebDriver BiDi, sem downloads nem instalação de driver.
 
-**Pipeline:** fonte → tokens → AST → instruções com spans → máquina virtual → histórico reversível → interface. O núcleo é independente da interface. Não há backend, persistência em disco de sessões, rede ou dependência de relógio na linguagem.
+**Pipeline:** fonte → tokens → AST → instruções com spans → máquina virtual → histórico reversível → interface. O núcleo é independente da interface. Não há backend, rede ou dependência de relógio na linguagem. A biblioteca de execuções persiste capturas em IndexedDB, com datas usadas somente para catálogo/recuperação, fora do estado da VM.
 
 **Runtimes:** a sessão guarda uma seleção imutável de linguagem e versão. `runtime.ts` valida o catálogo: Python 3 usa `python.ts` e `python-values.ts`; Experimental 0.1 usa o parser original. Ambos produzem o AST compartilhado. Os detalhes da semântica Python, seu escopo e limitações estão em [Python 3](python.md). Runtimes inexistentes são rejeitados, sem fallback para outro parser.
 
@@ -191,7 +191,15 @@ As [medidas e decisões de escala](visual-explanations.md) mantêm a execução 
 
 `history-import.worker.ts` recebe o JSON, verifica a gravação e envia blocos de até 256 registros com confirmação da UI. `import-history.ts` encerra o Worker no cancelamento e restaura sua sessão privada em lotes de até 256 ou aproximadamente 8 ms. Quotas: 32 MiB por arquivo e 8 históricos/64 MiB abertos; são bytes de arquivos, não heap. Recusa/cancelamento preservam a sessão principal. Históricos ficam na página e são reabertos por arquivo; não alteram `localStorage` dos scripts. [Contrato e medidas](portable-histories.md).
 
-O Worker e a sessão privada de restauração também recebem o orçamento de payload capturado ao iniciar a importação. A gravação inteira precisa caber antes da publicação, sem truncamento. O envelope v2 não armazena limite local nem motivo de pausa; sua semântica permanece igual. Comparações aplicam o limite por lado e identificam orçamento como gravação incompleta. Forks têm índices, contadores, limite e VM próprios; compartilhar payloads congelados não constitui orçamento agregado da página.
+O Worker e a sessão privada de restauração recebem o orçamento de payload reservado ao iniciar a importação. A gravação inteira precisa caber antes da publicação, sem truncamento. O envelope v2 não armazena limite local nem motivo de pausa; sua semântica permanece igual. Comparações aplicam o limite por lado e identificam orçamento como gravação incompleta. Forks têm índices, contadores, limite e VM próprios; `page-budget.ts` cobra suas reservas novamente para proteger o orçamento agregado de payload da interface.
+
+## Persistência em blocos
+
+`history-blocks.ts` usa as tags do codec v2 para blocos versionados e manifestos com checksums. `execution-library.ts` mantém banco v1 com catálogo leve, manifestos e blocos por `[runId,index]`. Codificação/hash ficam fora de transações curtas; cada append verifica reservas entre abas. O status `ready` é publicado atomicamente com o manifesto, depois da cadeia completa. Recuperação só remove reservas `writing` expiradas; dados publicados não são excluídos automaticamente.
+
+`execution-library.worker.ts` lê um bloco por vez e valida o programa/estado/transações em builder privado. Transferência de até 16 registros aguarda confirmação. `load-execution.ts` alimenta outro builder privado diretamente, encerra o Worker ao cancelar e publica somente depois de todos os registros e do cursor restaurado. Execuções fechadas na biblioteca são somente metadados na UI; abrir ainda carrega todos os deltas da gravação. Checkpoints são reconstruídos esparsamente, sem snapshots completos por passo.
+
+`ExecutionLibraryPanel` oferece salvar com nome, lista paginada, abertura e exclusão confirmada. `page-budget.ts` reserva até 256 MiB de payload entre histórico retido, VM ativa e temporárias: duas na importação/abertura, quatro na comparação/navegação de pares. Biblioteca tem até 16 capturas/128 MiB, cada uma até 32 MiB; históricos abertos mantêm o teto de oito/64 MiB. Esses valores não medem RAM real nem ocupação física do IndexedDB. [Formato, recuperação e limites](persistent-histories.md).
 
 ## Criação e biblioteca de scripts
 

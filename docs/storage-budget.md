@@ -14,7 +14,7 @@ Cada sessão reserva até **64 MiB de payload estimado** por padrão. O painel *
 6. Selecione **4 MiB**, clique em **Sair da função** e depois **Executar**. O programa conclui com `120`, sem duplicar registros ou saída.
 7. Também é possível exportar no momento da pausa e reabrir a gravação parcial. Aumentar o limite de um arquivo parcial não inventa passos novos; **Executar código de novo** cria outra execução da fonte.
 
-Reiniciar limpa registros, checkpoints, métricas e pausa, preservando o limite escolhido e os scripts. Trocar/aplicar código ou recarregar cria uma sessão com 64 MiB. O limite não é salvo na biblioteca de scripts nem no arquivo v2. Importações usam o limite capturado ao iniciar a transferência; comparações usam o limite escolhido por lado. Históricos importados que já excedem esse limite são recusados integralmente, sem truncar dados ou substituir a sessão aberta.
+Reiniciar limpa registros, checkpoints, métricas e pausa, preservando o limite escolhido e os scripts. Trocar/aplicar código ou recarregar cria uma sessão com até 64 MiB, conforme reserva disponível na página. O limite não é salvo na biblioteca de scripts nem no arquivo v2. Importações/abertura e comparações reservam um limite por VM conforme o orçamento agregado. Históricos que já excedem o orçamento reservado são recusados integralmente, sem truncar dados ou substituir a sessão aberta.
 
 ## O que os bytes significam
 
@@ -26,7 +26,7 @@ Valores usam tamanho UTF-8 da representação com tags para `bigint`, `-0`, NaN 
 
 A reserva do maior estado inclui controle, frames/bindings, operandos, heap e saída. Ela não diminui ao retroceder ou ao retornar de uma função, porque estados maiores continuam no histórico. Os detalhes do estado atual estão incluídos nessa reserva e não devem ser somados outra vez ao total.
 
-Esta medida **não é o heap real do JavaScript nem um teto de RAM da página**. Exclui código compilado/fonte, índices, UI, overhead dos objetos, strings temporárias, Workers, outras sessões e cópias simultâneas durante transferências. Forks compartilham payloads congelados, mas cada sessão mantém seu próprio orçamento e VM; não existe ainda um orçamento agregado da página. Quotas de arquivos (32 MiB por arquivo, até oito/64 MiB abertos) continuam independentes.
+Esta medida **não é o heap real do JavaScript nem um teto de RAM da página**. Exclui código compilado/fonte, índices, UI, overhead dos objetos e buffers temporários. Forks compartilham payloads congelados, mas cada sessão mantém seu próprio orçamento e VM. O marco de [biblioteca em blocos](persistent-histories.md) acrescentou reserva agregada de até 256 MiB de payload na UI, cobrando sessões retidas, ativa e staging de importação/comparação, inclusive Workers. Quotas de arquivos (32 MiB por arquivo, até oito/64 MiB abertos) e de disco (16 execuções/128 MiB) continuam independentes.
 
 ## Admissão, checkpoints e reversibilidade
 
@@ -84,4 +84,4 @@ O Firefox instalado verificou a pausa em 64 KiB, navegação nas duas pontas, re
 | Saída acumulada | 512 KiB | 626 | 9.113 | 523.910 B | 2,760 ms |
 | Mil variáveis | 1 MiB | 2.169 | 11.009 | 1.048.542 B | 9,671 ms |
 
-Nesses limites apertados, apenas o checkpoint inicial permaneceu. Preservar mais deltas em vez de cópias auxiliares aumenta o custo de saltos longos: o caso da lista passou de 16 ms no núcleo. São diagnósticos sem DOM, não SLA; não medem RAM nem cobrem hardware/fontes arbitrárias. O marco seguinte implementou [navegação cancelável em lotes](cancellable-navigation.md), usando até 128 transações/alvo de 6 ms na UI; `seek` síncrono continua como API de compatibilidade. Antes de ampliar os 20.000 passos atuais, ainda é necessário armazenamento em blocos/IndexedDB, com quotas, integridade e fronteira de retenção explícita.
+Nesses limites apertados, apenas o checkpoint inicial permaneceu. Preservar mais deltas em vez de cópias auxiliares aumenta o custo de saltos longos: o caso da lista passou de 16 ms no núcleo. São diagnósticos sem DOM, não SLA; não medem RAM nem cobrem hardware/fontes arbitrárias. Os marcos seguintes implementaram [navegação cancelável em lotes](cancellable-navigation.md) e a [biblioteca em blocos/IndexedDB](persistent-histories.md), preservando todos os passos. Antes de ampliar os 20.000 passos atuais, ainda é necessário um histórico paginado sob demanda, com cache/checkpoints persistidos e fronteira explícita caso se introduza retenção parcial.

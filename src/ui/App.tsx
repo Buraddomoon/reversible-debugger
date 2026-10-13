@@ -23,11 +23,13 @@ import { previewValue } from '../core/runtime';
 import { StoragePanel } from './StoragePanel';
 import { useHistorySeek } from './useHistorySeek';
 import { SeekStatus } from './SeekStatus';
+import { ExecutionLibraryPanel } from './ExecutionLibraryPanel';
+import { activeHistoryBudget, defaultActiveBudget, stagingHistoryBudget } from '../core/page-budget';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
-function openSavedScript(script: SavedScript) {
-  try { return { session: new DebugSession(script.source, script), editing: script.source.length === 0, notice: null as string | null }; }
-  catch (error) { return { session: new DebugSession('', script), editing: true, notice: error instanceof Error ? error.message : String(error) }; }
+function openSavedScript(script: SavedScript, maxHistoryBytes?: number) {
+  try { return { session: new DebugSession(script.source, { ...script, maxHistoryBytes }), editing: script.source.length === 0, notice: null as string | null }; }
+  catch (error) { return { session: new DebugSession('', { ...script, maxHistoryBytes }), editing: true, notice: error instanceof Error ? error.message : String(error) }; }
 }
 
 type IconName = 'rewind' | 'back' | 'next' | 'play' | 'pause' | 'reset' | 'code' | 'layers';
@@ -57,12 +59,15 @@ export function App() {
   const store = useScriptLibrary(initial.stored);
   const [session, setSession] = useState(initial.session);
   const [histories, setHistories] = useState<OpenHistory[]>([]);
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [libraryBusy, setLibraryBusy] = useState(false);
   const controller = useMemo(() => new ExecutionControl(session), [session]);
   const [exampleId, setExampleId] = useState(initial.selection);
   const [draft, setDraft] = useState(initial.source);
   const [editing, setEditing] = useState(initial.editing);
   const [creating, setCreating] = useState(false);
   const [comparing, setComparing] = useState(false);
+  const [comparisonBudget, setComparisonBudget] = useState(64 * 1024 * 1024);
   const [deleting, setDeleting] = useState<SavedScript | null>(null);
   const [playing, setPlaying] = useState(false);
   const [rewinding, setRewinding] = useState(false);
@@ -145,7 +150,7 @@ export function App() {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const element = event.target as HTMLElement;
-      if (comparing || creating || deleting || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (comparing || creating || deleting || document.querySelector('dialog[open]') || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === 'ArrowRight') { event.preventDefault(); move('forward'); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); move('backward'); }
     };
@@ -162,7 +167,7 @@ export function App() {
     store.update(library => ({ ...library, selection: id }));
     const script = store.library.scripts.find(item => item.id === id);
     if (script) {
-      const opened = openSavedScript(script);
+      const opened = openSavedScript(script, defaultActiveBudget(histories));
       setSession(opened.session); setEditing(opened.editing); setNotice(opened.notice); setExampleId(id);
       setDraft(script.source); setFilename(script.filename); setDraftFilename(script.filename);
       setDraftLanguage(script.language); setDraftVersion(script.version);
@@ -172,7 +177,7 @@ export function App() {
     setEditing(false); setNotice(null);
     const language = item.language ?? 'rewind';
     const runtime = runtimes.find(entry => entry.id === language)!;
-    setSession(new DebugSession(item.source, { language })); setExampleId(id); setDraft(item.source);
+    setSession(new DebugSession(item.source, { language, maxHistoryBytes: defaultActiveBudget(histories) })); setExampleId(id); setDraft(item.source);
     setFilename(`${id}${runtime.extension}`);
     setDraftFilename(`${id}${runtime.extension}`); setDraftLanguage(language); setDraftVersion(runtime.versions[0]);
   };
@@ -184,8 +189,8 @@ export function App() {
     setDraftLanguage(history.session.runtime.language); setDraftVersion(history.session.runtime.version);
     setNotice(null); setSelectedFrame(null); setNavigation(history.session.lastStep ? { step: history.session.lastStep, direction: 'seek' } : null);
   };
-  const importRecording = (history: ImportedHistory) => {
-    const opened: OpenHistory = { ...history, displayName: uniqueScriptName(history.name, histories.map(item => ({ name: item.displayName }))), id: `history:${crypto.randomUUID()}` };
+  const importRecording = (history: ImportedHistory, savedId?: string) => {
+    const opened: OpenHistory = { ...history, savedId, displayName: uniqueScriptName(history.name, histories.map(item => ({ name: item.displayName }))), id: `history:${crypto.randomUUID()}` };
     // Keep the validated recording separate from the active, navigable VM.
     const active = history.session.forkRecording();
     setHistories(items => [...items, opened]); openHistory(opened, active);
@@ -198,7 +203,7 @@ export function App() {
   const changeSource = (source: string) => { setDraft(source); if (selectedScript) patchSelectedScript({ source }); };
   const applyDraft = () => {
     try {
-      const replacement = new DebugSession(draft, { language: draftLanguage, version: draftVersion });
+      const replacement = new DebugSession(draft, { language: draftLanguage, version: draftVersion, maxHistoryBytes: defaultActiveBudget(histories) });
       const script = selectedScript ? { ...selectedScript, filename: draftFilename, source: draft, language: draftLanguage, version: draftVersion } : newSavedScript({ name: uniqueScriptName(draftFilename.replace(/\.(py|rw|txt)$/i, ''), store.library.scripts), filename: draftFilename, source: draft, language: draftLanguage, version: draftVersion });
       store.update(library => ({ ...library, selection: script.id, scripts: selectedScript ? library.scripts.map(item => item.id === script.id ? script : item) : [...library.scripts, script] })); store.flush();
       setPlaying(false); setRewinding(false); setSession(replacement); setExampleId(script.id); setEditing(false); setFilename(draftFilename);
@@ -214,7 +219,7 @@ export function App() {
     setComparing(false);
     const script = newSavedScript({ name, filename, language, version, source: '' });
     store.update(library => ({ ...library, scripts: [...library.scripts, script], selection: script.id })); store.flush();
-    setSession(new DebugSession('', { language, version }));
+    setSession(new DebugSession('', { language, version, maxHistoryBytes: defaultActiveBudget(histories) }));
     setFilename(filename); setDraftFilename(filename); setExampleId(script.id);
     setDraft(''); setDraftLanguage(language); setDraftVersion(version);
     setNotice(null); setNavigation(null); setSelectedFrame(null);
@@ -252,13 +257,14 @@ export function App() {
         <p>{selectedHistory ? 'Execução registrada. Navegue pelos estados ou compare com outra versão.' : example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
         <span className="example-tag">{selectedHistory ? 'Histórico' : example?.tag ?? 'Programa personalizado'}</span>
         <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
-        <button className="compare-script" disabled={editing || rewinding || comparing} onClick={() => { pause(); setComparing(true); }}>Comparar execuções</button>
+        <button className="compare-script" disabled={editing || rewinding || comparing || transferBusy || libraryBusy} onClick={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }}>Comparar execuções</button>
         {selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
         {selectedHistory && <button disabled={rewinding} onClick={closeHistory}>Fechar histórico</button>}
       </section>
-      <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing} onPause={pause} onImport={importRecording} onError={setNotice} />
-      {session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Para reabrir depois, guarde o arquivo; os históricos abertos ficam nesta página.</span></div>}
-      {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={session.storageStats.limitBytes} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
+      <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || libraryBusy} onBusyChange={setTransferBusy} onPause={pause} onImport={importRecording} onError={setNotice} />
+      <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || transferBusy} onBusyChange={setLibraryBusy} onPause={pause} onOpen={importRecording} onSelect={load} />
+      {session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Salve esta execução na biblioteca ou exporte um arquivo para reabrir depois.</span></div>}
+      {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
@@ -274,7 +280,7 @@ export function App() {
         <StepControls disabled={editing || rewinding} canForward={session.canForward} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
         {seeker.progress && <SeekStatus current={seeker.progress.cursor} target={seeker.progress.to} completed={seeker.progress.appliedSteps} total={seeker.progress.totalSteps} onCancel={() => { seeker.cancel(true); refresh(); }} />}
         {seeker.message && <p className="seek-message" aria-live="polite" data-testid="seek-message">{seeker.message}</p>}
-        <StoragePanel key={exampleId} session={session} disabled={editing || rewinding} onBudget={bytes => { pause(); setNotice(null); try { session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
+        <StoragePanel key={exampleId} session={session} maxAvailableBytes={activeHistoryBudget(histories)} disabled={editing || rewinding || transferBusy || libraryBusy} onBudget={bytes => { pause(); setNotice(null); try { if (bytes > activeHistoryBudget(histories)) throw new Error('Limite excede o orçamento agregado da página. Feche um histórico antes de aumentar.'); session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
         {breakpointLine !== null && <div className="breakpoint-pause" data-testid="debug-pause"><strong>Breakpoint na linha {breakpointLine}</strong><span>Parado antes do comando. Executar retoma esta passagem; o breakpoint continua ativo nas próximas.</span></div>}
         {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
         <div className="workspace">

@@ -129,12 +129,24 @@ Critério atendido: em 64 KiB a demo pausa dentro da função, volta ao início 
 
 Critério atendido: Firefox restaura milhares de passos com heartbeat/renderização entre lotes, cancela preservando o estado, substitui o destino e reinicia/troca programa sem callbacks obsoletos. O par da comparação permanece consistente. [Contrato, limitações e medidas](cancellable-navigation.md).
 
-## Próximo marco — histórico em blocos/IndexedDB
+## Histórico em blocos/IndexedDB — implementado
 
-- Blocos versionados e íntegros, quota do navegador, recuperação após recarga e carregamento cancelável.
-- Separar dados em disco dos registros carregados em memória e definir o orçamento agregado, além da quota por sessão.
-- Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível visível, sem descartar o início silenciosamente.
-- Avaliar Worker para cópia/transações/renderização que excedam o alvo cooperativo; operações individuais continuam indivisíveis no marco atual.
-- Ampliar os 20.000 passos somente depois dessas garantias e medidas, com reversibilidade e arquivos antigos verificados.
+- **Salvar execução** com nome, captura imutável de fonte/runtime/deltas/cursor e futuro registrado; **Abrir** e **Excluir** com confirmação, separados da biblioteca de scripts.
+- Biblioteca compacta/paginada, até 16 execuções/128 MiB; só metadados de execuções fechadas ficam na interface. Recarga restaura a lista sem abrir todas as VMs.
+- Banco/manifesto versionados, checksums SHA-256 e blocos de até 256 passos/512 KiB; transação maior isolada em seu próprio bloco, até 32 MiB por execução.
+- Gravação em staging, publicação atômica, reservas de bytes verificadas entre abas, tratamento da quota real do navegador e recuperação de gravações incompletas expiradas. Nada pronto é apagado automaticamente.
+- Worker lê/valida um bloco por vez e transfere 16 transações por lote com confirmação. UI usa builder privado incremental; cancelamento/troca invalida callbacks, publicação somente ao concluir e restaurar o cursor.
+- Reserva agregada de até 256 MiB de payload entre sessões abertas e staging de importação/comparação, além do limite por sessão. Fechar histórico libera sua reserva; biblioteca fechada permanece no orçamento de disco.
+- Arquivos v2 preservados, sem snapshots completos por passo, retenção parcial ou ampliação dos 20.000 passos.
+
+Critério atendido: Firefox instalado salva/recarrega/reabre o passo 64 da soma com o mesmo frame/locais/operandos/instrução, navega pelo futuro e compara 10/15. Execução de 9.261 passos reabre no passo 123 em 37 blocos; cancelamento de gravação/leitura, troca de sessão, exclusão e layout móvel preservam scripts. Testes incluem reversibilidade completa, navegação gerada, quotas/abas concorrentes, corrupção, versões e recuperação. [Contrato, limites e medidas](persistent-histories.md).
+
+## Próximo marco — paginação de execuções abertas
+
+- `HistoryStore` assíncrono que carregue uma janela de deltas sob demanda, com cache limitado por bytes; hoje abrir valida/carrega a gravação inteira dentro dos limites atuais.
+- Checkpoints persistidos, identidade e validação de segmentos para acesso aleatório; saltos/cancelamento/troca de blocos restaurando somente estados completos.
+- Medir latência, buffers de transferência e cópias/transações/renderização indivisíveis antes de ampliar os 20.000 passos.
+- Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; preservar início/futuro ou pedir ação do usuário para removê-los.
+- Verificar compatibilidade de banco/arquivos e todos os testes de reversibilidade antes de liberar sessões maiores.
 
 Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.

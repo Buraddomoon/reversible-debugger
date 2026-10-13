@@ -11,6 +11,11 @@ export interface RecordingJob {
   onProgress?: (completed: number, total: number) => void;
   yieldControl?: () => Promise<void>;
 }
+export interface RecordingBuilder {
+  readonly count: number;
+  append(records: readonly unknown[]): void;
+  finish(job?: RecordingJob): Promise<DebugSession>;
+}
 export async function recordingYield(job: RecordingJob): Promise<void> {
   job.signal?.throwIfAborted();
   await (job.yieldControl?.() ?? new Promise<void>(resolve => setTimeout(resolve, 0)));
@@ -211,20 +216,42 @@ export class DebugSession {
   /** Private staging session; every imported transaction is checked before publication.
    * Partial recordings stop at their last record instead of executing new code. */
   static async restoreRecording(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number }, records: readonly unknown[], cursor: number, job: RecordingJob = {}): Promise<DebugSession> {
-    if (!Number.isSafeInteger(cursor) || cursor < 0 || cursor > records.length || records.length > options.maxSteps || options.maxSteps > 20_000 || options.maxFrames > 256) throw new Error('Histórico inválido: limites/cursor incompatíveis');
     job.signal?.throwIfAborted();
-    const session = new DebugSession(source, options);
-    session.recordingOnly = true;
+    const builder = DebugSession.recordingBuilder(source, options, records.length, cursor);
     let batchStart = performance.now();
     for (let i = 0; i < records.length; i++) {
-      const step = restoreValidatedStep(session.machine, session.program, records[i], session.maxFrames);
-      const payload = accountStep(session.payload, step, 'forward');
-      session.storage.append(step, session.machine, payload); session.payload = payload; session.position++;
+      builder.append([records[i]]);
       if ((i + 1) % 256 === 0 || performance.now() - batchStart >= 8) { job.onProgress?.(i + 1, records.length); await recordingYield(job); batchStart = performance.now(); }
     }
-    job.signal?.throwIfAborted(); await session.seekAsync(cursor, { signal: job.signal, yieldControl: job.yieldControl });
+    const session = await builder.finish(job);
     job.onProgress?.(records.length, records.length);
     return session;
+  }
+  /** Stream into a private VM. Failed/incomplete builders can never publish. */
+  static recordingBuilder(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number }, count: number, cursor: number): RecordingBuilder {
+    if (!Number.isSafeInteger(count) || count < 0 || count > options.maxSteps || !Number.isSafeInteger(cursor) || cursor < 0 || cursor > count || options.maxSteps > 20_000 || options.maxFrames > 256) throw new Error('Histórico inválido: limites/cursor incompatíveis');
+    const session = new DebugSession(source, options); session.recordingOnly = true;
+    let closed = false;
+    return {
+      get count() { return session.history.length; },
+      append(records) {
+        if (closed) throw new Error('Restauração encerrada');
+        try {
+          if (records.length > 256 || session.position + records.length > count) throw new Error('Lote de restauração inconsistente');
+          for (const record of records) {
+            const step = restoreValidatedStep(session.machine, session.program, record, session.maxFrames);
+            const payload = accountStep(session.payload, step, 'forward');
+            session.storage.append(step, session.machine, payload); session.payload = payload; session.position++;
+          }
+        } catch (error) { closed = true; throw error; }
+      },
+      async finish(job = {}) {
+        if (closed || session.position !== count) throw new Error('Restauração incompleta ou encerrada');
+        closed = true; job.signal?.throwIfAborted();
+        await session.seekAsync(cursor, { signal: job.signal, yieldControl: job.yieldControl });
+        return session;
+      },
+    };
   }
   /** Fork already-owned immutable payloads; the VM and checkpoint indexes are detached. */
   forkForSeek(cursor: number): DebugSession {
