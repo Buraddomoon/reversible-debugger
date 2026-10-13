@@ -1,11 +1,13 @@
 import type { Value } from './language';
+import { getList, isList, type ReadonlyHeap } from './heap';
 
 // Bound expensive arithmetic independently of source size and instruction count.
 const MAX_INTEGER_BITS = 100_000;
-export function pythonTruth(value: Value): boolean {
+export function pythonTruth(value: Value, heap: ReadonlyHeap = {}): boolean {
+  if (isList(value)) return getList(value, heap).items.length > 0;
   return value !== null && value !== false && value !== 0 && value !== 0n;
 }
-export const pythonBuiltins: ReadonlySet<string> = new Set(['abs', 'int', 'float', 'bool', 'print']);
+export const pythonBuiltins: ReadonlySet<string> = new Set(['abs', 'int', 'float', 'bool', 'print', 'len']);
 function number(value: Value): number | bigint {
   if (typeof value === 'boolean') return value ? 1n : 0n;
   if (typeof value === 'number' || typeof value === 'bigint') return value;
@@ -38,8 +40,8 @@ function floatDivmod(a: number, b: number): { quotient: number; remainder: numbe
   return { quotient, remainder };
 }
 
-export function pythonUnary(operator: string, value: Value): Value {
-  if (operator === 'not' || operator === 'bool') return operator === 'not' ? !pythonTruth(value) : pythonTruth(value);
+export function pythonUnary(operator: string, value: Value, heap: ReadonlyHeap = {}): Value {
+  if (operator === 'not' || operator === 'bool') return operator === 'not' ? !pythonTruth(value, heap) : pythonTruth(value, heap);
   const numeric = number(value);
   switch (operator) {
     case '+': return numeric;
@@ -54,10 +56,11 @@ export function pythonUnary(operator: string, value: Value): Value {
   }
 }
 
-export function pythonBinary(operator: string, left: Value, right: Value): Value {
+export function pythonBinary(operator: string, left: Value, right: Value, heap: ReadonlyHeap = {}): Value {
   if (operator === '==' || operator === '!=') {
     let equal: boolean;
-    if (left === null || right === null) equal = left === right;
+    if (isList(left) || isList(right)) equal = isList(left) && isList(right) && listEqual(left, right, heap);
+    else if (left === null || right === null) equal = left === right;
     else if (typeof left === 'object' || typeof right === 'object') equal = typeof left === 'object' && typeof right === 'object' && left.kind === right.kind && left.name === right.name;
     else equal = number(left) == number(right); // Python bool/int/float equality, including exact bigint/float comparisons.
     return operator === '==' ? equal : !equal;
@@ -105,4 +108,23 @@ export function pythonBinary(operator: string, left: Value, right: Value): Value
     }
   }
   throw new Error(`Operador Python ainda não suportado: ${operator}`);
+}
+
+function listEqual(left: Value, right: Value, heap: ReadonlyHeap): boolean {
+  const active = new Set<string>(), done = new Set<string>();
+  const work: Array<{ a: Value; b: Value } | { leave: string }> = [{ a: left, b: right }];
+  while (work.length) {
+    const task = work.pop()!;
+    if ('leave' in task) { active.delete(task.leave); done.add(task.leave); continue; }
+    if (!isList(task.a) || !isList(task.b)) { if (pythonBinary('==', task.a, task.b, heap) !== true) return false; continue; }
+    if (task.a.id === task.b.id) continue;
+    const key = `${task.a.id}:${task.b.id}`;
+    if (active.has(key)) throw new Error('Comparação recursiva de listas cíclicas distintas não é suportada');
+    if (done.has(key)) continue;
+    const a = getList(task.a, heap).items, b = getList(task.b, heap).items;
+    if (a.length !== b.length) return false;
+    active.add(key); work.push({ leave: key });
+    for (let i = a.length - 1; i >= 0; i--) work.push({ a: a[i]!, b: b[i]! });
+  }
+  return true;
 }

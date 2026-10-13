@@ -86,7 +86,7 @@ describe('Python 3 no núcleo reversível', () => {
     expect(session.program.source.slice(argument.span.start, argument.span.end)).toBe('21');
   });
   it.each([
-    ['import os', 'import'], ['result = [1, 2]', 'suportado'], ['def f():\nreturn 1', 'indentado'],
+    ['import os', 'import'], ['result = [1, 2].pop()', 'append'], ['def f():\nreturn 1', 'indentado'],
     ['  result = 1', 'Indentação'], ['result = 0 < 1 < 2', 'encadeadas'],
     ['def f(x, x):\n    pass', 'Parâmetro duplicado'], ['result = 012', 'zeros à esquerda'],
     ['def f():\n\treturn 1', 'tabulações'], ['result = (1 + 2', 'não foi fechado'],
@@ -156,6 +156,22 @@ describe('Python 3 no núcleo reversível', () => {
 
 const native = spawnSync('python3', ['--version'], { timeout: 10_000 });
 describe.skipIf(native.status !== 0)('comparação com o Python já instalado (sem instalações)', () => {
+  it('reproduz listas compartilhadas, ciclos, índices e ordem de avaliação', () => {
+    const sources = [
+      'a = [1, 2]\nb = a\nb[-1] = 9\nprint(a, b, len(a), a.append(3))\nprint(a, bool([]), not a)',
+      'a = [1]\na.append(a)\nprint(a)\na[False] = 2\nprint(a, a == a)',
+      'a = [[1], [2]]\nb = a[0]\nb.append(3)\nprint(a, a == [[1, 3], [2]], [True] == [1.0])',
+      'def rhs():\n    a.append(8)\n    return 9\ndef idx():\n    print(a)\n    return 0\na = [1]\na[idx()] = rhs()\nprint(a)',
+      'def f(a):\n    a.append(7)\n    return a\na = []\nb = f(a)\nb.append(8)\nprint(a, b, a or [9], [] and [9])',
+    ];
+    for (const source of sources) {
+      const oracle = spawnSync('python3', ['-c', source], { encoding: 'utf8', timeout: 10_000 });
+      expect(oracle.status, oracle.stderr).toBe(0);
+      const session = finish(python(source));
+      expect(session.state.control.status, source).toBe('halted');
+      expect(session.state.output.join(''), source).toBe(oracle.stdout);
+    }
+  });
   it('produz os mesmos valores e tipos nos recursos suportados', () => {
     const sources = [
       ...['-7 // 3', '7 // -3', '-7 % 3', '7 % -3', '1.0 // 0.1', '1.0 % 0.1', '2 ** 80', '-2 ** 2', '2 ** -2', '2 ** 3 ** 2', 'True + 2', 'True == 1', '9007199254740993 > 9007199254740992.0', '0 or 5', '3 and 4', 'False and (1 / 0)', 'True or (1 / 0)', 'not 0 < 1', '(1 < 2) == True', 'None == 0', 'abs(-5)', 'int(-2.9)', 'float(4)', 'bool(None)', 'int()', 'float()', 'bool()', '0xFF + 0b10 + 0o7', '1e2 + .5'].map(expression => `result = ${expression}`),

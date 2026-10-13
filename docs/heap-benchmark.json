@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-13T17:08:33.488Z",
+  "node": "v24.18.0",
+  "seed": 20261013,
+  "note": "Diagnóstico local sem DOM. 100 saltos comparados com snapshots de cursores selecionados de uma execução independente. Não cria snapshot a cada passo. Bytes de payload com tags, não heap JS.",
+  "reports": [
+    {
+      "listItems": 8,
+      "steps": 7523,
+      "recordMs": 24.31,
+      "seekMedianMs": 0.017,
+      "seekP95Ms": 0.038,
+      "mutationBytes": 93,
+      "checkpointCount": 59,
+      "deltaBytes": 3378824,
+      "checkpointBytes": 28964
+    },
+    {
+      "listItems": 2000,
+      "steps": 9515,
+      "recordMs": 38.39,
+      "seekMedianMs": 0.216,
+      "seekP95Ms": 0.227,
+      "mutationBytes": 93,
+      "checkpointCount": 75,
+      "deltaBytes": 4497620,
+      "checkpointBytes": 2182243
+    }
+  ]
+}

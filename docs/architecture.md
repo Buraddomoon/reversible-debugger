@@ -20,6 +20,8 @@ Python acrescenta `SET` (atribuição no frame atual), `DEFINE` (binding de fun�
 
 ## Estado completo da execução
 
+Listas acrescentam `BUILD_LIST`, `LIST_GET`, `LIST_SET`, `CHECK_LIST` e `LIST_APPEND`. `CHECK_LIST` valida o receptor antes do argumento de append. A escrita por índice compila RHS, alvo e índice nessa ordem.
+
 ```ts
 interface MachineState {
   control: {
@@ -27,6 +29,8 @@ interface MachineState {
     status: 'running' | 'halted' | 'error';
     error: string | null;
     nextFrameId: number;
+    nextObjectId: number;
+    heapItems: number;
   };
   frames: Array<{
     id: number;
@@ -37,15 +41,19 @@ interface MachineState {
   }>;
   operands: Value[];
   output: string[];
+  heap: Record<number, { kind: 'list'; items: Value[] }>;
 }
 
 type Value = number | bigint | boolean | null
-  | { readonly kind: 'function' | 'builtin'; readonly name: string };
+  | { readonly kind: 'function' | 'builtin'; readonly name: string }
+  | { readonly kind: 'list'; readonly id: number };
 ```
 
 O frame 0 guarda as variáveis globais. Cada chamada cria um frame com parâmetros, locais e endereço de retorno. `operandBase` separa seus temporários dos operandos que o chamador já tinha preparado, como o `n` de `n * factorial(n - 1)`.
 
 `nextFrameId` integra o estado reversível: desfazer uma chamada restaura também o próximo identificador. Identificadores e variáveis chamados `constructor` ou `__proto__` não são confundidos com propriedades herdadas de objetos JavaScript.
+
+`nextObjectId` e `heapItems` também são reversíveis. Listas são referências por ID, presentes em bindings, parâmetros, retornos, operandos e itens de outras listas. O heap contém cada objeto uma única vez; ciclos não são objetos JavaScript recursivos. Desfazer uma alocação remove o objeto e restaura o contador. Não há coleta de lixo: objetos sem referências permanecem até desfazer sua criação ou reiniciar.
 
 A interface recebe uma visão tipada como somente leitura; apenas as operações do núcleo devem alterar o estado. Pausa, reprodução, seleção de frame e texto em edição são estado da interface, separado do estado do programa. O cursor é a quantidade de transações atualmente aplicadas.
 
@@ -60,10 +68,14 @@ Uma instrução registra uma lista ordenada de mudanças:
 | Operandos | Índice, valores removidos e adicionados |
 | Frames | Índice, frames removidos e adicionados |
 | Saída | Índice, textos removidos e adicionados |
+| Alocação de heap | ID e conteúdo inicial do objeto criado |
+| Mutação de heap | ID, índice e itens removidos/adicionados |
 
 `applyStep(state, step, 'forward')` aplica a lista em ordem. A direção contrária aplica as inversas em ordem reversa. Distinguir variável ausente de variável com valor é essencial: a inversa de uma declaração precisa remover o binding.
 
-Frames guardados no histórico são cópias dos frames **alterados**, nunca referências mutáveis ao frame ativo. O payload de cada passo é congelado, inclusive seus arrays e objetos. Um retorno guarda o frame removido para permitir restaurar seus locais. Isso copia aquele frame, sem copiar todos os demais frames e variáveis da máquina. Inteiros `bigint` e nomes de função são preservados exatamente; o histórico não usa JSON como formato de cópia. Uma futura serialização precisará codificar `bigint` explicitamente.
+Frames guardados no histórico são cópias dos frames **alterados**, nunca referências mutáveis ao frame ativo. O payload de cada passo é congelado, inclusive seus arrays e objetos. Um retorno guarda o frame removido para permitir restaurar seus locais. Isso copia aquele frame, sem copiar todos os demais frames e variáveis da máquina. Inteiros `bigint`, funções e referências de lista são preservados exatamente; o histórico não usa JSON como formato de cópia. O codec portável codifica `bigint` explicitamente.
+
+Alocação copia somente a lista nova. Escrita/append guardam somente o item afetado; `applyChange` muta o objeto identificado, mantendo todos os aliases. Clonar/restaurar um checkpoint copia o heap completo ocasionalmente, preservando as referências numéricas. [Semântica, testes e medidas](reversible-lists.md).
 
 Se uma instrução falha após remover operandos, a transação desfaz suas mudanças parciais e registra apenas a passagem do controle para erro. Voltar remove o erro e restaura o estado anterior; reaplicar reproduz o mesmo erro registrado.
 
@@ -114,6 +126,8 @@ O alinhamento é uma heurística estrutural, não uma prova de equivalência ent
 
 ## Custo e evolução
 
+Alocações/mutações de listas também projetam pontos de comparação. `compareHeapRoots` constrói uma correspondência bijetiva de IDs a partir dos bindings/operandos correspondentes: compara conteúdo, ciclos e compartilhamento, ignorando diferenças nos números de alocação e objetos inalcançáveis. Pares são percorridos uma vez; divergências propagam pelos pais, inclusive ciclos. Ao haver conflito de aliases, os detalhes mostram o conflito e os pares já associados, sem prometer correspondência adicional para cada item.
+
 O histórico ocupa espaço proporcional à soma dos payloads alterados, mais os metadados constantes de cada passo. Uma atribuição preserva seu binding e os operandos usados; seu tamanho não depende de quantas outras variáveis existem. Chamadas e retornos podem ter custo proporcional ao tamanho do frame afetado. A versão inicial não promete memória constante: o histórico continua crescendo e possui um limite explícito.
 
 `HistoryStore` separa armazenamento e execução. `CheckpointHistory` guarda os deltas congelados e cópias completas **esparsas**, feitas com `structuredClone`. Restaurar também produz uma cópia: continuar uma execução nunca altera o checkpoint salvo. Isso preserva `bigint`, `-0`, infinitos e `NaN`, além de frames, IDs, retornos, temporários, bindings ausentes, controle e saída. `encodedBytes` serve apenas para medir payload; o codec portável é uma implementação separada com validação.
@@ -159,11 +173,13 @@ O DOM da linha do tempo é limitado a oito cartões próximos do cursor e até 9
 
 `ExplanationPanel` apresenta essas evidências. Selecionar um registro num intervalo mantém o estado no cursor final. Animações CSS respeitam movimento reduzido e não comandam a VM. Variáveis têm páginas de 24; atribuições, de 12. `HistoryEventIndex` evita reclassificar o histórico inteiro a cada lote; buscar o próximo evento usa busca binária, mantendo os limites de cartões/marcadores.
 
+Explicações de heap mostram os itens gravados no delta, sem expandir o conteúdo atual de uma referência histórica. Decisões usam o caminho registrado no controle posterior; a lista pode ter mudado desde aquela condição. `HeapInspector` mostra o heap do cursor atual, com oito objetos, 16 itens e 12 referências por página, incluindo navegação entre listas. Linhas de código acima de 4.000 caracteres mantêm todo o texto em um único nó, evitando milhares de spans de sintaxe.
+
 As [medidas e decisões de escala](visual-explanations.md) mantêm a execução em lotes nos limites atuais. O marco seguinte implementou o codec e as quotas de arquivos, usando um Worker para importações após medir seus custos. Retenção de sessões maiores em disco/heap continua exigindo uma política própria.
 
 ## Históricos portáveis
 
-`portable-history.ts` define envelope v1, codec de valores, identidade SHA-256 de programa/arquivo e quotas. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
+`portable-history.ts` define envelope v2 / `rewind-vm/2`, codec de valores, identidade SHA-256 de programa/arquivo e quotas. Referências de lista usam tags por ID; alocações/mutações e contadores são validados. Arquivos v1 recebem diagnóstico explícito para abrir na branch anterior; não são migrados. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
 
 `DebugSession.replayOnly` impede gravar além de uma importação parcial. `restart()` cria uma execução gravável nova. `forkRecording()` compartilha programa e payloads congelados, copia os índices de armazenamento e mantém VM/cursor próprios, sem reprocessar a execução inteira. A comparação usa esse fork para consumir arquivos sem executar código de novo.
 

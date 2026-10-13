@@ -29,6 +29,10 @@ Os cartões superiores mostram os resultados ao terminar ou parar a gravação. 
 
 ## Como o alinhamento funciona
 
+Listas acrescentam pontos de alocação/mutação e um inspetor de heap em cada lado. A comparação associa objetos a partir das variáveis e operandos correspondentes, preservando uma correspondência bijetiva entre referências. IDs numéricos distintos não bastam para marcar divergência; itens, comprimentos, ciclos e compartilhamento são comparados. Objetos sem referências nos escopos/operandos correspondentes não influenciam essa comparação.
+
+Nos exemplos **Python · Cópia que altera o original** / **Python · Cópia independente**, os resultados são 99/2. A primeira diferença é a criação extra da cópia em B; a próxima evidencia os aliases. Se o compartilhamento impede uma associação, a tabela indica o conflito e os pares já associados, sem inventar correspondência de todos os itens. [Contrato e benchmark do heap](reversible-lists.md).
+
 O compilador produz âncoras estruturais por escopo, bloco, tipo/alvo e ocorrência do comando. Comentários e linhas adicionais não mudam essas âncoras. O cabeçalho do loop permanece correspondente quando `i < n` vira `i <= n`.
 
 Cada evento acrescenta sua fase, ocorrência dinâmica e contexto de chamada. O contexto considera o pai e o local/ocorrência da chamada, distinguindo recursão e chamadas repetidas. Ele não depende dos IDs numéricos da VM, que podem mudar depois de uma chamada extra em uma versão.

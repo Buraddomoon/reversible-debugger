@@ -11,7 +11,7 @@ export interface RunIdentity {
   readonly runtime: RuntimeSelection;
   readonly initial: DeepReadonly<MachineState>;
 }
-export type ComparisonPhase = 'initial' | 'write' | 'decision' | 'call' | 'return' | 'output' | 'error' | 'end' | 'limit' | 'pause';
+export type ComparisonPhase = 'initial' | 'write' | 'mutation' | 'decision' | 'call' | 'return' | 'output' | 'error' | 'end' | 'limit' | 'pause';
 export interface ComparisonPoint {
   readonly key: string;
   readonly cursor: number;
@@ -49,7 +49,7 @@ export type DifferenceValue = { readonly present: false } | {
   readonly value: DeepReadonly<Value> | string | readonly string[] | readonly DeepReadonly<Value>[];
 };
 export interface StateDifference {
-  readonly category: 'variables' | 'stack' | 'operands' | 'output' | 'control' | 'decision' | 'flow';
+  readonly category: 'variables' | 'heap' | 'stack' | 'operands' | 'output' | 'control' | 'decision' | 'flow';
   readonly name: string;
   readonly left: DifferenceValue;
   readonly right: DifferenceValue;

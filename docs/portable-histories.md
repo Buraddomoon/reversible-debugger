@@ -18,9 +18,9 @@ Históricos parciais param no último passo disponível, mesmo que a VM esteja `
 
 ## Formato e identidade
 
-O envelope contém `format: "rewind-trace"`, `version: 1`, `checksum` SHA-256 e `payload`. O payload contém:
+O envelope contém `format: "rewind-trace"`, `version: 2`, `checksum` SHA-256 e `payload`. O payload contém:
 
-- `vm: "rewind-vm/1"`, fonte e runtime explícito;
+- `vm: "rewind-vm/2"`, fonte e runtime explícito;
 - nome e arquivo da fonte, até 160/240 caracteres respectivamente;
 - SHA-256 do programa compilado, incluindo instruções, funções, spans e metadados de depuração;
 - limites de passos/frames e o estado inicial padrão;
@@ -30,7 +30,9 @@ O checksum usa a representação do payload produzida por `JSON.stringify`. Espa
 
 O codec preserva `bigint` em uma tag decimal canônica (`{"$bigint":"..."}`) e `-0`, `NaN`, `Infinity`, `-Infinity` em tags `{"$number":"..."}`. Números finitos, booleanos e `None` usam valores JSON normais; referências de funções guardam tipo e nome. Dicionários decodificados usam protótipo nulo; nomes válidos como `__proto__` e `constructor` continuam bindings próprios, sem alterar protótipos. Tags ambíguas, valores fora dos limites e campos desconhecidos são rejeitados.
 
-Versões futuras precisam atualizar o identificador da VM quando alterar semântica, instruções ou formato dos deltas. Nesta versão não há migração automática de arquivos incompatíveis.
+Referências de lista são `{ "kind": "list", "id": 1 }`. O heap é reconstruído pelos deltas de alocação e mutação; itens contêm valores/referências, nunca cópias recursivas dos objetos. Controle inclui `nextObjectId` e `heapItems`, preservando aliases, ciclos e IDs ao retroceder.
+
+**Compatibilidade:** v1 / `rewind-vm/1` pertence ao marco anterior, sem heap. A importação v2 recusa esses arquivos explicitamente e orienta abri-los na branch `feat/portable-histories`; arquivo, scripts e sessão atual são preservados. Não há migração automática. Um arquivo v1 real está nos fixtures de teste. Versões futuras também precisam atualizar o identificador da VM ao alterar semântica, instruções ou deltas.
 
 ## Validação e reversibilidade
 
@@ -42,6 +44,8 @@ Checkpoints não são exportados. São reconstruídos esparsamente ao importar, 
 
 ## Quotas e processamento
 
+A validação do heap confere IDs sequenciais, objetos existentes, itens anteriores exatos, resultado de leitura por índice, alvos/valores de mutação e contadores de objetos/itens. Referências pendentes, reuse de IDs e mudanças de heap fora dos opcodes correspondentes são rejeitados, mesmo com checksum recalculado. Erros só podem alterar o controle, mantendo os contadores e dados anteriores.
+
 O arquivo tem teto de **32 MiB em UTF-8**. A página aceita até **8 históricos importados**, totalizando no máximo **64 MiB de arquivos**. Ultrapassar uma quota recusa a operação; não trunca deltas, remove arquivos abertos ou descarta silenciosamente o início. O retrocesso completo permanece disponível. Fonte, passos e frames continuam nos limites anteriores: 1 milhão de caracteres, 20 mil passos e 256 frames.
 
 Esses orçamentos medem arquivos, não heap JavaScript. O limite do histórico vivo continua sendo quantidade de passos; não há ainda retenção em disco/IndexedDB, compressão ou orçamento de heap. Ampliar sessões exige medir essas estruturas e definir uma fronteira explícita de retenção, com checkpoint e primeiro cursor disponível.
@@ -51,6 +55,8 @@ A interface usa um **Web Worker de módulo local** para parsing, checksum, ident
 Exportação codifica transações em lotes e junta o JSON já codificado; não percorre o histórico inteiro duas vezes para serializar. SHA-256 usa Web Crypto. O Worker e os arquivos são locais, sem backend ou serviço externo. Rode a demo pelo servidor local ou em HTTPS, onde essas APIs estão disponíveis.
 
 ## Medições e verificações
+
+Os números de importação/exportação abaixo foram coletados no marco **v1**, antes do heap; permanecem como referência datada. O smoke test atual verifica também v2, listas/ciclos, importação grande e rejeição v1. Para medidas atuais de mutações e checkpoints, consulte [Listas e heap reversível](reversible-lists.md).
 
 ```bash
 npm run check

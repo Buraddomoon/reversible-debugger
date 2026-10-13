@@ -6,6 +6,9 @@ import runtimeError from '../examples/runtime-error.rw?raw';
 import pythonBug from '../examples/python-sum-bug.py?raw';
 import pythonFixed from '../examples/python-sum-fixed.py?raw';
 import pythonFactorial from '../examples/python-factorial.py?raw';
+import listBug from '../examples/python-list-alias-bug.py?raw';
+import listFixed from '../examples/python-list-alias-fixed.py?raw';
+import listCycle from '../examples/python-list-cycle.py?raw';
 import type { LanguageId } from './core/runtime';
 
 export interface Example {
@@ -18,6 +21,12 @@ export interface Example {
   description: string;
 }
 export const examples: Example[] = [
+  { id: 'python-list-alias-bug', title: 'Python · Cópia que altera o original', tag: 'Referências compartilhadas', source: listBug, language: 'python', expected: 2n,
+    description: 'copy = original compartilha a mesma lista. A função altera ambas: o resultado vira 99 em vez de 2. Observe o ID e desfaça as mutações.' },
+  { id: 'python-list-alias-fixed', title: 'Python · Cópia independente', tag: 'Heap reversível', source: listFixed, language: 'python', expected: 2n,
+    description: 'Uma lista nova separa copy de original. A função modifica a cópia e o resultado original continua sendo 2.' },
+  { id: 'python-list-cycle', title: 'Python · Uma lista aponta para si', tag: 'Ciclos e identidade', source: listCycle, language: 'python', expected: 9n,
+    description: 'items, alias e o item [2] apontam para #L1. Volte pelo append e pela alteração para restaurar o ciclo e os valores sem duplicar objetos.' },
   { id: 'sum-bug', title: 'A soma que perdeu um número', tag: 'Bug de limite', source: bug, expected: 15,
     description: 'A soma de 1 a 5 deveria ser 15. Acompanhe o loop e descubra por que o resultado é 10.' },
   { id: 'sum-fixed', title: 'Soma corrigida', tag: 'Limite inclusivo', source: fixed, expected: 15,

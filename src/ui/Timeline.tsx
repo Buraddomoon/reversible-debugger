@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import type { DeepReadonly, Step } from '../core/machine';
 import { firstEventAfter, HistoryEventIndex, type EventKind, type HistoryEvent } from '../core/history-events';
 
-const labels: Record<EventKind, string> = { call: 'Chamada', return: 'Retorno', decision: 'Decisão', output: 'Saída', error: 'Erro', end: 'Fim' };
-const symbols: Record<EventKind, string> = { call: '↳', return: '↰', decision: '◇', output: '▤', error: '!', end: '■' };
-const priority: Record<EventKind, number> = { decision: 0, output: 1, call: 2, return: 3, end: 4, error: 5 };
+const labels: Record<EventKind, string> = { call: 'Chamada', return: 'Retorno', mutation: 'Lista', decision: 'Decisão', output: 'Saída', error: 'Erro', end: 'Fim' };
+const symbols: Record<EventKind, string> = { call: '↳', return: '↰', mutation: '▦', decision: '◇', output: '▤', error: '!', end: '■' };
+const priority: Record<EventKind, number> = { decision: 0, mutation: 1, output: 1, call: 2, return: 3, end: 4, error: 5 };
 
 export function Timeline({ history, cursor, disabled, onSeek }: {
   history: readonly DeepReadonly<Step>[];

@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import type { ComparisonPhase, ComparisonPoint, ComparisonRunView, DifferenceValue, StateDifference } from '../core/comparison-types';
-import { formatValue, type LanguageId } from '../core/runtime';
+import { formatValue, previewValue, type LanguageId } from '../core/runtime';
+import { isList } from '../core/heap';
+import { HeapInspector } from './HeapInspector';
 import type { Value } from '../core/language';
 import { highlightSyntax } from './SourceView';
 
-export const phaseLabels: Record<ComparisonPhase, string> = { initial: 'Início', write: 'Atribuição', decision: 'Decisão', call: 'Chamada', return: 'Retorno', output: 'Saída', error: 'Erro', end: 'Fim', limit: 'Limite da gravação', pause: 'Fim do histórico parcial' };
+export const phaseLabels: Record<ComparisonPhase, string> = { initial: 'Início', write: 'Atribuição', mutation: 'Lista alterada', decision: 'Decisão', call: 'Chamada', return: 'Retorno', output: 'Saída', error: 'Erro', end: 'Fim', limit: 'Limite da gravação', pause: 'Fim do histórico parcial' };
 const statusLabels: Record<string, string> = { running: 'Em andamento', halted: 'Concluída', error: 'Erro' };
 export function differenceText(binding: DifferenceValue, language: LanguageId): string {
   if (!binding.present) return '—';
@@ -14,7 +16,7 @@ export function differenceText(binding: DifferenceValue, language: LanguageId): 
   return formatValue(value as Value, language);
 }
 function valueType(value: Value, language: LanguageId): string {
-  return value === null ? 'None' : typeof value === 'bigint' ? 'int' : typeof value === 'number' ? language === 'python' ? 'float' : 'número' : typeof value === 'boolean' ? 'booleano' : 'função';
+  return isList(value) ? 'list' : value === null ? 'None' : typeof value === 'bigint' ? 'int' : typeof value === 'number' ? language === 'python' ? 'float' : 'número' : typeof value === 'boolean' ? 'booleano' : 'função';
 }
 function CodeExcerpt({ source, language, line }: { source: string; language: LanguageId; line: number | null }) {
   const lines = useMemo(() => source.split('\n'), [source]);
@@ -28,7 +30,7 @@ function LaneVariables({ run, frameId, changed }: { run: ComparisonRunView; fram
   const frame = run.state.frames.find(item => item.id === frameId)!;
   const entries = Object.entries(frame.locals);
   const pages = Math.max(1, Math.ceil(entries.length / 20));
-  const format = (value: Value) => formatValue(value, run.program.runtime.language);
+  const format = (value: Value) => previewValue(value, run.program.runtime.language, run.state.heap);
   return <>
     <div className="comparison-variable-table"><div className="comparison-variable-heading"><span>Nome</span><span>Valor</span><span>Tipo</span></div>
       {entries.slice(page * 20, (page + 1) * 20).map(([name, value]) => <div key={name} className={`comparison-variable ${changed.has(`${run.frameLabel(frame.id)} · ${name}`) ? 'different' : ''}`}><code>{name}</code><strong>{format(value)}</strong><small>{valueType(value, run.program.runtime.language)}</small></div>)}
@@ -51,6 +53,7 @@ export function ComparisonLane({ side, run, point, held, differences }: { side: 
     <CodeExcerpt source={run.identity.source} language={run.program.runtime.language} line={point.line} />
     <div className="comparison-scope"><h4>Variáveis</h4><label><span className="sr-only">Escopo da execução {side}</span><select value={frame.id} onChange={event => setSelectedFrame(Number(event.target.value))}>{[...run.state.frames].reverse().map(item => <option value={item.id} key={item.id}>{item.name} · #{item.id}</option>)}</select></label></div>
     <LaneVariables key={`${run.cursor}:${frame.id}`} run={run} frameId={frame.id} changed={changed} />
+    {run.program.runtime.language === 'python' && Object.keys(run.state.heap).length > 0 && <HeapInspector state={run.state} language={run.program.runtime.language} />}
     <details className="comparison-stack" open><summary>Pilha de chamadas <span>{run.state.frames.length}</span></summary><ol>{[...run.state.frames].reverse().map(item => <li key={item.id}><code>{item.name}{item.id ? '()' : ''}</code><span>#{item.id}</span></li>)}</ol></details>
     <details className="comparison-stack"><summary>Pilha de valores <span>{run.state.operands.length}</span></summary><p className="comparison-operands">{run.state.operands.map(value => formatValue(value, run.program.runtime.language)).join(' · ') || 'Vazia'}</p></details>
     <div className="comparison-current-result"><span>Resultado atual <code>result</code></span><strong data-testid={`comparison-result-${side.toLowerCase()}`}>{result}</strong><small>{statusLabels[run.state.control.status]}</small></div>

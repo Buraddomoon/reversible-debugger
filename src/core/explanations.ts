@@ -1,7 +1,6 @@
 import type { Program } from './compiler';
 import type { Value } from './language';
 import type { Change, DeepReadonly, Frame, Step } from './machine';
-import { pythonTruth } from './python-values';
 
 export type ExplanationDirection = 'forward' | 'backward';
 export type RecordedBinding = DeepReadonly<Extract<Change, { kind: 'binding' }>['before']>;
@@ -14,6 +13,8 @@ export type StepExplanation =
   | { kind: 'frame'; action: 'enter' | 'leave' | 'restore' | 'remove'; frame: DeepReadonly<Frame>; caller: string; result: RecordedBinding }
   | { kind: 'output'; text: string; action: 'append' | 'remove' }
   | { kind: 'error'; message: string; action: 'raise' | 'clear' }
+  | { kind: 'heap'; id: number; index: number; before: readonly Value[]; after: readonly Value[]; action: 'create' | 'delete' | 'append' | 'remove' | 'replace' }
+  | { kind: 'item-read'; id: number; index: Value; value: Value }
   | { kind: 'flow'; description: string; sourceLine: number | null; destinationLine: number | null };
 
 function scopeAt(program: Program, pc: number): string {
@@ -75,6 +76,14 @@ export function explainStep(program: Program, history: readonly DeepReadonly<Ste
   const control = step.changes.find(change => change.kind === 'control')!;
   const forward = direction === 'forward';
   if (control.after.status === 'error') return { kind: 'error', message: control.after.error!, action: forward ? 'raise' : 'clear' };
+  const allocation = step.changes.find(change => change.kind === 'heap-allocation');
+  if (allocation) return { kind: 'heap', id: allocation.id, index: 0, before: forward ? [] : allocation.object.items, after: forward ? allocation.object.items : [], action: forward ? 'create' : 'delete' };
+  const mutation = step.changes.find(change => change.kind === 'heap-splice');
+  if (mutation) return { kind: 'heap', id: mutation.id, index: mutation.index, before: forward ? mutation.removed : mutation.added, after: forward ? mutation.added : mutation.removed, action: step.op === 'LIST_APPEND' ? forward ? 'append' : 'remove' : 'replace' };
+  if (instruction.op === 'LIST_GET') {
+    const changes = operands(step), target = changes[1]!.removed[0]!;
+    if (target !== null && typeof target === 'object' && target.kind === 'list') return { kind: 'item-read', id: target.id, index: changes[0]!.removed[0]!, value: changes[2]!.added[0]! };
+  }
   const math = operation(program, step);
   if (math) return { kind: 'operation', operation: math };
   const binding = step.changes.find(change => change.kind === 'binding');
@@ -87,7 +96,7 @@ export function explainStep(program: Program, history: readonly DeepReadonly<Ste
     const pop = operands(step).find(change => change.removed.length)!;
     const value = pop.removed[0]!;
     const producer = operandProducer(history, index, pop.index);
-    return { kind: 'decision', value, satisfied: program.runtime.language === 'python' ? pythonTruth(value) : value === true, operation: producer === null ? null : operation(program, history[producer]!), sourceLine, destinationLine };
+    return { kind: 'decision', value, satisfied: control.after.pc !== instruction.target, operation: producer === null ? null : operation(program, history[producer]!), sourceLine, destinationLine };
   }
   const frameChange = step.changes.find(change => change.kind === 'frames');
   if (frameChange) {
@@ -127,6 +136,7 @@ export function summarizeNavigation(program: Program, history: readonly DeepRead
     if (step.op === 'RETURN') return 90;
     if (step.op === 'JUMP_IF_FALSE') return 80;
     if (step.changes.some(change => change.kind === 'frames')) return 70;
+    if (step.changes.some(change => change.kind === 'heap-splice' || change.kind === 'heap-allocation')) return 75;
     if (step.changes.some(change => change.kind === 'output')) return 65;
     if (step.changes.some(change => change.kind === 'binding')) return 60;
     if (step.op === 'BINARY' || step.op === 'UNARY') return 50;

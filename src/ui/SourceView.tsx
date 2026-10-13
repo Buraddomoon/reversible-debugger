@@ -3,6 +3,9 @@ import type { Span } from '../core/language';
 import type { LanguageId } from '../core/runtime';
 
 export function highlightSyntax(text: string, language: LanguageId): ReactNode[] {
+  // Preserve long literal lines as one text node instead of mounting thousands
+  // of syntax spans. All characters remain visible/copyable in the scroller.
+  if (text.length > 4000) return [text];
   const pattern = language === 'python' ? /(#.*|\b(?:def|while|if|elif|else|return|pass|not|and|or|True|False|None)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g : /(\/\/.*|\b(?:fn|let|while|if|else|return|true|false)\b|\b\d+(?:\.\d+)?\b|[+*/%<>=!\-]+|\b[A-Za-z_]\w*(?=\())/g;
   return text.split(pattern).filter(Boolean).map((piece, index) => {
     const kind = piece.startsWith(language === 'python' ? '#' : '//') ? 'comment' : /^(fn|def|let|while|if|elif|else|return|pass|not|and|or|true|false|True|False|None)$/.test(piece) ? 'keyword' : /^\d/.test(piece) ? 'number' : /^[+*/%<>=!\-]+$/.test(piece) ? 'operator' : /^[A-Za-z_]/.test(piece) ? 'function' : '';

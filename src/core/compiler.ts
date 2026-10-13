@@ -9,6 +9,8 @@ export type Operation =
   | { op: 'BINARY' | 'UNARY'; operator: string }
   | { op: 'JUMP' | 'JUMP_IF_FALSE'; target: number }
   | { op: 'CALL'; name: string; argc: number; stackCallee?: boolean }
+  | { op: 'BUILD_LIST'; count: number }
+  | { op: 'LIST_GET' | 'LIST_SET' | 'LIST_APPEND' | 'CHECK_LIST' }
   | { op: 'RETURN' | 'POP' | 'DUP' | 'HALT' };
 export type Instruction = Operation & { span: Span };
 export interface DebugLocation {
@@ -80,6 +82,12 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
             pending.push(() => patch(branch, instructions.length), node.right);
           }, node.left);
           break;
+        case 'list':
+          pending.push(() => emit({ op: 'BUILD_LIST', count: node.items.length }, node.span));
+          for (let i = node.items.length - 1; i >= 0; i--) pending.push(node.items[i]!);
+          break;
+        case 'index': pending.push(() => emit({ op: 'LIST_GET' }, node.span), node.index, node.target); break;
+        case 'append': pending.push(() => emit({ op: 'LIST_APPEND' }, node.span), node.value, () => emit({ op: 'CHECK_LIST' }, node.target.span), node.target); break;
         case 'call': {
           const fn = functions[node.name];
           if (runtime.language === 'rewind') {
@@ -102,6 +110,9 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
       if (node.kind === 'call') { names.add(`call:${node.name}`); for (const arg of node.args) pending.push(arg); }
       if (node.kind === 'unary') pending.push(node.operand);
       if (node.kind === 'binary' || node.kind === 'logical') pending.push(node.left, node.right);
+      if (node.kind === 'list') for (const item of node.items) pending.push(item);
+      if (node.kind === 'index') pending.push(node.target, node.index);
+      if (node.kind === 'append') pending.push(node.target, node.value);
     }
     return [...names].sort().map(encodeURIComponent).join(',');
   };
@@ -111,6 +122,7 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
       case 'if': case 'while': return `${node.kind}:${conditionNames(node.condition)}`;
       case 'return': return 'return';
       case 'expression': return `expression:${node.value.kind === 'call' ? encodeURIComponent(node.value.name) : node.value.kind}`;
+      case 'index-set': return `index-set:${conditionNames(node.target)}`;
     }
   };
   const statements = (nodes: Statement[], inFunction: boolean, block: string) => {
@@ -127,6 +139,9 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
           expression(node.value);
           emit({ op: node.kind === 'let' ? 'DECLARE' : node.kind === 'set' ? 'SET' : 'STORE', name: node.name }, node.span); break;
         case 'define': emit({ op: 'DEFINE', name: node.name }, node.span); break;
+        case 'index-set':
+          // Python evaluates RHS before the assignment's receiver/index.
+          expression(node.value); expression(node.target); expression(node.index); emit({ op: 'LIST_SET' }, node.span); break;
         case 'expression': expression(node.value); emit({ op: 'POP' }, node.span); break;
         case 'return':
           if (!inFunction) throw new LanguageError('return só pode aparecer dentro de uma função', node.span);
@@ -189,5 +204,10 @@ export function describeInstruction(instruction: Instruction, language: Language
     case 'POP': return 'Descartar resultado da expressão';
     case 'DUP': return 'Preservar valor para a decisão';
     case 'HALT': return 'Concluir o programa';
+    case 'BUILD_LIST': return `Criar lista com ${instruction.count} itens`;
+    case 'LIST_GET': return 'Ler item da lista';
+    case 'LIST_SET': return 'Alterar item da lista';
+    case 'LIST_APPEND': return 'Acrescentar item à lista';
+    case 'CHECK_LIST': return 'Verificar destino de append';
   }
 }

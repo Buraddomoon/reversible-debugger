@@ -1,13 +1,16 @@
 import { describeInstruction, type Instruction, type Program } from './compiler';
 import type { Span, Value } from './language';
 import { pythonBinary, pythonBuiltins, pythonTruth, pythonUnary } from './python-values';
-import { formatValue } from './runtime';
+import { formatValue, formatPythonOutput, MAX_PRINT_CHARS } from './runtime';
+import { getList, isList, listIndex, MAX_HEAP_ITEMS, MAX_HEAP_OBJECTS, type Heap, type ListObject } from './heap';
 
 export interface Control {
   pc: number;
   status: 'running' | 'halted' | 'error';
   error: string | null;
   nextFrameId: number;
+  nextObjectId: number;
+  heapItems: number;
 }
 export interface Frame {
   id: number;
@@ -21,6 +24,7 @@ export interface MachineState {
   frames: Frame[];
   operands: Value[];
   output: string[];
+  heap: Heap;
 }
 export type DeepReadonly<T> = T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> } : T;
 type Binding = { exists: false } | { exists: true; value: Value };
@@ -29,7 +33,9 @@ export type Change =
   | { kind: 'binding'; frameId: number; name: string; before: Binding; after: Binding }
   | { kind: 'operands'; index: number; removed: Value[]; added: Value[] }
   | { kind: 'output'; index: number; removed: string[]; added: string[] }
-  | { kind: 'frames'; index: number; removed: Frame[]; added: Frame[] };
+  | { kind: 'frames'; index: number; removed: Frame[]; added: Frame[] }
+  | { kind: 'heap-allocation'; id: number; object: ListObject }
+  | { kind: 'heap-splice'; id: number; index: number; removed: Value[]; added: Value[] };
 export interface Step {
   index: number;
   op: Instruction['op'];
@@ -40,10 +46,11 @@ export interface Step {
 
 export function initialState(): MachineState {
   return {
-    control: { pc: 0, status: 'running', error: null, nextFrameId: 1 },
+    control: { pc: 0, status: 'running', error: null, nextFrameId: 1, nextObjectId: 1, heapItems: 0 },
     frames: [{ id: 0, name: 'programa', locals: Object.create(null), returnPc: null, operandBase: 0 }],
     operands: [],
     output: [],
+    heap: Object.create(null),
   };
 }
 
@@ -68,6 +75,13 @@ export function applyChange(state: MachineState, change: Change, direction: 'for
       break;
     case 'frames':
       state.frames.splice(change.index, (forward ? change.removed : change.added).length, ...structuredClone(forward ? change.added : change.removed));
+      break;
+    case 'heap-allocation':
+      if (forward) state.heap[change.id] = structuredClone(change.object);
+      else delete state.heap[change.id];
+      break;
+    case 'heap-splice':
+      state.heap[change.id]!.items.splice(change.index, (forward ? change.removed : change.added).length, ...(forward ? change.added : change.removed));
       break;
   }
 }
@@ -158,13 +172,13 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
       }
       case 'BINARY': {
         const right = pop(), left = pop();
-        const result = python ? pythonBinary(instruction.operator, left, right) : binary(instruction.operator, left, right);
+        const result = python ? pythonBinary(instruction.operator, left, right, state.heap) : binary(instruction.operator, left, right);
         push(result);
         description = `${format(left)} ${instruction.operator} ${format(right)} → ${format(result)}`; break;
       }
       case 'UNARY': {
         const value = pop();
-        if (python) push(pythonUnary(instruction.operator, value));
+        if (python) push(pythonUnary(instruction.operator, value, state.heap));
         else if (instruction.operator === '!') {
           if (typeof value !== 'boolean') throw new Error('O operador ! exige um booleano');
           push(!value);
@@ -178,7 +192,7 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
       case 'JUMP': after.pc = instruction.target; break;
       case 'JUMP_IF_FALSE': {
         const value = pop();
-        const condition = python ? pythonTruth(value) : value;
+        const condition = python ? pythonTruth(value, state.heap) : value;
         if (typeof condition !== 'boolean') throw new Error('A condição precisa ser booleana');
         if (!condition) after.pc = instruction.target;
         description = condition ? 'Condição verdadeira: entrar no bloco' : 'Condição falsa: sair do bloco'; break;
@@ -188,7 +202,7 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
         let builtin = false;
         if (instruction.stackCallee) {
           const callee = state.operands[state.operands.length - instruction.argc - 1];
-          if (callee === null || typeof callee !== 'object') throw new Error(`${name} não é uma função chamável`);
+          if (callee === null || typeof callee !== 'object' || isList(callee)) throw new Error(`${name} não é uma função chamável`);
           name = callee.name; builtin = callee.kind === 'builtin';
         }
         if (builtin) {
@@ -196,12 +210,16 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
           for (let i = 0; i < instruction.argc; i++) values.unshift(pop());
           pop(); // The callee was evaluated before the arguments, like Python.
           if (name === 'print') {
-            const text = `${values.map(format).join(' ')}\n`;
+            const text = `${values.map(value => formatPythonOutput(value, state.heap)).join(' ')}\n`;
+            if (text.length > MAX_PRINT_CHARS) throw new Error('Saída de print excede 100.000 caracteres');
             commit({ kind: 'output', index: state.output.length, removed: [], added: [text] });
             push(null); description = `Saída: ${text.trimEnd()}`;
+          } else if (name === 'len') {
+            if (values.length !== 1) throw new Error('len espera um argumento');
+            push(BigInt(getList(values[0]!, state.heap).items.length)); description = `len(${format(values[0]!)})`;
           } else {
             if (values.length > 1 || (values.length === 0 && name === 'abs')) throw new Error(`${name} espera ${name === 'abs' ? 'um argumento' : 'até um argumento'} nesta versão`);
-            const result = pythonUnary(name, values.length ? values[0]! : 0n);
+            const result = pythonUnary(name, values.length ? values[0]! : 0n, state.heap);
             push(result); description = `${name}(${values.map(format).join(', ')}) → ${format(result)}`;
           }
           break;
@@ -230,6 +248,34 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
         commit({ kind: 'frames', index: state.frames.length - 1, removed: [structuredClone(frame)], added: [] });
         push(result); after.pc = frame.returnPc;
         description = `${frame.name} retorna ${format(result)}`; break;
+      }
+      case 'BUILD_LIST': {
+        if (after.nextObjectId > MAX_HEAP_OBJECTS) throw new Error('Limite de 4.096 listas alocadas atingido');
+        if (after.heapItems + instruction.count > MAX_HEAP_ITEMS) throw new Error('Limite de 20.000 itens no heap atingido');
+        const items: Value[] = []; for (let i = 0; i < instruction.count; i++) items.push(pop()); items.reverse();
+        const id = after.nextObjectId++;
+        commit({ kind: 'heap-allocation', id, object: { kind: 'list', items } });
+        after.heapItems += items.length; push({ kind: 'list', id }); description = `Criar #L${id} com ${items.length} itens`; break;
+      }
+      case 'CHECK_LIST': getList(state.operands.at(-1)!, state.heap); break;
+      case 'LIST_GET': {
+        const index = pop(), target = pop(), list = getList(target, state.heap);
+        const position = listIndex(index, list.items.length); push(list.items[position]!);
+        description = `Ler ${format(target)}[${position}]`; break;
+      }
+      case 'LIST_SET': {
+        const index = pop(), target = pop(), value = pop(), list = getList(target, state.heap);
+        const position = listIndex(index, list.items.length);
+        if (!isList(target)) throw new Error('Lista inválida');
+        commit({ kind: 'heap-splice', id: target.id, index: position, removed: [list.items[position]!], added: [value] });
+        description = `${format(target)}[${position}] = ${format(value)}`; break;
+      }
+      case 'LIST_APPEND': {
+        const value = pop(), target = pop(), list = getList(target, state.heap);
+        if (after.heapItems >= MAX_HEAP_ITEMS) throw new Error('Limite de 20.000 itens no heap atingido');
+        if (!isList(target)) throw new Error('Lista inválida');
+        commit({ kind: 'heap-splice', id: target.id, index: list.items.length, removed: [], added: [value] });
+        after.heapItems++; push(null); description = `append em ${format(target)}: ${format(value)}`; break;
       }
       case 'HALT': after.status = 'halted'; description = 'Execução concluída'; break;
     }

@@ -17,6 +17,9 @@ O seletor **Python / Python 3** identifica essa implementação das regras comun
 - `abs` com um argumento; `int`, `float` e `bool` com zero ou um argumento. Os builtins podem ser referenciados por aliases e respeitam variáveis/definições que os sombreiam.
 - `print` com argumentos posicionais dos tipos suportados, separado por espaços e terminando com uma quebra de linha. A saída fica no estado do programa e é reversível.
 - Comentários `#`, arquivos CRLF e expressões/chamadas que continuem em outras linhas dentro de parênteses.
+- Listas `[]`/`[1, 2]`, aninhamento, vírgula final e continuação entre colchetes.
+- Leitura/escrita por índice, inclusive negativo e `bool`; `a.append(valor)` com um argumento e retorno `None`; `len(lista)`.
+- Referências compartilhadas em variáveis, parâmetros e retornos; igualdade por conteúdo (`==`/`!=`), verdade pelo comprimento e impressão de listas com ciclos.
 
 ```python
 def sum_to(n):
@@ -31,7 +34,7 @@ result = sum_to(5)
 print(result)
 ```
 
-Importe um `.py`, cole o código em **Adicionar script**, ou escolha um dos três exemplos Python. Ao aplicar, o debugger inicia uma sessão nova. **Retroceder tudo** restaura inclusive as definições de funções e a saída inicial vazia; avançar depois reaplica os registros existentes.
+Importe um `.py`, cole o código em **Adicionar script**, ou escolha um exemplo Python. Ao aplicar, o debugger inicia uma sessão nova. **Retroceder tudo** restaura inclusive as definições de funções, o heap e a saída inicial vazia; avançar depois reaplica os registros existentes.
 
 **Adicionar script** abre o modal de nome, linguagem e versão. Depois de criar, o editor começa vazio. Scripts criados e seu código em edição ficam guardados no navegador; recarregar a página ou usar **Reiniciar programa** não os remove. **Excluir script** pede confirmação antes de remover o registro selecionado.
 
@@ -45,11 +48,13 @@ Em chamadas, o nome da função é avaliado antes dos argumentos. Essa referênc
 
 Inteiros usam `bigint`; floats usam números de dupla precisão. `//` arredonda em direção ao menos infinito e `%` acompanha o sinal do divisor, inclusive com operandos negativos. Booleanos participam da aritmética como inteiros. Essas regras e a precedência/curto-circuito foram verificadas contra as [expressões de Python](https://docs.python.org/3/reference/expressions.html) e com casos executados no Python existente nesta máquina.
 
-A interface mostra `int`, `float`, `None`, booleanos e funções separadamente. Os valores de funções são apresentados descritivamente, sem um endereço de memória do CPython.
+A interface mostra `int`, `float`, `None`, booleanos, funções e listas separadamente. Os valores de funções são apresentados descritivamente, sem um endereço de memória do CPython.
+
+Uma atribuição `b = a` compartilha a lista, enquanto `[a[0], a[1]]` cria outra. Índices são avaliados com regras de Python: float é rejeitado, índices negativos contam a partir do fim e a escrita avalia o lado direito antes do alvo/índice. `append` verifica o receptor antes de avaliar o argumento. Ao desfazer uma mutação, todas as referências observam o conteúdo restaurado. [Contrato e exemplos](reversible-lists.md).
 
 ## Recursos ainda não suportados
 
-Strings, listas, tuplas, dicionários, sets, imports, bibliotecas, atributos, índices, classes, lambdas, closures, funções aninhadas/condicionais, `for`, `range`, `break`, `continue`, `global`, `nonlocal`, exceções capturáveis, async, generators, comprehensions, parâmetros default/keyword/variádicos e comparações encadeadas (`0 < x < 10`). Também não há separadores `_` em literais, identificadores Unicode, tabulações como indentação, múltiplos comandos separados por `;` ou blocos na mesma linha.
+Strings, tuplas, dicionários, sets, imports, bibliotecas, atributos além da chamada direta de `append`, classes, lambdas, closures, funções aninhadas/condicionais, `for`, `range`, `break`, `continue`, `global`, `nonlocal`, exceções capturáveis, async, generators, comprehensions, parâmetros default/keyword/variádicos e comparações encadeadas (`0 < x < 10`). Listas ainda não suportam slicing, concatenação/repetição, comparação de ordem, `is`, atribuição aumentada por índice, métodos armazenados ou outros métodos. Comparar ciclos distintos que exigem recursão falha explicitamente. Também não há separadores `_` em literais, identificadores Unicode, tabulações como indentação, múltiplos comandos separados por `;` ou blocos na mesma linha.
 
 Esses casos recebem diagnóstico, não uma tradução silenciosa com outras regras. Aridade e nomes chamáveis são verificados em execução. Para comparar intervalos, use expressões explícitas com `and` quando os operandos não tenham efeitos de avaliação duplicados.
 
@@ -60,6 +65,8 @@ Esses casos recebem diagnóstico, não uma tradução silenciosa com outras regr
 - Código: **1.000.000 de caracteres**, compartilhado com editor e importação. É um limite de texto, não de quantidade de passos.
 - Sintaxe: até 128 níveis de aninhamento ou cadeia de condicionais.
 - Histórico: 20.000 passos e 256 frames por padrão. Chegar ao limite de histórico preserva a navegação dos registros existentes.
+- Heap: 4.096 listas e 20.000 itens totais entre elas. Objetos sem referências permanecem até desfazer a criação ou reiniciar; ainda não há coleta de lixo.
+- Saída: 100.000 caracteres por chamada de `print`, incluindo espaços/quebra de linha. Excesso falha atomicamente, sem truncar a saída.
 - Literais inteiros: até 4.300 dígitos; inteiros calculados: até 100.000 bits. Potências excessivas são rejeitadas antes de alocar um inteiro enorme.
 - Conversões de inteiros em floats exigem que o inteiro caiba no intervalo float suportado. Casos com operandos gigantes que exigiriam uma conversão especializada do CPython são diagnosticados, inclusive certas divisões entre inteiros gigantes.
 

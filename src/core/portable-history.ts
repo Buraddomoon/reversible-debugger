@@ -6,8 +6,8 @@ import { MAX_SOURCE_CHARS } from './language';
 import { fields, integer, object, requireTrace, same, text } from './trace-validation';
 
 export const TRACE_FORMAT = 'rewind-trace';
-export const TRACE_VERSION = 1;
-export const TRACE_VM = 'rewind-vm/1';
+export const TRACE_VERSION = 2;
+export const TRACE_VM = 'rewind-vm/2';
 export const MAX_TRACE_BYTES = 32 * 1024 * 1024;
 export const MAX_IMPORTED_BYTES = 64 * 1024 * 1024;
 export const MAX_IMPORTED_TRACES = 8;
@@ -92,7 +92,7 @@ export async function importHistory(content: string, job: RecordingJob = {}): Pr
   try { parsed = JSON.parse(content); } catch { throw new Error('Histórico inválido: arquivo JSON corrompido'); }
   const envelope = fields(parsed, ['format', 'version', 'checksum', 'payload']);
   requireTrace(envelope.format === TRACE_FORMAT, 'formato desconhecido');
-  requireTrace(envelope.version === TRACE_VERSION, 'versão de arquivo incompatível');
+  requireTrace(envelope.version === TRACE_VERSION, envelope.version === 1 ? 'arquivo v1 usa a VM anterior, sem heap; reabra na versão anterior (branch feat/portable-histories). O arquivo foi preservado.' : 'versão de arquivo incompatível');
   text(envelope.checksum, 64); requireTrace(/^[a-f0-9]{64}$/.test(envelope.checksum), 'checksum inválido');
   const expectedFields = ['vm', 'metadata', 'source', 'runtime', 'programHash', 'limits', 'initial', 'cursor', 'steps'];
   const encoded = fields(envelope.payload, expectedFields);

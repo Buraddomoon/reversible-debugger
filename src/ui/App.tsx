@@ -17,6 +17,9 @@ import { ExplanationPanel, type Navigation } from './ExplanationPanel';
 import { VariablesTable } from './VariablesTable';
 import { TraceControls, type OpenHistory } from './TraceControls';
 import type { ImportedHistory } from '../core/portable-history';
+import { HeapInspector } from './HeapInspector';
+import { isList } from '../core/heap';
+import { previewValue } from '../core/runtime';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -68,6 +71,8 @@ export function App() {
   const [notice, setNotice] = useState<string | null>(initial.notice);
   const [navigation, setNavigation] = useState<Navigation | null>(null);
   const [selectedFrame, setSelectedFrame] = useState<number | null>(null);
+  const [selectedObject, setSelectedObject] = useState<number | null>(null);
+  useEffect(() => setSelectedObject(null), [session]);
   const [revision, refresh] = useReducer(value => value + 1, 0);
   const example = examples.find(item => item.id === exampleId);
   const selectedScript = store.library.scripts.find(item => item.id === exampleId);
@@ -80,10 +85,12 @@ export function App() {
   const hasResult = Object.hasOwn(state.frames[0]!.locals, 'result');
   const highlightSteps = navigation?.group ? session.history.slice(Math.min(navigation.group.from, navigation.group.to), Math.max(navigation.group.from, navigation.group.to)) : navigation && navigation.direction !== 'seek' ? [navigation.step] : [];
   const changedNames = new Set(highlightSteps.flatMap(step => step.changes.filter(change => change.kind === 'binding' && change.frameId === frame.id).map(change => change.kind === 'binding' ? change.name : '')));
+  const changedObjects = new Set(highlightSteps.flatMap(step => step.changes.flatMap(change => change.kind === 'heap-splice' || change.kind === 'heap-allocation' ? [change.id] : [])));
+  for (const [name, value] of Object.entries(frame.locals)) if (isList(value) && changedObjects.has(value.id)) changedNames.add(name);
   const breakpoints = controller.breakpoints;
   const breakpointLine = controller.stop?.reason === 'breakpoint' ? controller.stop.line : null;
   const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
-  const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, session.runtime.language);
+  const format = (value: Parameters<typeof formatValue>[0]) => previewValue(value, session.runtime.language, state.heap);
 
   const move = (direction: 'forward' | 'backward') => {
     if (rewinding) return;
@@ -270,12 +277,13 @@ export function App() {
           </section>
           <aside className="state-panel">
             <section className="variables-panel"><div className="panel-header"><div><span className="panel-square" /><h2>Variáveis</h2></div><span className="scope-badge">{frame.name} <span>#{frame.id}</span></span></div>
-              <VariablesTable key={frame.id} frame={frame} changedNames={changedNames} language={session.runtime.language} cursor={session.cursor} />
+              <VariablesTable key={frame.id} frame={frame} changedNames={changedNames} language={session.runtime.language} cursor={session.cursor} heap={state.heap} onList={setSelectedObject} />
             </section>
             <section className="stack-panel"><div className="panel-header"><div><Icon name="layers" /><h2>Pilha de chamadas</h2></div><span className="count-badge">{state.frames.length}</span></div>
               <div className="frames" data-testid="call-stack">{[...state.frames].reverse().map(item => <button key={item.id} className={`frame ${item.id === frame.id ? 'selected' : ''}`} onClick={() => setSelectedFrame(item.id)} aria-pressed={item.id === frame.id}><span className="frame-depth">{item.id.toString().padStart(2, '0')}</span><code>{item.name}{item.id !== 0 ? '()' : ''}</code><span className="frame-label">{item.id === activeFrame.id ? 'Atual' : 'Aguardando'}</span></button>)}</div>
               <details className="operand-details"><summary>Pilha de valores <span>{state.operands.length}</span></summary><div className="operand-values">{state.operands.length ? state.operands.map((value, index) => <code key={index}>{format(value)}</code>) : <span>Vazia</span>}</div></details>
             </section>
+            {session.runtime.language === 'python' && <HeapInspector state={state} language={session.runtime.language} selectedId={selectedObject} onSelect={setSelectedObject} changes={highlightSteps} />}
             <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ExplanationPanel navigation={navigation} session={session} /></section>
           </aside>
         </div>

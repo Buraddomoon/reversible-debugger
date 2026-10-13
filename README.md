@@ -12,6 +12,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Exportar histórico** guarda a execução num arquivo; **Importar histórico** restaura o mesmo cursor e os estados já gravados. Históricos importados também podem ser comparados sem executar o código novamente.
 
+**Listas Python** têm identidade estável no painel **Listas e referências**. Literais, índices, `append` e `len` preservam compartilhamento entre variáveis, parâmetros e retornos, inclusive ao desfazer mutações e ciclos.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -46,7 +48,7 @@ As dependências ficam em `node_modules/` e o cache em `.npm-cache/`, conforme `
 
 Depois de executar o programa, arraste o controle de posição ou use **Ir ao passo** para restaurar um estado registrado. **Início** restaura o estado inicial; **Último** restaura o último estado registrado. Navegar pausa a reprodução e mantém o histórico, inclusive se a execução ainda estiver incompleta.
 
-Os eventos mostram chamadas, retornos, decisões, saída, erros e conclusão. Clique em um cartão ou use **Evento anterior** / **Próximo evento**. O destino é o estado **após** aquele passo; o código destaca a próxima instrução. O controle deslizante também aceita as teclas de seta quando está em foco.
+Os eventos mostram chamadas, retornos, decisões, listas, saída, erros e conclusão. Clique em um cartão ou use **Evento anterior** / **Próximo evento**. O destino é o estado **após** aquele passo; o código destaca a próxima instrução. O controle deslizante também aceita as teclas de seta quando está em foco.
 
 Para investigar a soma Python com bug, execute até o resultado `10` e escolha a última **Decisão**: a condição é falsa com `i = 5`, e o programa está prestes a retornar sem somar esse número. Vá ao **Retorno** para ver a função sair da pilha; escolha a decisão novamente para recuperar seus locais. Avançar reaplica as mudanças gravadas.
 
@@ -92,6 +94,18 @@ Gravações parciais permitem avançar até o último registro disponível. **Ex
 
 ![Firefox: execução Python reaberta com cursor, locais e pilha preservados](docs/portable-history.png)
 
+## Listas e referências compartilhadas
+
+Escolha **Python · Cópia que altera o original**. `copy = original` faz os dois nomes apontarem para `#L1`; a função recebe essa mesma lista. A escrita no último item e `append(42)` mudam também `original`: o resultado é `99`, embora devesse continuar `2`.
+
+Use **Entrar** e **Passar sobre** para observar os itens e referências no painel. **Voltar comando** desfaz a operação anterior, restaurando o item ou removendo o append; desfazer o retorno recupera o frame com a mesma referência. Selecionar uma lista ou seguir um item que aponta para outra lista mantém o cursor.
+
+Compare com **Python · Cópia independente**, cujo resultado é `2`. **Primeira diferença** mostra a criação da segunda lista em B; **Próxima diferença** evidencia o compartilhamento em A. O exemplo **Python · Uma lista aponta para si** mostra `[...]` em `print` e permite seguir a autorreferência sem expandi-la indefinidamente.
+
+![Firefox: mutação da lista compartilhada observada por variáveis e parâmetro](docs/heap.png)
+
+Cada mutação guarda somente os itens removidos/adicionados. Checkpoints completos continuam esparsos. O formato de históricos agora é **v2 / rewind-vm/2**; arquivos v1 são recusados explicitamente e podem ser abertos na branch anterior `feat/portable-histories`. Scripts salvos continuam usando o mesmo formato. [Semântica, armazenamento, limites e benchmark](docs/reversible-lists.md).
+
 ## Usar seu próprio script
 
 1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
@@ -118,6 +132,8 @@ Outros exemplos: fatorial recursivo (`120`), algoritmo de Euclides (`6`) e divis
 src/core/language.ts   Lexer, parser, AST e posições no código
 src/core/python.ts     Parser Python, indentação e posições originais
 src/core/python-values.ts  Regras de valores e operações Python
+src/core/heap.ts       Objetos de lista, referências, índices e limites
+src/core/heap-comparison.ts  Comparação de conteúdo e compartilhamento
 src/core/runtime.ts    Linguagens, versões e apresentação dos valores
 src/core/compiler.ts   Instruções, funções e metadados de origem
 src/core/machine.ts    Estado explícito, transações e deltas
@@ -131,13 +147,14 @@ src/core/portable-history.ts  Codec versionado, quotas e identidade de arquivos
 src/core/trace-validation.ts  Esquema, precondições dos deltas e cadeia de estados
 src/workers/           Parsing/validação local e envio de registros em lotes
 src/ui/               Interface React e estilos responsivos
-examples/             Programas .rw usados pela demo e pelos testes
+examples/             Programas .py e .rw usados pela demo e pelos testes
 tests/core.test.ts    Semântica, reversibilidade e propriedades geradas
 tests/history.test.ts Busca exata, checkpoints, eventos e navegação gerada
 tests/execution-control.test.ts  Paradas, recursão, agrupamento e replay
 tests/comparison.test.ts  Divergência, alinhamento e restauração das duas sessões
 tests/explanations.test.ts  Proveniência, escopos, undo e índice incremental
 tests/portable-history.test.ts  Round trip, corrupção, quotas, forks e comparação
+tests/lists.test.ts   Heap, aliases, ciclos, mutações, codec e reversibilidade
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -185,6 +202,7 @@ npm run test:firefox  # Firefox instalado, sem baixar outro navegador
 npm run bench:history # Payload e latência: deltas, checkpoints e snapshots
 npm run bench:visual  # Explicações, lotes, índice e navegação com 18–19 mil passos
 npm run bench:portable # Arquivos, importação/exportação, forks e atrasos de timer
+npm run bench:heap    # Mutação por item, busca exata e custo dos checkpoints
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -228,6 +246,8 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - No Firefox: diagramas nos dois sentidos, seleção de registro sem mover o cursor, movimento normal/reduzido, ~18 mil passos, 2.502 locais restaurados, paginação e limites de DOM.
 - Arquivos: estado completo em todos os cursores dos exemplos, valores especiais, nomes de propriedades, corrupção/versões, quotas, cancelamento, checkpoints e forks isolados. Comparar/importar/reaplicar registros não chama o executor.
 - No Firefox: download local, importação no mesmo cursor, futuro preservado, comparação de arquivos, parcial/conclusão distintos, Worker cancelado ao trocar programa e importação de 18 mil passos com 2.502 locais sem remover scripts.
+- Listas: referências compartilhadas, listas aninhadas/cíclicas, índices negativos/bool, ordem de avaliação, erros atômicos, limites, checkpoints/forks isolados e restauração de todos os campos em cada cursor. Comparação opcional de saída com o Python instalado.
+- No Firefox: mutações e append nos dois sentidos, retorno com referência, comparação 99/2, ciclo, importação v2, rejeição v1 sem perder a sessão, lista de 3.000 itens paginada e layout móvel.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -242,5 +262,6 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Comparação entre execuções](docs/execution-comparison.md)
 - [Explicações visuais e escala](docs/visual-explanations.md)
 - [Históricos portáveis](docs/portable-histories.md)
+- [Listas e heap reversível](docs/reversible-lists.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python também limita literais inteiros a 4.300 dígitos e cálculos a 100.000 bits por inteiro. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; isso não mede o heap. O próximo marco é heap reversível e listas Python.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; isso não mede o heap JavaScript. O próximo marco é orçamento de armazenamento e retenção explícita para sessões maiores.

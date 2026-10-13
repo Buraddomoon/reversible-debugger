@@ -4,7 +4,7 @@ import type { ComparisonSource } from '../core/comparison-types';
 import { ComparisonLane, DifferenceTable, differenceText, phaseLabels } from './ComparisonLane';
 
 export interface ComparisonCandidate extends ComparisonSource { id: string; group: 'script' | 'example' | 'history' }
-const pairs: Record<string, string> = { 'python-sum-bug': 'python-sum-fixed', 'python-sum-fixed': 'python-sum-bug', 'sum-bug': 'sum-fixed', 'sum-fixed': 'sum-bug' };
+const pairs: Record<string, string> = { 'python-list-alias-bug': 'python-list-alias-fixed', 'python-list-alias-fixed': 'python-list-alias-bug', 'python-sum-bug': 'python-sum-fixed', 'python-sum-fixed': 'python-sum-bug', 'sum-bug': 'sum-fixed', 'sum-fixed': 'sum-bug' };
 
 export function ComparisonPanel({ primary, candidates, onClose }: { primary: ComparisonCandidate; candidates: readonly ComparisonCandidate[]; onClose: () => void }) {
   const [targetId, setTargetId] = useState(() => candidates.find(item => item.id === pairs[primary.id])?.id ?? candidates.find(item => item.id !== primary.id)?.id ?? primary.id);

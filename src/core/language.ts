@@ -1,7 +1,8 @@
 /** The complete front end for the intentionally small Rewind language. */
 export interface Span { start: number; end: number; line: number; column: number }
 export interface FunctionValue { readonly kind: 'function' | 'builtin'; readonly name: string }
-export type Value = number | bigint | boolean | null | FunctionValue;
+export interface ListReference { readonly kind: 'list'; readonly id: number }
+export type Value = number | bigint | boolean | null | FunctionValue | ListReference;
 export const MAX_SOURCE_CHARS = 1_000_000;
 export function validateSourceSize(source: string): void {
   if (source.length > MAX_SOURCE_CHARS) throw new LanguageError(`O programa excede o limite de ${MAX_SOURCE_CHARS.toLocaleString('pt-BR')} caracteres`, { start: 0, end: 0, line: 1, column: 1 });
@@ -19,14 +20,18 @@ export type Expression =
   | { kind: 'unary'; operator: string; operand: Expression; span: Span }
   | { kind: 'binary'; operator: string; left: Expression; right: Expression; span: Span }
   | { kind: 'logical'; operator: 'and' | 'or'; left: Expression; right: Expression; span: Span }
-  | { kind: 'call'; name: string; args: Expression[]; span: Span };
+  | { kind: 'call'; name: string; args: Expression[]; span: Span }
+  | { kind: 'list'; items: Expression[]; span: Span }
+  | { kind: 'index'; target: Expression; index: Expression; span: Span }
+  | { kind: 'append'; target: Expression; value: Expression; span: Span };
 export type Statement =
   | { kind: 'let' | 'assign' | 'set'; name: string; value: Expression; span: Span }
   | { kind: 'if'; condition: Expression; then: Statement[]; otherwise: Statement[]; span: Span }
   | { kind: 'while'; condition: Expression; body: Statement[]; span: Span }
   | { kind: 'return'; value: Expression; span: Span }
   | { kind: 'expression'; value: Expression; span: Span }
-  | { kind: 'define'; name: string; span: Span };
+  | { kind: 'define'; name: string; span: Span }
+  | { kind: 'index-set'; target: Expression; index: Expression; value: Expression; span: Span };
 export interface FunctionNode { name: string; params: string[]; body: Statement[]; span: Span }
 export interface SyntaxTree { statements: Statement[]; functions: FunctionNode[]; span: Span }
 

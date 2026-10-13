@@ -16,7 +16,7 @@ function lines(source: string): Line[] {
     if (code || continuation) {
       if (!continuation && indentText.includes('\t')) throw new LanguageError('Use espaços na indentação; tabulações ainda não são suportadas', span);
       if (!continuation) continuation = { indent: indentText.length, text: '', span };
-      for (const character of code) { if (character === '(') depth++; if (character === ')') depth--; }
+      for (const character of code) { if (character === '(' || character === '[') depth++; if (character === ')' || character === ']') depth--; }
       if (depth < 0) throw new LanguageError('Parêntese de fechamento inesperado', span);
       if (depth === 0) {
         continuation.text = source.slice(continuation.span.start, span.end);
@@ -49,7 +49,7 @@ function lex(line: Line): Token[] {
     else {
       const triple = line.text.slice(offset, offset + 3), pair = line.text.slice(offset, offset + 2);
       text = ['//=', '**='].includes(triple) ? triple : ['==', '!=', '<=', '>=', '//', '**', '+=', '-=', '*=', '/=', '%='].includes(pair) ? pair : character;
-      if (!['==', '!=', '<=', '>=', '//', '**', '+=', '-=', '*=', '/=', '%=', '//=', '**=', '+', '-', '*', '/', '%', '<', '>', '=', '(', ')', ',', ':'].includes(text)) {
+      if (!['==', '!=', '<=', '>=', '//', '**', '+=', '-=', '*=', '/=', '%=', '//=', '**=', '+', '-', '*', '/', '%', '<', '>', '=', '(', ')', '[', ']', '.', ',', ':'].includes(text)) {
         throw new LanguageError(`Recurso ou caractere ainda não suportado em Python: ${character}`, span);
       }
       kind = 'symbol';
@@ -97,12 +97,30 @@ class Expressions {
     } finally { this.depth--; }
   }
   private primary(): Expression {
+    let result = this.atom();
+    while (this.current.text === '[' || this.current.text === '.') {
+      if (this.match('[')) { const index = this.expression(); result = { kind: 'index', target: result, index, span: combine(result.span, this.expect(']').span) }; }
+      else {
+        this.expect('.'); const method = this.name();
+        if (method.text !== 'append') throw new LanguageError('Somente o método append está disponível para listas nesta versão', method.span);
+        this.expect('('); const value = this.expression(); this.match(',');
+        result = { kind: 'append', target: result, value, span: combine(result.span, this.expect(')').span) };
+      }
+    }
+    return result;
+  }
+  private atom(): Expression {
     const token = this.current;
     if (this.match('not') || this.match('-') || this.match('+')) {
       const operand = this.expression(token.text === 'not' ? 3 : 7);
       return { kind: 'unary', operator: token.text, operand, span: combine(token.span, operand.span) };
     }
     if (this.match('(')) { const expression = this.expression(); this.expect(')'); this.grouped.add(expression); return expression; }
+    if (this.match('[')) {
+      const items: Expression[] = [];
+      if (this.current.text !== ']') do { items.push(this.expression()); } while (this.match(',') && this.current.text !== ']');
+      return { kind: 'list', items, span: combine(token.span, this.expect(']').span) };
+    }
     if (token.kind === 'number') {
       this.take();
       const isBaseInteger = /^0[xob]/i.test(token.text);
@@ -183,8 +201,12 @@ class PythonParser {
           body.push({ kind: 'set', name: name.text, value, span: line.span });
         } else {
           if (reserved.has(expression.current.text)) throw new LanguageError(`Recurso Python ainda não suportado: ${expression.current.text}`, expression.current.span);
-          const value = expression.expression(); expression.end();
-          body.push({ kind: 'expression', value, span: line.span });
+          const value = expression.expression();
+          if (expression.match('=')) {
+            if (value.kind !== 'index') throw new LanguageError('A atribuição exige uma variável ou índice de lista', value.span);
+            const assigned = expression.expression(); expression.end();
+            body.push({ kind: 'index-set', target: value.target, index: value.index, value: assigned, span: line.span });
+          } else { expression.end(); body.push({ kind: 'expression', value, span: line.span }); }
         }
       }
       return body;

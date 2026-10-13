@@ -1,6 +1,6 @@
 import type { DeepReadonly, Step } from './machine';
 
-export type EventKind = 'call' | 'return' | 'decision' | 'output' | 'error' | 'end';
+export type EventKind = 'call' | 'return' | 'mutation' | 'decision' | 'output' | 'error' | 'end';
 export interface HistoryEvent {
   readonly cursor: number;
   readonly kind: EventKind;
@@ -16,6 +16,7 @@ export function historyEvent(step: DeepReadonly<Step>, cursor: number): HistoryE
   else if (step.changes.some(change => change.kind === 'frames' && change.removed.length)) kind = 'return';
   else if (step.op === 'JUMP_IF_FALSE') kind = 'decision';
   else if (step.changes.some(change => change.kind === 'output')) kind = 'output';
+  else if (step.changes.some(change => change.kind === 'heap-splice' || change.kind === 'heap-allocation')) kind = 'mutation';
   else if (step.op === 'HALT') kind = 'end';
   else return null;
   return { cursor, kind, line: step.span.line, description: step.description };

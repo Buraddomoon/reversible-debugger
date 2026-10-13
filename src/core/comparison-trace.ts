@@ -1,5 +1,4 @@
 import { DebugSession, HistoryLimitError } from './debugger';
-import { pythonTruth } from './python-values';
 import type { DeepReadonly, MachineState, Step } from './machine';
 import type { ComparisonPhase, ComparisonPoint, ComparisonRunView, ComparisonSource, DifferenceValue, RunIdentity } from './comparison-types';
 import type { HistoryOptions } from './history';
@@ -111,9 +110,11 @@ export class RecordedComparisonRun implements ComparisonRunView {
     else if (location?.flowDecision) {
       phase = 'decision';
       const operands = step.changes.find(change => change.kind === 'operands' && change.removed.length);
-      if (operands?.kind === 'operands') outcome = this.program.runtime.language === 'python' ? pythonTruth(operands.removed[0]!) : Boolean(operands.removed[0]);
+      const instruction = this.program.instructions[step.index]!;
+      if (operands?.kind === 'operands' && instruction.op === 'JUMP_IF_FALSE') outcome = this.state.control.pc !== instruction.target;
     } else if (step.changes.some(change => change.kind === 'binding')) phase = 'write';
     else if (step.changes.some(change => change.kind === 'output')) phase = 'output';
+    else if (step.changes.some(change => change.kind === 'heap-splice' || change.kind === 'heap-allocation')) phase = 'mutation';
     if (phase) {
       const terminal = phase === 'error' || phase === 'end';
       const base = JSON.stringify([context, site, phase, slot]);

@@ -88,7 +88,17 @@ try {
   };
   const text = selector => evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent.trim()`);
   const click = name => evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === ${JSON.stringify(name)} || b.getAttribute('aria-label') === ${JSON.stringify(name)}); if (!button || button.disabled) throw new Error('Botão indisponível: ' + ${JSON.stringify(name)}); button.click(); return true; })()`);
-  const waitFor = (expression, timeout = 15_000) => evaluate(`new Promise((resolve, reject) => { const deadline = Date.now() + ${timeout}; const check = () => { if (${expression}) return resolve(true); if (Date.now() > deadline) return reject(new Error('Condição não satisfeita')); setTimeout(check, 30); }; check(); })`);
+  const waitFor = async (expression, timeout = 15_000) => {
+    try {
+      return await evaluate(`new Promise((resolve, reject) => { const deadline = Date.now() + ${timeout}; const check = () => { if (${expression}) return resolve(true); if (Date.now() > deadline) return reject(new Error('Condição não satisfeita')); setTimeout(check, 30); }; check(); })`);
+    } catch (error) {
+      console.error('Condição:', expression);
+      console.error('Estado:', await evaluate("JSON.stringify({ alert: document.querySelector('[role=alert]')?.textContent, trace: document.querySelector('.trace-message')?.textContent, progress: document.querySelector('.trace-progress')?.textContent, status: document.querySelector('[role=status]')?.textContent, cursor: document.querySelector('[data-testid=step-count]')?.textContent })"));
+      console.error('Console:', pageErrors);
+      await shot('firefox-failure.png');
+      throw error;
+    }
+  };
   const choose = value => evaluate(`(() => { const select = document.querySelector('#example'); select.value = ${JSON.stringify(value)}; select.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   const shot = async name => {
     const screenshot = await command('browsingContext.captureScreenshot', { context, origin: 'document', format: { type: 'image/png' } });
@@ -100,8 +110,14 @@ try {
     await waitFor("document.querySelector('.trace-message')?.textContent.includes('exportado')");
     const deadline = Date.now() + 10_000;
     while (Date.now() < deadline) {
-      const name = (await readdir(downloads)).find(name => name.endsWith('.json') && !before.has(name));
-      if (name) return readFile(join(downloads, name), 'utf8');
+      const files = await readdir(downloads);
+      const name = files.find(name => name.endsWith('.json') && !before.has(name));
+      if (name && !files.includes(`${name}.part`)) {
+        const content = await readFile(join(downloads, name), 'utf8');
+        // Firefox may expose the destination before finishing a large download.
+        // Wait for the complete envelope instead of importing a partial read.
+        try { JSON.parse(content); return content; } catch { /* Download still in progress. */ }
+      }
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     throw new Error('Arquivo de histórico não foi baixado no perfil isolado');
@@ -629,6 +645,68 @@ try {
   assert.match(await text('.source-scroll'), /def double/);
   assert.equal(await evaluate("Array.from(document.querySelectorAll('#example option')).some(option => option.textContent === 'Arquivo grande')"), false);
   console.log('PASS: confirmação de exclusão, cancelamento e manutenção dos outros scripts após recarregar.');
+
+  await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
+  const heapItems = () => evaluate("Array.from(document.querySelectorAll('[data-testid=heap-items] .heap-cell>code')).map(cell => cell.textContent).join(',')");
+  await choose('python-list-alias-bug');
+  await click('Entrar'); await click('Passar sobre'); await click('Passar sobre'); await click('Entrar');
+  await waitFor("document.querySelector('[data-testid=call-stack]').textContent.includes('change()')");
+  assert.match(await text('[data-testid=heap-aliases]'), /original/); assert.match(await text('[data-testid=heap-aliases]'), /copy/); assert.match(await text('[data-testid=heap-aliases]'), /values/);
+  assert.equal(await heapItems(), '3,1,2');
+  await click('Passar sobre'); await waitFor("document.querySelector('[data-testid=heap-explanation]')?.textContent.includes('Item alterado')");
+  assert.equal(await heapItems(), '3,1,99');
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('.heap-cell.changed')).animationName"), reducedMotion ? 'none' : 'binding-flash');
+  await shot('firefox-heap-mutation.png');
+  await click('Voltar comando'); await waitFor("document.querySelector('[data-testid=heap-explanation]')?.textContent.includes('Item restaurado')");
+  assert.equal(await heapItems(), '3,1,2'); await shot('firefox-heap-undo.png');
+  await click('Passar sobre'); await click('Passar sobre');
+  assert.equal(await heapItems(), '3,1,99,42');
+  await click('Voltar comando'); assert.equal(await heapItems(), '3,1,99');
+  await click('Passar sobre'); await click('Sair da função');
+  await click('Voltar'); assert.match(await text('[data-testid=frame-diagram]'), /Frame restaurado/); assert.equal(await heapItems(), '3,1,99,42');
+  await click('Avançar'); await click('Executar'); await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
+  assert.equal(await text('[data-testid=result-value]'), '99'); assert.equal(await text('[data-testid=program-output]'), '[3, 1, 99, 42]');
+  const listTrace = await exportDownload(); assert.equal(JSON.parse(listTrace).version, 2);
+  await choose('python-list-alias-fixed'); await click('Executar'); await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
+  assert.equal(await text('[data-testid=result-value]'), '2'); assert.equal(await text('[data-testid=program-output]'), '[3, 1, 2]');
+  await uploadHistory(listTrace); await waitFor("document.querySelector('[data-testid=recording-banner]') && !document.querySelector('.trace-progress')");
+  assert.equal(await heapItems(), '3,1,99,42');
+  await click('Comparar execuções');
+  await evaluate("(() => { const select = document.querySelector('[aria-label=\"Programa da execução B\"]'); select.value = 'python-list-alias-fixed'; select.dispatchEvent(new Event('change', { bubbles: true })); })()");
+  await click('Preparar comparação'); await waitFor("document.querySelector('[data-testid=comparison-final-a]')");
+  assert.equal(await text('[data-testid=comparison-final-a]'), '99'); assert.equal(await text('[data-testid=comparison-final-b]'), '2');
+  await click('Primeira diferença');
+  assert.match(await text('.comparison-differences'), /Criar #L2/);
+  await click('Próxima diferença'); assert.match(await text('.comparison-differences'), /Referências compartilhadas/);
+  await shot('firefox-heap-comparison.png');
+  await click('Voltar ao debugger');
+  const beforeLegacy = await text('[data-testid=step-count]');
+  await uploadHistory(await readFile(join(root, 'tests/fixtures/history-v1.json'), 'utf8'));
+  await waitFor("document.querySelector('[role=alert]')?.textContent.includes('v1')");
+  assert.equal(await text('[data-testid=step-count]'), beforeLegacy); assert.equal(await heapItems(), '3,1,99,42');
+  await click('Fechar histórico');
+  await choose('python-list-cycle'); await click('Executar'); await waitFor("document.querySelector('[role=status]').textContent === 'Concluído'");
+  assert.equal(await text('[data-testid=program-output]'), '[1, 2, [...]]\n[9, 2, [...]]');
+  const cycleCursor = await text('[data-testid=step-count]');
+  await click('Seguir referência do item 2 para L1'); assert.equal(await text('[data-testid=step-count]'), cycleCursor);
+  await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
+  assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true); await shot('firefox-heap-mobile.png');
+  await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
+  await createScript('Lista grande');
+  await edit(`a = [${Array.from({ length: 3000 }, (_, i) => i).join(',')}]\na[1500] = 99\nresult = a[1500]`); await click('Aplicar código');
+  await click('Passar sobre'); await waitFor("document.querySelector('[data-testid=current-line]').textContent.includes('a[1500]')", 30_000);
+  assert.equal(await evaluate("document.querySelectorAll('.heap-cell').length"), 16);
+  assert.ok(await evaluate("document.querySelectorAll('.source-scroll code span').length") < 100);
+  await click('Próxima página de itens'); assert.equal(await evaluate("document.querySelector('.heap-cell').dataset.heapIndex"), '16');
+  await click('Passar sobre'); await click('Passar sobre');
+  assert.equal(await text('[data-testid=result-value]'), '99');
+  const largeListTrace = await exportDownload();
+  await uploadHistory(largeListTrace); await waitFor("document.querySelector('[data-testid=recording-banner]') && !document.querySelector('.trace-progress')", 30_000);
+  assert.equal(await text('[data-testid=result-value]'), '99'); assert.equal(await evaluate("document.querySelectorAll('.heap-cell').length"), 16);
+  await click('Fechar histórico');
+  const largeListId = await evaluate("Array.from(document.querySelectorAll('#example optgroup[label=\"Seus scripts\"] option')).find(option => option.textContent === 'Lista grande').value");
+  await choose(largeListId); await click('Excluir script'); await click('Excluir');
+  console.log('PASS: heap/aliases, alteração e append reversíveis, retorno com referência, comparação 99/2, ciclos, v2 importado, v1 rejeitado, paginação de 3.000 itens e layout móvel.');
   assert.deepEqual(pageErrors, []);
   console.log('PASS: ausência de erros no console.');
   await command('session.end');

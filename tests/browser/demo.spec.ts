@@ -75,6 +75,34 @@ test('exporta e importa a mesma posição, rejeita corrupção e compara registr
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('visualiza aliases, desfaz mutações e compara listas independentes', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Programa', { exact: true }).selectOption('python-list-alias-bug');
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await expect(page.getByTestId('heap-aliases')).toContainText('original');
+  await expect(page.getByTestId('heap-aliases')).toContainText('values');
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await expect(page.locator('[data-heap-index="2"]>code')).toHaveText('99');
+  await page.getByRole('button', { name: 'Voltar comando', exact: true }).click();
+  await expect(page.locator('[data-heap-index="2"]>code')).toHaveText('2');
+  await expect(page.getByTestId('heap-explanation')).toContainText('Item restaurado');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Concluído', { timeout: 15000 });
+  await expect(page.getByTestId('result-value')).toHaveText('99');
+  await page.getByRole('button', { name: 'Comparar execuções' }).click();
+  await expect(page.getByLabel('Programa da execução B')).toHaveValue('python-list-alias-fixed');
+  await page.getByRole('button', { name: 'Preparar comparação' }).click();
+  await expect(page.getByTestId('comparison-final-b')).toHaveText('2');
+  await page.getByRole('button', { name: 'Primeira diferença' }).click();
+  await expect(page.locator('.comparison-differences')).toContainText('Criar #L2');
+  await page.getByRole('button', { name: 'Próxima diferença' }).click();
+  await expect(page.locator('.comparison-differences')).toContainText('Referências compartilhadas');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('executa o bug, volta ao início e reaplica o mesmo resultado', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Programa', { exact: true }).selectOption('sum-bug');

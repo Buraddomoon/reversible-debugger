@@ -165,13 +165,13 @@ describe('arquivos rejeitados antes de publicar a sessão', () => {
   it('rejeita JSON quebrado, tamanho excessivo, versões/formato e checksum', async () => {
     await expect(importHistory('{', fast)).rejects.toThrow(/corrompido/);
     await expect(importHistory(' '.repeat(MAX_TRACE_BYTES + 1), fast)).rejects.toThrow(/32 MiB/);
-    for (const [key, item] of [['version', 2], ['format', 'outro'], ['checksum', '0'.repeat(64)]]) {
+    for (const [key, item] of [['version', 3], ['format', 'outro'], ['checksum', '0'.repeat(64)]]) {
       const envelope = JSON.parse(await content()); envelope[key as string] = item;
       await expect(importHistory(JSON.stringify(envelope), fast)).rejects.toThrow();
     }
   });
   const corruptions: [string, (envelope: any) => void][] = [
-    ['compiler', e => { e.payload.vm = 'rewind-vm/2'; }],
+    ['compiler', e => { e.payload.vm = 'rewind-vm/3'; }],
     ['runtime', e => { e.payload.runtime.version = '4'; }],
     ['source', e => { e.payload.source += '\nresult = 99'; }],
     ['initial', e => { e.payload.initial.control.nextFrameId = 9; }],

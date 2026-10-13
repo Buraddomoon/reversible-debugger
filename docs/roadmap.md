@@ -83,7 +83,7 @@ Critério atendido: observar `5 < 5 → False`, desfazer a decisão e a compara�
 
 ## Históricos portáveis — implementado
 
-- Codec/envelope v1, identidade de VM/programa e checksum SHA-256; tipos especiais, referências de funções e ausência de bindings preservados.
+- Codec/envelope v1 no marco original, evoluído para v2 com o heap; identidade de VM/programa e checksum SHA-256, tipos especiais, referências de funções e ausência de bindings preservados.
 - **Exportar histórico** / **Importar histórico** reabrem fonte, deltas, cursor e futuro já registrado; checkpoints reconstruídos esparsamente.
 - Comparação de duas gravações importadas sem executar instruções, isolando VM/cursor e compartilhando apenas payloads congelados.
 - Fim de histórico parcial distinto de conclusão; **Executar código de novo** começa uma sessão gravável nova.
@@ -94,12 +94,24 @@ Critério atendido: observar `5 < 5 → False`, desfazer a decisão e a compara�
 
 Critério atendido: exportar a soma no passo 64, reabrir com `n = 5`, `total = 10`, `i = 5`, navegar até o resultado e comparar os registros 10/15 sem reexecução. Arquivos inválidos ou cancelados preservam a execução aberta e os scripts.
 
-## Próximo marco — heap reversível e coleções Python
+## Heap reversível e listas Python — implementado
 
-- Modelar objetos do heap com IDs estáveis e referências preservadas nos dois sentidos.
-- Começar por listas Python: literais, leitura/escrita por índice e append, com escopo documentado.
-- Deltas de alocação e mutação, aliasing entre variáveis/argumentos e restauração de objetos após retornos.
-- Versionar o codec para o novo estado; rejeitar incompatibilidade ou oferecer migração explícita.
-- Exemplos de algoritmo sobre listas com bug e testes de referências/valores em todas as posições do histórico.
+- Objetos por IDs estáveis, referências compartilhadas entre variáveis, argumentos, retornos e itens, inclusive ciclos.
+- Literais, leitura/escrita por índice, `append`, `len`, verdade, igualdade por conteúdo e impressão com ciclos, com [escopo documentado](reversible-lists.md).
+- Deltas de alocação e mutação por item, contadores reversíveis, erros atômicos, checkpoints/forks isolados e navegação sem executor.
+- Painel paginado de listas/itens/referências, navegação entre objetos, destaques e explicações de mutação/desfazimento.
+- Comparação de conteúdo e topologia de referências, ignorando IDs distintos entre execuções.
+- Codec v2 / VM2; v1 rejeitado com indicação da branch anterior, preservando arquivos/sessão/scripts.
+- Exemplos de cópia que altera o original (99/2), correção e autorreferência. Testes de todo o estado, corrupção, limites e saída comparada com o Python instalado.
+- Benchmark reproduzível demonstra payload de mutação independente do comprimento e explicita o custo dos checkpoints completos.
 
-Cada marco preserva os testes de reversibilidade. Arrays, objetos e closures exigirão uma modelagem explícita de heap e identidades, e devem ser uma evolução própria da linguagem.
+Critério: executar o bug, observar aliases no mesmo objeto, desfazer escrita/append/retorno e reaplicar estados idênticos; importar v2 e comparar sem reexecução. Firefox verifica também lista de 3.000 itens com DOM limitado, ciclos e layout móvel.
+
+## Próximo marco — orçamento e retenção explícita
+
+- Medir o custo de deltas, checkpoints, heap e saída para definir um orçamento de armazenamento; distinguir bytes estimados de memória real do JavaScript.
+- Recusar crescimento de forma explícita sem perder navegação, começando com retenção integral nos limites atuais.
+- Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível visível, sem descartar o início silenciosamente.
+- Avaliar arquivo em blocos/IndexedDB com controle de quota, carregamento cancelável e testes de corrupção/versão antes de ampliar sessões.
+
+Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.
