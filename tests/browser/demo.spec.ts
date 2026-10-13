@@ -9,6 +9,36 @@ async function createScript(page: Page, name: string, language = 'python') {
   await expect(dialog).toHaveCount(0);
 }
 
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`explica operações e frames sem alterar a navegação, movimento ${reducedMotion}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+    await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+    await expect(page.getByTestId('frame-diagram')).toContainText('Frame criado');
+    expect(await page.locator('.evidence-animated').evaluate(element => getComputedStyle(element).animationName)).toBe(reducedMotion === 'reduce' ? 'none' : 'evidence-appear');
+    const cursor = await page.getByTestId('step-count').textContent();
+    await page.getByRole('button', { name: 'Instrução anterior do intervalo' }).click();
+    await expect(page.getByTestId('step-count')).toHaveText(cursor!);
+    await page.getByRole('button', { name: 'Executar', exact: true }).click();
+    await expect(page.getByRole('status')).toHaveText('Concluído', { timeout: 15000 });
+    const history = await page.getByTestId('history-length').textContent();
+    await page.locator('[data-event-kind=decision]').last().click();
+    const decisionCursor = await page.getByTestId('step-count').textContent();
+    await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+    await expect(page.getByTestId('visual-explanation')).toHaveAttribute('data-direction', 'backward');
+    await expect(page.getByTestId('operation-diagram')).toContainText('False');
+    await expect(page.getByTestId('decision-diagram').locator('.chosen')).toContainText('Falsa');
+    await page.getByRole('button', { name: 'Voltar', exact: true }).click();
+    await expect(page.getByTestId('operation-diagram')).toContainText('←');
+    await page.getByRole('button', { name: 'Avançar', exact: true }).click();
+    await page.getByRole('button', { name: 'Avançar', exact: true }).click();
+    await expect(page.getByTestId('step-count')).toHaveText(decisionCursor!);
+    await expect(page.getByTestId('history-length')).toHaveText(history!);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
+
 test('executa o bug, volta ao início e reaplica o mesmo resultado', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Programa', { exact: true }).selectOption('sum-bug');

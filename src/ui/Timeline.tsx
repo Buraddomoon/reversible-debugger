@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DeepReadonly, Step } from '../core/machine';
-import { historyEvent, type EventKind, type HistoryEvent } from '../core/history-events';
+import { firstEventAfter, HistoryEventIndex, type EventKind, type HistoryEvent } from '../core/history-events';
 
 const labels: Record<EventKind, string> = { call: 'Chamada', return: 'Retorno', decision: 'Decisão', output: 'Saída', error: 'Erro', end: 'Fim' };
 const symbols: Record<EventKind, string> = { call: '↳', return: '↰', decision: '◇', output: '▤', error: '!', end: '■' };
@@ -15,11 +15,8 @@ export function Timeline({ history, cursor, disabled, onSeek }: {
   const length = history.length;
   const [target, setTarget] = useState('');
   useEffect(() => setTarget(''), [history]);
-  // History is append-only until restart; the length invalidates this projection.
-  const events = useMemo(() => history.flatMap((step, index) => {
-    const event = historyEvent(step, index + 1);
-    return event ? [event] : [];
-  }), [history, length]);
+  const [index] = useState(() => new HistoryEventIndex());
+  const events = index.update(history);
   const markers = useMemo(() => {
     const bins = new Map<number, HistoryEvent>();
     for (const event of events) {
@@ -30,8 +27,7 @@ export function Timeline({ history, cursor, disabled, onSeek }: {
     return [...bins].map(([bin, event]) => ({ bin, event }));
   }, [events, length]);
   // Show a small window around the cursor, even in traces with thousands of events.
-  const nextIndex = events.findIndex(event => event.cursor > cursor);
-  const boundary = nextIndex === -1 ? events.length : nextIndex;
+  const boundary = firstEventAfter(events, cursor);
   const previous = events[boundary - 1]?.cursor === cursor ? events[boundary - 2] : events[boundary - 1];
   const next = events[boundary];
   const start = Math.max(0, Math.min(events.length - 8, boundary - 4));

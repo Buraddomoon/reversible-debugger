@@ -10,7 +10,9 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = join(root, '.artifacts');
 await mkdir(artifacts, { recursive: true });
 const profile = await mkdtemp(join(artifacts, 'firefox-profile-'));
+const reducedMotion = process.env.REWIND_REDUCED_MOTION === '1' || process.argv.includes('--reduced-motion');
 await writeFile(join(profile, 'user.js'), [
+  `user_pref("ui.prefersReducedMotion", ${reducedMotion ? 1 : 0});`,
   'user_pref("browser.shell.checkDefaultBrowser", false);',
   'user_pref("browser.startup.homepage", "about:blank");',
   'user_pref("browser.startup.homepage_override.mstone", "ignore");',
@@ -97,6 +99,12 @@ try {
   await click('Entrar');
   await waitFor("document.querySelector('[data-testid=call-stack]').textContent.includes('sum_to()')");
   assert.deepEqual(await locals(), { n: '5' });
+  assert.match(await text('[data-testid=frame-diagram]'), /Frame criado.*sum_to\(\)/s);
+  assert.equal(await evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches"), reducedMotion);
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('.evidence-animated')).animationName"), reducedMotion ? 'none' : 'evidence-appear');
+  const frameStep = await text('[data-testid=step-count]');
+  await click('Instrução anterior do intervalo');
+  assert.equal(await text('[data-testid=step-count]'), frameStep);
   await click('Passar sobre');
   await waitFor("document.querySelector('[data-testid=current-line]').textContent.includes('i = 1')");
   assert.deepEqual(await locals(), { n: '5', total: '0' });
@@ -214,6 +222,7 @@ try {
   await waitFor("document.querySelector('[data-testid=call-stack]').textContent.includes('sumTo()')");
   const restoredLocals = JSON.parse(await evaluate("JSON.stringify(Object.fromEntries(Array.from(document.querySelectorAll('.variable-row')).map(row => [row.querySelector('code').textContent, row.querySelector('strong').textContent])))"));
   assert.deepEqual(restoredLocals, { n: '5', total: '10', i: '5' });
+  assert.match(await text('[data-testid=frame-diagram]'), /Frame restaurado/);
   await shot('firefox-restored.png');
   await click('Retroceder tudo');
   await waitFor("document.querySelector('[data-testid=step-count]').textContent === '000'");
@@ -268,6 +277,25 @@ try {
   assert.match(await text('[data-testid=timeline-selected]'), /Condição falsa/);
   assert.equal(await evaluate("Array.from(document.querySelectorAll('.variable-row')).find(row => row.querySelector('code').textContent === 'i').querySelector('strong').textContent"), '5');
   await shot('firefox-python-timeline.png');
+  const decisionCursor = await text('[data-testid=step-count]');
+  const recordedDecisions = await text('[data-testid=history-length]');
+  await click('Voltar');
+  assert.equal(await evaluate("document.querySelector('[data-testid=visual-explanation]').dataset.direction"), 'backward');
+  assert.match(await text('[data-testid=decision-diagram] .chosen'), /Falsa/);
+  assert.match(await text('[data-testid=operation-diagram]'), /5.*<.*5.*False/s);
+  await shot('firefox-explanation-undo.png');
+  await click('Voltar');
+  assert.match(await text('[data-testid=operation-diagram]'), /←/);
+  await click('Avançar'); await click('Avançar');
+  assert.equal(await text('[data-testid=step-count]'), decisionCursor);
+  assert.equal(await text('[data-testid=history-length]'), recordedDecisions);
+  assert.match(await text('.evidence-note'), /Escolha registrada: falsa/);
+  await shot('firefox-explanation.png');
+  await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
+  assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+  await shot('firefox-explanation-mobile.png');
+  await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
+  console.log(`PASS: diagramas de chamada, retorno restaurado, decisão, operação desfeita, seleção sem mover a VM e movimento ${reducedMotion ? 'reduzido' : 'normal'}.`);
 
   await choose('sum-fixed');
   await click('Executar');
@@ -279,6 +307,7 @@ try {
   assert.equal(await text('[role=alert]'), 'Divisão por zero');
   await click('Voltar');
   await waitFor("!document.querySelector('[role=alert]')");
+  assert.match(await text('[data-testid=error-evidence]'), /Erro desfeito/);
   assert.equal(await text('[data-testid=next-instruction]'), 'Calcular /');
   await click('Avançar');
   await waitFor("document.querySelector('[role=alert]')");
@@ -423,6 +452,52 @@ try {
   assert.match(await text('[role=alert]'), /Expressão Python/);
   await edit(personal); await click('Aplicar código');
   console.log('PASS: reiniciar programa, recarregar imediatamente e preservar até código incompleto em edição.');
+
+  await createScript('Teste de escala');
+  const denseSource = 'def dense():\n' + Array.from({ length: 2500 }, (_, i) => `    v${i} = ${i}\n`).join('') + '    i = 0\n    result = 0\n    while i < 1000:\n        result += i\n        i += 1\n    return result\nresult = dense()';
+  await edit(denseSource); await click('Aplicar código');
+  await click('Entrar'); await click('Entrar');
+  await waitFor("document.querySelector('[data-testid=call-stack]').textContent.includes('dense()')");
+  await evaluate("document.querySelector('.source-scroll').scrollTop = document.querySelector('.source-scroll').scrollHeight");
+  await waitFor("Array.from(document.querySelectorAll('button')).some(b => b.getAttribute('aria-label') === 'Adicionar breakpoint na linha 2507')");
+  await click('Adicionar breakpoint na linha 2507');
+  const started = performance.now();
+  await click('Sair da função');
+  await waitFor("document.querySelector('[role=status]').textContent === 'Breakpoint · L2507'", 30_000);
+  const denseRecordMs = performance.now() - started;
+  assert.equal(await evaluate("document.querySelectorAll('.variable-row').length"), 24);
+  assert.match(await text('.variable-pagination'), /2502 variáveis/);
+  assert.ok(await evaluate("document.querySelectorAll('.code-line').length") < 100);
+  assert.ok(await evaluate("document.querySelectorAll('[data-event-cursor]').length") <= 8);
+  assert.ok(await evaluate("document.querySelectorAll('.interval-bindings>div>div').length") <= 12);
+  await click('Próxima página de variáveis');
+  assert.equal(await evaluate("document.querySelector('.variable-row code').textContent"), 'v24');
+  await click('Remover breakpoint L2507'); await click('Sair da função');
+  await waitFor("!document.querySelector('[data-testid=call-stack]').textContent.includes('dense()')");
+  await click('Voltar');
+  assert.match(await text('[data-testid=frame-diagram]'), /Frame restaurado/);
+  assert.match(await text('.variable-pagination'), /2502 variáveis/);
+  const restoredDenseCursor = await text('[data-testid=step-count]');
+  const denseNavigations = JSON.parse(await evaluate(`(async () => {
+    const times = [];
+    for (let i = 0; i < 20; i++) {
+      const begin = performance.now();
+      Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === (i % 2 ? 'Último' : 'Início')).click();
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      times.push(performance.now() - begin);
+    }
+    return JSON.stringify(times);
+  })()`));
+  const denseReport = { steps: await text('[data-testid=history-length]'), locals: 2502, recordToBreakpointMs: +denseRecordMs.toFixed(2), navigationIncludesTwoAnimationFramesMs: denseNavigations.map(ms => +ms.toFixed(2)), reducedMotion };
+  await writeFile(join(artifacts, reducedMotion ? 'visual-browser-reduced.json' : 'visual-browser.json'), JSON.stringify(denseReport, null, 2));
+  await input('#timeline-target', restoredDenseCursor); await click('Ir');
+  assert.match(await text('.variable-pagination'), /2502 variáveis/);
+  await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
+  assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth'), true);
+  await shot('firefox-scale-mobile.png');
+  await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
+  await click('Excluir script'); await click('Excluir');
+  console.log('PASS: ~18 mil passos, 2502 locais, tabelas limitadas, frame restaurado, saltos grandes e layout móvel.');
 
   await createScript('Arquivo grande');
   const largeSource = '# comentário\n'.repeat(10000) + 'result = 42\n';

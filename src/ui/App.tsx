@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 import { DebugSession } from '../core/debugger';
 import { describeInstruction } from '../core/compiler';
-import type { DeepReadonly, Step } from '../core/machine';
 import { examples } from '../examples';
 import { formatValue, runtimes, type LanguageId } from '../core/runtime';
 import { ScriptEditor } from './ScriptEditor';
@@ -14,6 +13,8 @@ import { SourceView } from './SourceView';
 import { ExecutionControl, type RunMode } from '../core/execution-control';
 import { actionLabels, BreakpointBar, StepControls } from './DebugControls';
 import { ComparisonPanel, type ComparisonCandidate } from './ComparisonPanel';
+import { ExplanationPanel, type Navigation } from './ExplanationPanel';
+import { VariablesTable } from './VariablesTable';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -34,41 +35,6 @@ function Icon({ name }: { name: IconName }) {
     layers: <><path d="m12 3 10 6-10 6L2 9l10-6Z" /><path d="m2 13 10 6 10-6M2 17l10 6 10-6" /></>,
   };
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
-}
-
-interface Navigation { step: DeepReadonly<Step>; direction: 'forward' | 'backward' | 'seek'; group?: { from: number; to: number; label: string } }
-function ChangeView({ navigation, language }: { navigation: Navigation | null; language: LanguageId }) {
-  if (!navigation) return <div className="change-empty"><span className="empty-symbol">↔</span><p>Um passo, uma mudança.</p><span>Avance para acompanhar o que acontece.</span></div>;
-  if (navigation.direction === 'seek') return <div className="change-empty"><span className="empty-symbol">↔</span><p>Estado restaurado no histórico.</p><span>Veja na linha do tempo o passo que produziu este estado. Avance ou volte para acompanhar uma mudança.</span></div>;
-  if (navigation.group) return <div className="change-content"><div className="change-direction">{navigation.group.label}<span>{Math.abs(navigation.group.to - navigation.group.from)} instruções</span></div><p className="change-description">Do passo {navigation.group.from} ao {navigation.group.to}.</p><p className="muted">Última instrução {navigation.direction === 'forward' ? 'aplicada' : 'desfeita'}: {navigation.step.description}</p></div>;
-  const forward = navigation.direction === 'forward';
-  const changes = navigation.step.changes.filter(change => change.kind !== 'control');
-  if (!forward) changes.reverse();
-  const format = (value: Parameters<typeof formatValue>[0]) => formatValue(value, language);
-  return <div className="change-content">
-    <div className="change-direction">{forward ? 'PASSO APLICADO' : 'PASSO DESFEITO'} <span>{navigation.step.op}</span></div>
-    <p className="change-description">{navigation.step.description}</p>
-    {changes.length === 0 && <p className="muted">{navigation.step.op === 'HALT' ? (forward ? 'Programa concluído.' : 'Programa pronto para concluir novamente.') : 'A posição ou a situação da execução mudou.'}</p>}
-    {changes.map((change, index) => {
-      if (change.kind === 'binding') {
-        const before = forward ? change.before : change.after;
-        const after = forward ? change.after : change.before;
-        return <div className="binding-change" key={index}><code>{change.name}</code><span>{before.exists ? format(before.value) : 'ausente'}</span><span className="change-arrow">→</span><strong>{after.exists ? format(after.value) : 'removida'}</strong></div>;
-      }
-      if (change.kind === 'frames') {
-        const added = forward ? change.added : change.removed;
-        const removed = forward ? change.removed : change.added;
-        return <div className="frame-change" key={index}><Icon name="layers" />{added.map(frame => `${frame.name} entrou na pilha`).concat(removed.map(frame => `${frame.name} saiu da pilha`)).join(', ')}</div>;
-      }
-      if (change.kind === 'operands') {
-        const added = forward ? change.added : change.removed;
-        const removed = forward ? change.removed : change.added;
-        return <div className="operand-change" key={index}><span>Pilha de valores</span><code>{removed.length ? `− [${removed.map(format).join(', ')}]` : ''} {added.length ? `+ [${added.map(format).join(', ')}]` : ''}</code></div>;
-      }
-      if (change.kind === 'output') return <div className="operand-change" key={index}><span>{forward ? 'Saída adicionada' : 'Saída removida'}</span><code>{(forward ? change.added : change.removed).join('')}</code></div>;
-      return null;
-    })}
-  </div>;
 }
 
 export function App() {
@@ -277,13 +243,13 @@ export function App() {
           </section>
           <aside className="state-panel">
             <section className="variables-panel"><div className="panel-header"><div><span className="panel-square" /><h2>Variáveis</h2></div><span className="scope-badge">{frame.name} <span>#{frame.id}</span></span></div>
-              <div className="variable-table"><div className="variable-table-header"><span>Nome</span><span>Valor</span><span>Tipo</span></div>{Object.entries(frame.locals).length === 0 ? <p className="variables-empty">Este escopo ainda não tem variáveis.</p> : Object.entries(frame.locals).map(([name, value]) => <div className={`variable-row ${changedNames.has(name) ? 'changed' : ''}`} key={name}><code>{name}</code><strong>{format(value)}</strong><span>{value === null ? 'None' : typeof value === 'bigint' ? 'int' : typeof value === 'number' ? (session.runtime.language === 'python' ? 'float' : 'número') : typeof value === 'boolean' ? 'booleano' : 'função'}</span></div>)}</div>
+              <VariablesTable key={frame.id} frame={frame} changedNames={changedNames} language={session.runtime.language} cursor={session.cursor} />
             </section>
             <section className="stack-panel"><div className="panel-header"><div><Icon name="layers" /><h2>Pilha de chamadas</h2></div><span className="count-badge">{state.frames.length}</span></div>
               <div className="frames" data-testid="call-stack">{[...state.frames].reverse().map(item => <button key={item.id} className={`frame ${item.id === frame.id ? 'selected' : ''}`} onClick={() => setSelectedFrame(item.id)} aria-pressed={item.id === frame.id}><span className="frame-depth">{item.id.toString().padStart(2, '0')}</span><code>{item.name}{item.id !== 0 ? '()' : ''}</code><span className="frame-label">{item.id === activeFrame.id ? 'Atual' : 'Aguardando'}</span></button>)}</div>
               <details className="operand-details"><summary>Pilha de valores <span>{state.operands.length}</span></summary><div className="operand-values">{state.operands.length ? state.operands.map((value, index) => <code key={index}>{format(value)}</code>) : <span>Vazia</span>}</div></details>
             </section>
-            <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ChangeView navigation={navigation} language={session.runtime.language} /></section>
+            <section className="changes-panel"><div className="panel-header"><div><span className="change-icon">↔</span><h2>O que mudou</h2></div></div><ExplanationPanel navigation={navigation} session={session} /></section>
           </aside>
         </div>
         <Timeline key={`${exampleId}:${editing}`} history={session.history} cursor={session.cursor} disabled={editing || rewinding} onSeek={seek} />

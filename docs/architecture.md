@@ -153,6 +153,14 @@ O limite de fonte é compartilhado entre os dois parsers, editor e importação:
 
 O DOM da linha do tempo é limitado a oito cartões próximos do cursor e até 96 marcadores agregados. Os botões anterior/próximo percorrem todos os eventos registrados, inclusive os que não estão na janela visível. O range nativo oferece teclado e identificação acessível do passo; o campo numérico permite escolher um destino exato. A interface pausa a reprodução ao navegar e desabilita a busca durante edição ou retrocesso em lotes.
 
+## Explicações e projeções
+
+`explanations.ts` lê os deltas sem executar instruções ou expressões. Operações usam valores removidos/adicionados da pilha; decisões seguem splices para identificar o produtor da condição; leituras reconstruem somente presença de bindings e nomes de frames. Chamadas/retornos usam os payloads imutáveis dos frames. A direção muda a ação descrita, preservando operandos e resultados originais. Resumos de intervalos agregam escritas por ID de frame/variável na ordem da navegação e distinguem escopos encerrados dos atuais.
+
+`ExplanationPanel` apresenta essas evidências. Selecionar um registro num intervalo mantém o estado no cursor final. Animações CSS respeitam movimento reduzido e não comandam a VM. Variáveis têm páginas de 24; atribuições, de 12. `HistoryEventIndex` evita reclassificar o histórico inteiro a cada lote; buscar o próximo evento usa busca binária, mantendo os limites de cartões/marcadores.
+
+As [medidas e decisões de escala](visual-explanations.md) mantêm a execução em lotes nos limites atuais, com critérios para reconsiderar um Worker. O mesmo documento propõe codec versionado e retenção explícita por bytes; exportação/importação de sessões ainda não está implementada.
+
 ## Criação e biblioteca de scripts
 
 `NewScriptModal` usa um `dialog` nativo para nome, linguagem e versão, com foco inicial, cancelamento por Escape e normalização da extensão. A criação registra um script vazio com ID estável e troca a sessão, sem carregar variáveis, saída ou histórico da sessão anterior. Nomes repetidos são rejeitados para não criar entradas ambíguas. `DeleteScriptModal` confirma a exclusão pelo nome.

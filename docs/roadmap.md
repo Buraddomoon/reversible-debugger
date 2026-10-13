@@ -69,12 +69,24 @@ Critério atendido: as paradas e o agrupamento correspondem aos estados da refer
 
 Critério atendido: a comparação evidencia a decisão divergente e os resultados 10/15; retornos correspondentes podem ter cursores diferentes. Navegar restaura exatamente cada estado registrado sem executar código de novo. Firefox validou exemplos, scripts salvos, saída, cancelamento, erros de sintaxe, teclado, layout móvel e preservação da sessão principal.
 
-## Próximo marco — explicações visuais e escala
+## Explicações visuais e escala — implementado
 
-- Usar os próprios deltas para explicar leituras, atribuições, decisões, chamadas e retornos.
-- Animar mudanças com preferência por movimento reduzido respeitada.
-- Acrescentar diagramas de expressões ou frames somente quando ajudarem a entender a execução.
-- Mover execução e busca para Web Worker se os benchmarks indicarem necessidade.
-- Considerar serialização/versionamento do histórico e política de retenção antes de permitir sessões grandes ou efeitos externos.
+- Projeções dos deltas para leituras, atribuições, operações, decisões, chamadas, retornos, saída e erros; nenhuma reexecução para explicar.
+- Diagramas com valores efetivamente registrados e ações corretas ao desfazer, inclusive frame restaurado e operandos originais recuperados.
+- Intervalos por comando com atribuições agregadas por frame/variável e seleção de registro sem mover o cursor.
+- Animações CSS desativadas por movimento reduzido, verificadas em dois modos no Firefox isolado.
+- Variáveis e atribuições paginadas, índice incremental de eventos e busca binária na linha do tempo.
+- [Benchmark e critérios de escala](visual-explanations.md): cerca de 18–19 mil passos, 2.502 locais, testes de restauração, DOM limitado e navegação móvel. Worker adiado pelas medidas nos limites atuais.
+- Proposta documentada de codec versionado, validação e retenção por bytes antes de permitir sessões maiores ou efeitos externos.
+
+Critério atendido: observar `5 < 5 → False`, desfazer a decisão e a comparação, restaurar uma função com seus locais e reaplicar os mesmos registros. Explicar e selecionar instruções não altera o estado da VM. Núcleo e Firefox validaram essas garantias, movimento reduzido e navegação com milhares de variáveis.
+
+## Próximo marco — históricos portáveis
+
+- Codec versionado para valores e transações, preservando todos os tipos especiais.
+- Exportação/importação de uma execução registrada, com identidade de fonte/runtime e validação de integridade/limites.
+- Reabrir uma execução no mesmo cursor e comparar execuções salvas, mantendo a biblioteca de scripts separada.
+- Testes de round trip, versões incompatíveis, arquivos corrompidos e replay sem execução.
+- Medir orçamento de bytes e definir comportamento explícito ao atingir quota; aumentar limites somente depois desses critérios.
 
 Cada marco preserva os testes de reversibilidade. Arrays, objetos e closures exigirão uma modelagem explícita de heap e identidades, e devem ser uma evolução própria da linguagem.
