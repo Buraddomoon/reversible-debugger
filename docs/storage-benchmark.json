@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-13T18:40:59.447Z",
+  "node": "v24.18.0",
+  "seed": 20261013,
+  "note": "Payload UTF-8 estimado por sessão, não heap JavaScript. 102 saltos restaurados contra execução independente; snapshots somente nos destinos selecionados. Pausa preservou estado/controle e aumento do limite completou os mesmos registros. Medição local sem DOM; custo de asserções fora dos tempos de seek.",
+  "reports": [
+    {
+      "name": "Listas e aliases",
+      "stoppedAt": 4301,
+      "fullSteps": 9515,
+      "budgetBytes": 2097152,
+      "retained": {
+        "deltaBytes": 2064177,
+        "checkpointBytes": 226,
+        "reservedMachineBytes": 32604,
+        "estimatedBytes": 2097007,
+        "limitBytes": 2097152,
+        "skippedCheckpoints": 9
+      },
+      "recordMs": 67.58,
+      "batchP95Ms": 13.123,
+      "seekP95Ms": 24.004,
+      "resumeMs": 71.73,
+      "recordedPeak": 33298
+    },
+    {
+      "name": "Saída acumulada",
+      "stoppedAt": 626,
+      "fullSteps": 9113,
+      "budgetBytes": 524288,
+      "retained": {
+        "deltaBytes": 474091,
+        "checkpointBytes": 226,
+        "reservedMachineBytes": 49593,
+        "estimatedBytes": 523910,
+        "limitBytes": 524288,
+        "skippedCheckpoints": 1
+      },
+      "recordMs": 12.33,
+      "batchP95Ms": 4.434,
+      "seekP95Ms": 2.76,
+      "resumeMs": 136.56,
+      "recordedPeak": 705506
+    },
+    {
+      "name": "Mil variáveis",
+      "stoppedAt": 2169,
+      "fullSteps": 11009,
+      "budgetBytes": 1048576,
+      "retained": {
+        "deltaBytes": 1023257,
+        "checkpointBytes": 226,
+        "reservedMachineBytes": 25059,
+        "estimatedBytes": 1048542,
+        "limitBytes": 1048576,
+        "skippedCheckpoints": 2
+      },
+      "recordMs": 29.31,
+      "batchP95Ms": 4.242,
+      "seekP95Ms": 9.671,
+      "resumeMs": 108.97,
+      "recordedPeak": 25063
+    }
+  ]
+}

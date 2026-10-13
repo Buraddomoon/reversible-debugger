@@ -14,6 +14,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Listas Python** têm identidade estável no painel **Listas e referências**. Literais, índices, `append` e `len` preservam compartilhamento entre variáveis, parâmetros e retornos, inclusive ao desfazer mutações e ciclos.
 
+**Armazenamento desta execução** acompanha o payload reservado e permite ajustar o orçamento. A gravação pausa se a próxima instrução não couber, mantendo todos os passos para navegação e exportação.
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -106,6 +108,16 @@ Compare com **Python · Cópia independente**, cujo resultado é `2`. **Primeira
 
 Cada mutação guarda somente os itens removidos/adicionados. Checkpoints completos continuam esparsos. O formato de históricos agora é **v2 / rewind-vm/2**; arquivos v1 são recusados explicitamente e podem ser abertos na branch anterior `feat/portable-histories`. Scripts salvos continuam usando o mesmo formato. [Semântica, armazenamento, limites e benchmark](docs/reversible-lists.md).
 
+## Controlar o crescimento do histórico
+
+Escolha **Python · Crescimento do histórico**, selecione **64 KiB** no painel de armazenamento e use **Entrar**, depois **Passar sobre**. A gravação pausa dentro de `collect`, preservando lista, variáveis, pilha e saída. **Início** e **Último** continuam disponíveis; o consumo reservado não cai ao voltar, porque o futuro ainda está guardado.
+
+Selecione **4 MiB**, use **Sair da função** e **Executar** para concluir com `120`, sem duplicar passos ou saída. O padrão é **64 MiB por sessão**, ajustável até 256 MiB. Reiniciar conserva o limite; trocar/aplicar código ou recarregar restaura o padrão, preservando os scripts.
+
+![Firefox: gravação pausada pelo orçamento com todos os 145 passos disponíveis](docs/storage-budget.png)
+
+O total conta deltas, checkpoints e uma reserva para o maior estado observado, incluindo heap e saída. É uma estimativa de payload UTF-8, não memória real do navegador ou teto agregado da página. Checkpoints auxiliares podem diminuir para priorizar os deltas; saltos longos ficam mais caros. Importações/comparações respeitam o orçamento local. [Contrato, API, medidas e próximos limites](docs/storage-budget.md).
+
 ## Usar seu próprio script
 
 1. Clique em **Adicionar script**. O modal pede, nessa ordem, **Nome do script**, **Linguagem** e **Versão**.
@@ -138,6 +150,7 @@ src/core/runtime.ts    Linguagens, versões e apresentação dos valores
 src/core/compiler.ts   Instruções, funções e metadados de origem
 src/core/machine.ts    Estado explícito, transações e deltas
 src/core/history.ts    HistoryStore, checkpoints e política de retenção
+src/core/storage-accounting.ts  Payload incremental, estado atual e reserva
 src/core/history-events.ts  Eventos projetados das transações
 src/core/debugger.ts   Sessão, cursor, passos e busca por posição
 src/core/execution-control.ts  Breakpoints, planos em lotes e passos por comando
@@ -155,6 +168,7 @@ tests/comparison.test.ts  Divergência, alinhamento e restauração das duas ses
 tests/explanations.test.ts  Proveniência, escopos, undo e índice incremental
 tests/portable-history.test.ts  Round trip, corrupção, quotas, forks e comparação
 tests/lists.test.ts   Heap, aliases, ciclos, mutações, codec e reversibilidade
+tests/storage-budget.test.ts  Fronteiras, rollback, reserva, retomada e quotas
 tests/browser/        Fluxos Playwright para múltiplos engines
 scripts/              Teste com Firefox instalado e launcher Playwright
 docs/                 Arquitetura, linguagem e etapas futuras
@@ -203,6 +217,7 @@ npm run bench:history # Payload e latência: deltas, checkpoints e snapshots
 npm run bench:visual  # Explicações, lotes, índice e navegação com 18–19 mil passos
 npm run bench:portable # Arquivos, importação/exportação, forks e atrasos de timer
 npm run bench:heap    # Mutação por item, busca exata e custo dos checkpoints
+npm run bench:storage # Orçamento, checkpoints reduzidos, busca e retomada
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -248,6 +263,8 @@ Esses comandos não baixam navegadores automaticamente. O Firefox comum instalad
 - No Firefox: download local, importação no mesmo cursor, futuro preservado, comparação de arquivos, parcial/conclusão distintos, Worker cancelado ao trocar programa e importação de 18 mil passos com 2.502 locais sem remover scripts.
 - Listas: referências compartilhadas, listas aninhadas/cíclicas, índices negativos/bool, ordem de avaliação, erros atômicos, limites, checkpoints/forks isolados e restauração de todos os campos em cada cursor. Comparação opcional de saída com o Python instalado.
 - No Firefox: mutações e append nos dois sentidos, retorno com referência, comparação 99/2, ciclo, importação v2, rejeição v1 sem perder a sessão, lista de 3.000 itens paginada e layout móvel.
+- Orçamento: fronteira exata, recusa atômica de instruções, contadores incrementais, reserva estável, checkpoints reduzidos, navegação gerada, retomada, reinício, forks, importação/comparação e ausência de varredura completa por instrução.
+- No Firefox: pausa em 64 KiB, futuro/consumo preservados, exportação parcial, importação recusada sem perder scripts, limite ampliado com resultado 120, reinício/recarga e layout móvel.
 
 Snapshots **por passo** existem apenas como referência nos testes e no benchmark. O histórico de produção armazena deltas e checkpoints completos ocasionais. Testes de ida e volta verificam reversibilidade; os testes com resultados conhecidos verificam a semântica, pois um interpretador incorreto também pode ser reversível.
 
@@ -263,5 +280,6 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Explicações visuais e escala](docs/visual-explanations.md)
 - [Históricos portáveis](docs/portable-histories.md)
 - [Listas e heap reversível](docs/reversible-lists.md)
+- [Orçamento do histórico](docs/storage-budget.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo. Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; isso não mede o heap JavaScript. O próximo marco é orçamento de armazenamento e retenção explícita para sessões maiores.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador. Checkpoints começam a cada 128 passos, com teto de 128 cópias e espaçamento adaptativo, respeitando também o orçamento de payload (64 MiB por padrão). Arquivos têm teto de 32 MiB e até 8 históricos/64 MiB abertos; essas medidas não são heap JavaScript. O próximo marco é navegação cancelável e armazenamento em blocos/IndexedDB antes de ampliar sessões.

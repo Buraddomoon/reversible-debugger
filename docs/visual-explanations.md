@@ -65,7 +65,7 @@ O envelope, codec, validação e quotas dessa proposta foram implementados no ma
 
 1. O marco de [listas reversíveis](reversible-lists.md) evoluiu o codec para v2 e rejeita v1 explicitamente. Semântica futura também exige versionamento e política de compatibilidade. Eventos e explicações continuam derivados.
 2. Manter as garantias de valores especiais e validação da cadeia ao acrescentar estado. A impressão digital curta da comparação continua sem servir como verificação de identidade/integridade; o arquivo usa SHA-256.
-3. Separar orçamento de bytes da quantidade de passos. Uma transação de retorno com milhares de locais pode ser grande, assim como operandos e saída. Medidas de payload atuais não são medidas do heap JS.
+3. O [orçamento por payload](storage-budget.md) já está separado da quantidade de passos: deltas, checkpoints e reserva do maior estado. Retornos, operandos e saída podem ser grandes; essas medidas continuam distintas do heap JS e de orçamento agregado da página.
 4. Para retenção parcial, manter um checkpoint na fronteira e indicar o primeiro cursor ainda disponível. Nunca descartar silenciosamente o início e continuar prometendo retrocesso completo. Arquivo em blocos/IndexedDB exige controle de quota, carregamento cancelável e testes de corrupção/versão incompatível.
 
 Continuam vigentes 20.000 passos por sessão, 256 frames e no máximo 128 checkpoints com espaçamento adaptativo. O heap de listas tem limites de 4.096 objetos/20.000 itens; outros objetos e closures exigem ampliar os deltas e testes. Efeitos externos exigem um contrato específico de gravação/replay.

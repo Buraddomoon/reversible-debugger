@@ -75,6 +75,30 @@ test('exporta e importa a mesma posição, rejeita corrupção e compara registr
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('pausa pelo orçamento, mantém o futuro e retoma ao ampliar o limite', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Programa', { exact: true }).selectOption('python-storage-growth');
+  await page.getByLabel('Limite do histórico', { exact: true }).selectOption('65536');
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await page.getByRole('button', { name: 'Passar sobre', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Orçamento atingido');
+  await expect(page.getByRole('button', { name: 'Avançar', exact: true })).toBeDisabled();
+  const cursor = await page.getByTestId('step-count').textContent(), total = await page.getByTestId('storage-total').textContent();
+  await page.getByRole('button', { name: 'Início', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText('000');
+  await expect(page.getByTestId('storage-total')).toHaveText(total!);
+  await page.getByRole('button', { name: 'Último', exact: true }).click();
+  await expect(page.getByTestId('step-count')).toHaveText(cursor!);
+  await page.getByLabel('Limite do histórico', { exact: true }).selectOption(String(4 * 1024 * 1024));
+  await expect(page.getByTestId('storage-stop')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Sair da função', exact: true }).click();
+  await expect(page.getByTestId('call-stack')).not.toContainText('collect()');
+  await page.getByRole('button', { name: 'Executar', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Concluído');
+  await expect(page.getByTestId('result-value')).toHaveText('120');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('visualiza aliases, desfaz mutações e compara listas independentes', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('Programa', { exact: true }).selectOption('python-list-alias-bug');

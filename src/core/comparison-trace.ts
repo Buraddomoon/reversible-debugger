@@ -1,4 +1,4 @@
-import { DebugSession, HistoryLimitError } from './debugger';
+import { DebugSession, HistoryBudgetError, HistoryLimitError } from './debugger';
 import type { DeepReadonly, MachineState, Step } from './machine';
 import type { ComparisonPhase, ComparisonPoint, ComparisonRunView, ComparisonSource, DifferenceValue, RunIdentity } from './comparison-types';
 import type { HistoryOptions } from './history';
@@ -46,6 +46,7 @@ export class RecordedComparisonRun implements ComparisonRunView {
     this.name = input.name;
     if (input.recording && (input.source !== input.recording.program.source || input.language !== input.recording.runtime.language || input.version !== input.recording.runtime.version)) throw new Error('Identidade do histórico não corresponde ao programa selecionado');
     this.session = input.recording ? input.recording.forkRecording(0) : new DebugSession(input.source, { ...options, language: input.language, version: input.version });
+    if (input.recording && options.maxHistoryBytes !== undefined) this.session.setHistoryBudget(options.maxHistoryBytes);
     const initial = freezeInitial(structuredClone(this.session.state) as MachineState);
     this.identity = Object.freeze({ source: input.source, runtime: this.session.runtime, initial, fingerprint: fingerprint(JSON.stringify([input.source, this.session.runtime, initial])) });
     const counts = new Map<string, number>();
@@ -81,7 +82,7 @@ export class RecordedComparisonRun implements ComparisonRunView {
     let step: DeepReadonly<Step>;
     try { step = this.session.forward()!; }
     catch (error) {
-      if (!(error instanceof HistoryLimitError)) throw error;
+      if (!(error instanceof HistoryLimitError) && !(error instanceof HistoryBudgetError)) throw error;
       this.limited = true;
       this.recordedPoints.push(Object.freeze({ key: 'terminal', cursor: this.cursor, phase: 'limit', line: null, occurrence: 1, description: error.message, outcome: null }));
       this.finish();
@@ -125,8 +126,8 @@ export class RecordedComparisonRun implements ComparisonRunView {
   }
   private finishRecording(): void {
     if (this.state.control.status === 'running') {
-      this.limited = this.history.length >= this.session.maxSteps;
-      this.recordedPoints.push(Object.freeze({ key: 'terminal', cursor: this.cursor, phase: this.limited ? 'limit' : 'pause', line: null, occurrence: 1, description: this.limited ? 'Limite da gravação registrado' : 'Fim do histórico parcial; o programa não foi concluído', outcome: null }));
+      this.limited = this.session.recordingStop !== null || this.history.length >= this.session.maxSteps;
+      this.recordedPoints.push(Object.freeze({ key: 'terminal', cursor: this.cursor, phase: this.limited ? 'limit' : 'pause', line: null, occurrence: 1, description: this.session.recordingStop ? 'Gravação pausada pelo orçamento do histórico' : this.limited ? 'Limite da gravação registrado' : 'Fim do histórico parcial; o programa não foi concluído', outcome: null }));
     }
     this.finish();
   }

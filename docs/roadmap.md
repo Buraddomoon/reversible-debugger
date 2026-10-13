@@ -107,11 +107,22 @@ Critério atendido: exportar a soma no passo 64, reabrir com `n = 5`, `total = 1
 
 Critério: executar o bug, observar aliases no mesmo objeto, desfazer escrita/append/retorno e reaplicar estados idênticos; importar v2 e comparar sem reexecução. Firefox verifica também lista de 3.000 itens com DOM limitado, ciclos e layout móvel.
 
-## Próximo marco — orçamento e retenção explícita
+## Orçamento e retenção integral — implementado
 
-- Medir o custo de deltas, checkpoints, heap e saída para definir um orçamento de armazenamento; distinguir bytes estimados de memória real do JavaScript.
-- Recusar crescimento de forma explícita sem perder navegação, começando com retenção integral nos limites atuais.
+- Contabilização incremental de deltas, checkpoints e reserva do maior estado, incluindo heap/saída. Estimativa de payload UTF-8, separada de memória real do JavaScript.
+- Limite de 64 MiB por sessão, ajustável na interface até 256 MiB. Pausa atômica na fronteira, sem erro fictício da VM ou descarte de passos.
+- Checkpoints auxiliares reduzidos/adiados para priorizar registros; checkpoint inicial e navegação de todo o histórico preservados.
+- Painel de consumo, detalhes do estado atual, reserva estável ao retroceder e aviso com o custo mínimo da próxima instrução.
+- Retomada ao ampliar o limite, reinício conservando a configuração e quotas em importação/comparação. Arquivo v2 permanece compatível, com política local fora da semântica.
+- Demo de crescimento, testes de fronteira/rollback, navegação gerada, counters/forks, gravação parcial e benchmark com listas, saída e mil variáveis.
+
+Critério atendido: em 64 KiB a demo pausa dentro da função, volta ao início e recupera o futuro; em 4 MiB continua até 120 sem duplicar registros/saída. Firefox verifica também importação recusada preservando scripts, exportação parcial, reinício/recarga e layout móvel. [Contrato e medidas](storage-budget.md).
+
+## Próximo marco — navegação cancelável e histórico em blocos
+
+- Primeiro, navegação em lotes/Worker com pedidos numerados, pausa/cancelamento e rejeição de respostas obsoletas. O benchmark com orçamento apertado e sem checkpoints passou de 16 ms em saltos longos.
+- Depois, armazenamento em blocos/IndexedDB, quota do navegador, integridade, retomada após recarga e carregamento cancelável.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível visível, sem descartar o início silenciosamente.
-- Avaliar arquivo em blocos/IndexedDB com controle de quota, carregamento cancelável e testes de corrupção/versão antes de ampliar sessões.
+- Ampliar os 20.000 passos somente depois dessas garantias e medidas; não prometer teto agregado de RAM com o orçamento por sessão atual.
 
 Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.

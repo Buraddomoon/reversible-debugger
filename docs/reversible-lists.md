@@ -69,7 +69,7 @@ São permitidas **4.096 listas** e **20.000 itens totais** entre todos os objeto
 
 `print` tem teto de **100.000 caracteres por chamada**, incluindo separadores e quebra de linha. A expansão de grafos compartilhados é iterativa e limitada; excesso falha atomicamente. A paginação do painel mostra até oito listas, 16 itens e 12 referências por página. Previews mostram até seis itens, preservando identidade; o inspetor permite consultar todos. Linhas de fonte muito longas mantêm o texto integral sem milhares de spans de coloração.
 
-O histórico mantém o limite de 20.000 passos, checkpoints a cada 128 passos inicialmente e até 128 cópias. Não há cópia completa por mutação, mas alocações custam o tamanho inicial da lista e checkpoints custam o estado completo. Retenção por bytes e carregamento em disco continuam como próximo marco.
+O histórico mantém o limite de 20.000 passos, checkpoints a cada 128 passos inicialmente e até 128 cópias. Não há cópia completa por mutação, mas alocações custam o tamanho inicial da lista e checkpoints custam o estado completo. O marco seguinte implementou orçamento por payload com retenção integral; carregamento em disco continua como evolução futura.
 
 ## Testes e medidas
 
@@ -91,4 +91,4 @@ O Firefox instalado verifica a demo, mutação/append desfeitos, retorno restaur
 | 8 | 7.523 | 93 bytes | 59 | 28.964 bytes | 0,038 ms |
 | 2.000 | 9.515 | 93 bytes | 75 | 2.182.243 bytes | 0,227 ms |
 
-Os 93 bytes medem somente o splice de heap codificado, sem os operandos/controle/metadados da transação. Os demais bytes são payloads codificados, não memória real do JavaScript. As medições são diagnósticos locais, sem DOM, e não garantias de latência. O custo maior dos checkpoints com listas grandes motiva medir um orçamento de armazenamento antes de ampliar sessões.
+Os 93 bytes medem somente o splice de heap codificado, sem os operandos/controle/metadados da transação. Os demais bytes são payloads codificados, não memória real do JavaScript. As medições são diagnósticos locais, sem DOM, e não garantias de latência. O custo dos checkpoints com listas grandes motivou o marco seguinte de [orçamento do histórico](storage-budget.md), já implementado antes de ampliar sessões.

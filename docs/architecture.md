@@ -136,7 +136,11 @@ O padrão é um checkpoint a cada 128 instruções, com teto de 128 checkpoints 
 
 `seek()` compara a distância do cursor atual e do checkpoint mais próximo. Empates favorecem o estado atual para evitar a cópia. Essa heurística minimiza a quantidade de transações, sem estimar o custo de clonar frames grandes; o benchmark também mede a latência desse custo. `SeekResult` informa origem, destino, checkpoint utilizado e número de transações reaplicadas. `historyStats` e `measureHistory()` permitem inspecionar a retenção sem expor os estados salvos.
 
-O teto limita a quantidade de cópias, não seus bytes nem o heap total. Deltas continuam crescendo até o limite explícito do histórico. [As medições](history-performance.md) mostram o ganho com muitos locais e também o caso em que snapshots minúsculos ocupam menos bytes que os deltas ricos em metadados. Snapshots por passo permanecem uma referência nos testes e no benchmark.
+O teto de checkpoints limita a quantidade de cópias. O orçamento adicional de payload é 64 MiB por sessão por padrão, ajustável até 256 MiB. [As medições](history-performance.md) mostram o ganho com muitos locais e também o caso em que snapshots minúsculos ocupam menos bytes que os deltas ricos em metadados. Snapshots por passo permanecem uma referência nos testes e no benchmark.
+
+`storage-accounting.ts` conta a VM incrementalmente pelos deltas (controle, bindings/frames, operandos, heap e saída), sem varrer o estado todo a cada instrução. Só inicialização/restauração de checkpoint fazem medição completa. `storageStats` soma deltas, cópias retidas e uma reserva para o maior estado observado, impedindo que voltar libere orçamento necessário ao futuro gravado. Bytes usam um modelo de payload UTF-8 com delimitadores conservadores; não medem RAM/overhead de JavaScript, código, índices, UI, temporários ou outras sessões.
+
+`CheckpointHistory.append` planeja a admissão atomicamente: preserva o checkpoint inicial e todos os deltas; reduz cópias auxiliares se necessário e só cria outra se couber. Se o mínimo não cabe, lança `HistoryBudgetError` antes de alterar o armazenamento. `DebugSession` desfaz a instrução candidata e mantém estado/cursor/contadores anteriores; `recordingStop` é política do debugger fora da VM. `ExecutionControl` sinaliza parada `budget`, preservando o intervalo efetivamente aplicado. Replay não faz admissão nova; aumentar o limite permite continuar da fronteira, e reiniciar limpa métricas/pausa conservando o limite. [Contrato e custo dos saltos sem checkpoints](storage-budget.md).
 
 A VM suporta estados serializados pelo codec portável. Um Worker local valida arquivos e envia deltas em lotes para a UI; execução normal e navegação continuam em lotes no núcleo existente. Não se usa `eval` nem `Function` para executar a linguagem.
 
@@ -184,6 +188,8 @@ As [medidas e decisões de escala](visual-explanations.md) mantêm a execução 
 `DebugSession.replayOnly` impede gravar além de uma importação parcial. `restart()` cria uma execução gravável nova. `forkRecording()` compartilha programa e payloads congelados, copia os índices de armazenamento e mantém VM/cursor próprios, sem reprocessar a execução inteira. A comparação usa esse fork para consumir arquivos sem executar código de novo.
 
 `history-import.worker.ts` recebe o JSON, verifica a gravação e envia blocos de até 256 registros com confirmação da UI. `import-history.ts` encerra o Worker no cancelamento e restaura sua sessão privada em lotes de até 256 ou aproximadamente 8 ms. Quotas: 32 MiB por arquivo e 8 históricos/64 MiB abertos; são bytes de arquivos, não heap. Recusa/cancelamento preservam a sessão principal. Históricos ficam na página e são reabertos por arquivo; não alteram `localStorage` dos scripts. [Contrato e medidas](portable-histories.md).
+
+O Worker e a sessão privada de restauração também recebem o orçamento de payload capturado ao iniciar a importação. A gravação inteira precisa caber antes da publicação, sem truncamento. O envelope v2 não armazena limite local nem motivo de pausa; sua semântica permanece igual. Comparações aplicam o limite por lado e identificam orçamento como gravação incompleta. Forks têm índices, contadores, limite e VM próprios; compartilhar payloads congelados não constitui orçamento agregado da página.
 
 ## Criação e biblioteca de scripts
 

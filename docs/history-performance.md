@@ -2,6 +2,8 @@
 
 O histórico combina deltas em todos os passos com checkpoints ocasionais. O intervalo inicial escolhido foi **128 passos**, com **128 checkpoints no máximo**, incluindo o estado inicial. A configuração pode mudar pelo construtor de `DebugSession`.
 
+As medidas abaixo são do marco inicial de checkpoints, antes de heap/orçamento. A política atual também aplica [64 MiB de payload por sessão](storage-budget.md) por padrão, podendo reduzir cópias auxiliares para preservar deltas. Consulte o benchmark desse marco para o custo de saltos com orçamento apertado.
+
 ## Reproduzir
 
 ```bash
@@ -37,4 +39,4 @@ Com apenas dois locais, snapshots têm menos bytes porque cada estado é muito p
 
 128 reduz aproximadamente pela metade as cópias retidas em relação a 64, mantendo buscas curtas nesses cenários. 256 também é uma opção viável; a decisão é configurável, não uma garantia universal de desempenho. Na execução longa, as configurações 64 e 128 chegaram ao teto e aumentaram o intervalo para 256: os três casos terminaram com os mesmos 77 checkpoints e no máximo 127 deltas por busca medida.
 
-Os tempos variam com JIT, coleta de lixo, hardware e conteúdo dos frames. Uma execução isolada serve para orientar a escolha inicial; não é um limite de latência nem um teste de regressão de desempenho. A política atual limita quantidade de checkpoints, não bytes. Histórico persistente, compressão, orçamento por bytes e Web Worker continuam como evoluções possíveis caso novas medições indiquem necessidade.
+Os tempos variam com JIT, coleta de lixo, hardware e conteúdo dos frames. Uma execução isolada serve para orientar a escolha inicial; não é um limite de latência nem um teste de regressão de desempenho. No marco original, somente a quantidade de checkpoints era limitada. O orçamento por payload já foi implementado; navegação cancelável, histórico persistente e compressão continuam como evoluções possíveis.

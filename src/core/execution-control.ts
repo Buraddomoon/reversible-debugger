@@ -1,9 +1,9 @@
-import type { DebugSession } from './debugger';
+import { HistoryBudgetError, type DebugSession } from './debugger';
 import type { DeepReadonly, Step } from './machine';
 
 export type RunMode = 'continue' | 'reverse-continue' | 'into' | 'over' | 'out' | 'back-statement';
 export interface DebugStop {
-  readonly reason: 'breakpoint' | 'step' | 'start' | 'halted' | 'error' | 'recorded-end';
+  readonly reason: 'breakpoint' | 'step' | 'start' | 'halted' | 'error' | 'recorded-end' | 'budget';
   readonly cursor: number;
   readonly mode: RunMode;
   readonly line: number | null;
@@ -63,7 +63,7 @@ export class ExecutionControl {
       try {
         while (moved < size && this.plan) {
           if (direction === 'forward') {
-            if (!this.session.canForward) { this.finish(this.session.state.control.status === 'running' ? 'recorded-end' : this.session.state.control.status, plan); break; }
+            if (!this.session.canForward) { this.finish(this.session.recordingStop ? 'budget' : this.session.state.control.status === 'running' ? 'recorded-end' : this.session.state.control.status, plan); break; }
             const point = this.breakpointLine();
             if (point !== null && !(plan.skipOrigin && this.session.cursor === plan.origin)) { this.finish('breakpoint', plan, point); break; }
             lastStep = this.session.forward(); moved++;
@@ -87,8 +87,8 @@ export class ExecutionControl {
         }
       } catch (error) {
         // History/resource errors still leave the VM at its last valid transaction.
-        this.plan = null;
-        throw error;
+        if (error instanceof HistoryBudgetError) this.finish('budget', plan);
+        else { this.plan = null; throw error; }
       }
     }
     return { moved, origin: plan?.origin ?? this.session.cursor, direction, lastStep, stop: this.stopped };

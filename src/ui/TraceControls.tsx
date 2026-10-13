@@ -28,7 +28,7 @@ export function TraceControls({ session, metadata, histories, disabled, onPause,
         if (!file) throw new Error('Selecione um arquivo de histórico');
         if (file.size > MAX_TRACE_BYTES) throw new Error('O histórico excede 32 MiB. A sessão aberta foi preservada.');
         checkImportBudget(histories, file.size);
-        const restored = await importHistoryInWorker(await file.text(), job);
+        const restored = await importHistoryInWorker(await file.text(), { ...job, maxHistoryBytes: session.storageStats.limitBytes });
         controller.signal.throwIfAborted();
         if (generation.current === id) { checkImportBudget(histories, restored.bytes); onImport(restored); }
       } else {

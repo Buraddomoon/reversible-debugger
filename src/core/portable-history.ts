@@ -86,7 +86,7 @@ export async function exportHistory(session: DebugSession, details: TraceMetadat
   byteLength(result); job.signal?.throwIfAborted(); job.onProgress?.(records.length, records.length);
   return result;
 }
-export async function importHistory(content: string, job: RecordingJob = {}): Promise<ImportedHistory> {
+export async function importHistory(content: string, job: RecordingJob & { maxHistoryBytes?: number } = {}): Promise<ImportedHistory> {
   job.signal?.throwIfAborted(); const bytes = byteLength(content);
   let parsed: unknown;
   try { parsed = JSON.parse(content); } catch { throw new Error('Histórico inválido: arquivo JSON corrompido'); }
@@ -119,7 +119,7 @@ export async function importHistory(content: string, job: RecordingJob = {}): Pr
   const program = compile(payload.source, runtime);
   requireTrace(payload.programHash === await digest(JSON.stringify(encode(program))), 'identidade do programa compilado não confere');
   await recordingYield(job);
-  const session = await DebugSession.restoreRecording(payload.source, { ...runtime, maxSteps: limits.maxSteps, maxFrames: limits.maxFrames }, records, payload.cursor, { ...job, onProgress: done => job.onProgress?.(total + done, total * 2) });
+  const session = await DebugSession.restoreRecording(payload.source, { ...runtime, maxSteps: limits.maxSteps, maxFrames: limits.maxFrames, maxHistoryBytes: job.maxHistoryBytes }, records, payload.cursor, { ...job, onProgress: done => job.onProgress?.(total + done, total * 2) });
   return { ...details, session, bytes, checksum: envelope.checksum };
 }
 export function checkImportBudget(existing: readonly { bytes: number }[], incomingBytes: number): void {

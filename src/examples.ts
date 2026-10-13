@@ -9,6 +9,7 @@ import pythonFactorial from '../examples/python-factorial.py?raw';
 import listBug from '../examples/python-list-alias-bug.py?raw';
 import listFixed from '../examples/python-list-alias-fixed.py?raw';
 import listCycle from '../examples/python-list-cycle.py?raw';
+import storageGrowth from '../examples/python-storage-growth.py?raw';
 import type { LanguageId } from './core/runtime';
 
 export interface Example {
@@ -21,6 +22,8 @@ export interface Example {
   description: string;
 }
 export const examples: Example[] = [
+  { id: 'python-storage-growth', title: 'Python · Crescimento do histórico', tag: 'Orçamento de armazenamento', source: storageGrowth, language: 'python', expected: 120n,
+    description: 'Selecione 64 KiB e use Entrar, depois Passar sobre. A gravação pausa preservando os passos. Aumente para 4 MiB e saia da função para concluir com 120.' },
   { id: 'python-list-alias-bug', title: 'Python · Cópia que altera o original', tag: 'Referências compartilhadas', source: listBug, language: 'python', expected: 2n,
     description: 'copy = original compartilha a mesma lista. A função altera ambas: o resultado vira 99 em vez de 2. Observe o ID e desfaça as mutações.' },
   { id: 'python-list-alias-fixed', title: 'Python · Cópia independente', tag: 'Heap reversível', source: listFixed, language: 'python', expected: 2n,

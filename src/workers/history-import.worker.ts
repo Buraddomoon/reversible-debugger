@@ -9,9 +9,10 @@ scope.onmessage = event => {
   if (active) return;
   active = true;
   const content = event.data.content;
+  const maxHistoryBytes = event.data.maxHistoryBytes;
   void (async () => {
     try {
-      const imported = await importHistory(content, { onProgress: (done, total) => scope.postMessage({ kind: 'progress', done, total: total * 2 }) });
+      const imported = await importHistory(content, { maxHistoryBytes, onProgress: (done, total) => scope.postMessage({ kind: 'progress', done, total: total * 2 }) });
       const header = transferHeader(imported), records = imported.session.history;
       scope.postMessage({ kind: 'header', header });
       for (let i = 0; i < records.length; i += 256) {

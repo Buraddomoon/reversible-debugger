@@ -55,6 +55,8 @@ A preparação é cancelável. Erros de sintaxe preservam as fontes e a sessão 
 
 ## API
 
+O [orçamento de payload](storage-budget.md) vale por lado. A interface usa o limite selecionado na sessão principal; gravações importadas que já ultrapassam esse limite são recusadas sem alterar os originais. Fontes novas pausam na fronteira e apresentam **Limite da gravação**, com pontos navegáveis, sem transformar a pausa em erro do programa. O limite não mede a RAM agregada das duas execuções.
+
 ```ts
 import { ExecutionComparison } from '../src/core/comparison';
 

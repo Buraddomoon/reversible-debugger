@@ -48,7 +48,9 @@ A validação do heap confere IDs sequenciais, objetos existentes, itens anterio
 
 O arquivo tem teto de **32 MiB em UTF-8**. A página aceita até **8 históricos importados**, totalizando no máximo **64 MiB de arquivos**. Ultrapassar uma quota recusa a operação; não trunca deltas, remove arquivos abertos ou descarta silenciosamente o início. O retrocesso completo permanece disponível. Fonte, passos e frames continuam nos limites anteriores: 1 milhão de caracteres, 20 mil passos e 256 frames.
 
-Esses orçamentos medem arquivos, não heap JavaScript. O limite do histórico vivo continua sendo quantidade de passos; não há ainda retenção em disco/IndexedDB, compressão ou orçamento de heap. Ampliar sessões exige medir essas estruturas e definir uma fronteira explícita de retenção, com checkpoint e primeiro cursor disponível.
+Essas quotas medem arquivos, não heap JavaScript. O histórico também tem [orçamento de payload](storage-budget.md): 64 MiB por sessão por padrão, contando deltas, checkpoints e reserva do maior estado. Importações usam o limite capturado na sessão aberta ao iniciar a transferência. Uma gravação que não cabe é recusada integralmente, preservando o arquivo, a sessão e os scripts; nada é truncado. Não há orçamento agregado de RAM, retenção em disco/IndexedDB ou compressão.
+
+O limite local e o motivo da pausa não são exportados no v2. Uma execução pausada pelo orçamento é reaberta como histórico parcial, com seus registros e cursor. Ampliar o limite desse arquivo permite armazená-lo, mas não criar futuro inexistente: **Executar código de novo** começa outra execução gravável. O Worker e a VM privada da UI usam o mesmo limite ao reconstruir checkpoints.
 
 A interface usa um **Web Worker de módulo local** para parsing, checksum, identidade e validação da importação. O Worker entrega registros verificados em blocos de até 256, aguardando confirmação da UI antes de enviar o seguinte. A UI restaura sua VM privada em lotes com devolução de controle a cada 256 registros ou aproximadamente 8 ms. Cancelar/trocar sessão encerra o Worker e invalida respostas antigas. A execução normal e a navegação continuam no núcleo existente.
 

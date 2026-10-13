@@ -6,7 +6,7 @@ import { ComparisonLane, DifferenceTable, differenceText, phaseLabels } from './
 export interface ComparisonCandidate extends ComparisonSource { id: string; group: 'script' | 'example' | 'history' }
 const pairs: Record<string, string> = { 'python-list-alias-bug': 'python-list-alias-fixed', 'python-list-alias-fixed': 'python-list-alias-bug', 'python-sum-bug': 'python-sum-fixed', 'python-sum-fixed': 'python-sum-bug', 'sum-bug': 'sum-fixed', 'sum-fixed': 'sum-bug' };
 
-export function ComparisonPanel({ primary, candidates, onClose }: { primary: ComparisonCandidate; candidates: readonly ComparisonCandidate[]; onClose: () => void }) {
+export function ComparisonPanel({ primary, candidates, maxHistoryBytes, onClose }: { primary: ComparisonCandidate; candidates: readonly ComparisonCandidate[]; maxHistoryBytes: number; onClose: () => void }) {
   const [targetId, setTargetId] = useState(() => candidates.find(item => item.id === pairs[primary.id])?.id ?? candidates.find(item => item.id !== primary.id)?.id ?? primary.id);
   const [comparison, setComparison] = useState<ExecutionComparison | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export function ComparisonPanel({ primary, candidates, onClose }: { primary: Com
   const previousDifference = [...differenceIndexes].reverse().find(index => index < comparison!.cursor);
   const prepare = () => {
     comparison?.cancel(); setError(null);
-    try { setComparison(new ExecutionComparison(primary, target)); }
+    try { setComparison(new ExecutionComparison(primary, target, { maxHistoryBytes })); }
     catch (cause) { setComparison(null); setError(cause instanceof Error ? cause.message : String(cause)); }
   };
   useEffect(() => {

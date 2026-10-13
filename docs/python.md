@@ -65,6 +65,7 @@ Esses casos recebem diagnóstico, não uma tradução silenciosa com outras regr
 - Código: **1.000.000 de caracteres**, compartilhado com editor e importação. É um limite de texto, não de quantidade de passos.
 - Sintaxe: até 128 níveis de aninhamento ou cadeia de condicionais.
 - Histórico: 20.000 passos e 256 frames por padrão. Chegar ao limite de histórico preserva a navegação dos registros existentes.
+- Armazenamento: [64 MiB de payload por sessão](storage-budget.md) por padrão, ajustável. Falta de orçamento pausa o debugger antes de gravar a próxima instrução, sem erro do programa ou descarte de passos.
 - Heap: 4.096 listas e 20.000 itens totais entre elas. Objetos sem referências permanecem até desfazer a criação ou reiniciar; ainda não há coleta de lixo.
 - Saída: 100.000 caracteres por chamada de `print`, incluindo espaços/quebra de linha. Excesso falha atomicamente, sem truncar a saída.
 - Literais inteiros: até 4.300 dígitos; inteiros calculados: até 100.000 bits. Potências excessivas são rejeitadas antes de alocar um inteiro enorme.

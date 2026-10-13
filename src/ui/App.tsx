@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
-import { DebugSession } from '../core/debugger';
+import { DebugSession, HistoryBudgetError } from '../core/debugger';
 import { describeInstruction } from '../core/compiler';
 import { examples } from '../examples';
 import { formatValue, runtimes, type LanguageId } from '../core/runtime';
@@ -20,6 +20,7 @@ import type { ImportedHistory } from '../core/portable-history';
 import { HeapInspector } from './HeapInspector';
 import { isList } from '../core/heap';
 import { previewValue } from '../core/runtime';
+import { StoragePanel } from './StoragePanel';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript) {
@@ -89,7 +90,7 @@ export function App() {
   for (const [name, value] of Object.entries(frame.locals)) if (isList(value) && changedObjects.has(value.id)) changedNames.add(name);
   const breakpoints = controller.breakpoints;
   const breakpointLine = controller.stop?.reason === 'breakpoint' ? controller.stop.line : null;
-  const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
+  const status = rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.recordingStop && session.cursor === session.history.length ? 'Orçamento atingido' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
   const format = (value: Parameters<typeof formatValue>[0]) => previewValue(value, session.runtime.language, state.heap);
 
   const move = (direction: 'forward' | 'backward') => {
@@ -98,7 +99,7 @@ export function App() {
     try {
       const step = direction === 'forward' ? session.forward() : session.backward();
       if (step) setNavigation({ step, direction });
-    } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
+    } catch (error) { if (!(error instanceof HistoryBudgetError)) setNotice(error instanceof Error ? error.message : String(error)); }
     refresh();
   };
   const seek = (cursor: number) => {
@@ -250,7 +251,7 @@ export function App() {
       </section>
       <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing} onPause={pause} onImport={importRecording} onError={setNotice} />
       {session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Para reabrir depois, guarde o arquivo; os históricos abertos ficam nesta página.</span></div>}
-      {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
+      {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={session.storageStats.limitBytes} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
@@ -264,6 +265,7 @@ export function App() {
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>
         <StepControls disabled={editing || rewinding} canForward={session.canForward} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
+        <StoragePanel key={exampleId} session={session} disabled={editing || rewinding} onBudget={bytes => { pause(); setNotice(null); try { session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
         {breakpointLine !== null && <div className="breakpoint-pause" data-testid="debug-pause"><strong>Breakpoint na linha {breakpointLine}</strong><span>Parado antes do comando. Executar retoma esta passagem; o breakpoint continua ativo nas próximas.</span></div>}
         {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
         <div className="workspace">

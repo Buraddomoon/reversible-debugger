@@ -5,7 +5,7 @@ import type { DeepReadonly, Step } from '../core/machine';
 
 /** The worker owns parsing/checksum validation and its staging VM. It only sends
  * verified records in acknowledged chunks; the active VM is never touched. */
-export async function importHistoryInWorker(content: string, job: RecordingJob = {}): Promise<ImportedHistory> {
+export async function importHistoryInWorker(content: string, job: RecordingJob & { maxHistoryBytes?: number } = {}): Promise<ImportedHistory> {
   job.signal?.throwIfAborted();
   const worker = new Worker(new URL('../workers/history-import.worker.ts', import.meta.url), { type: 'module' });
   const records: DeepReadonly<Step>[] = [];
@@ -32,11 +32,11 @@ export async function importHistoryInWorker(content: string, job: RecordingJob =
       }
     };
     job.signal?.addEventListener('abort', cancel, { once: true });
-    worker.postMessage({ kind: 'import', content } satisfies TransferRequest);
+    worker.postMessage({ kind: 'import', content, maxHistoryBytes: job.maxHistoryBytes } satisfies TransferRequest);
   });
   job.signal?.throwIfAborted();
   // Replay/verify again into a detached UI session in bounded batches; no JSON
   // parsing, digest or unbounded transfer is performed by the main thread.
-  const session = await DebugSession.restoreRecording(header.source, { ...header.runtime, maxSteps: header.maxSteps, maxFrames: header.maxFrames }, records, header.cursor, { ...job, onProgress: done => job.onProgress?.(header.count * 3 + done, header.count * 4) });
+  const session = await DebugSession.restoreRecording(header.source, { ...header.runtime, maxSteps: header.maxSteps, maxFrames: header.maxFrames, maxHistoryBytes: header.maxHistoryBytes }, records, header.cursor, { ...job, onProgress: done => job.onProgress?.(header.count * 3 + done, header.count * 4) });
   return { name: header.name, filename: header.filename, bytes: header.bytes, checksum: header.checksum, session };
 }
