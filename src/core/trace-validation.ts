@@ -1,5 +1,5 @@
 import type { Program } from './compiler';
-import { applyChange, type Change, type Control, type Frame, type MachineState, type Step } from './machine';
+import { applyChange, applyStep, type Change, type Control, type Frame, type MachineState, type Step, type DeepReadonly } from './machine';
 import { pythonBuiltins, pythonTruth } from './python-values';
 import type { Value } from './language';
 import { getList, isList, listIndex, MAX_HEAP_ITEMS, MAX_HEAP_OBJECTS } from './heap';
@@ -107,6 +107,19 @@ export function validateMachineState(input: unknown, program: Program, maxFrames
   let items = 0;
   for (const [key, raw] of Object.entries(heap)) { const id = Number(key); integer(id, 1, c.nextObjectId - 1); requireTrace(String(id) === key, 'ID de checkpoint inválido'); const list = fields(raw, ['kind', 'items']); requireTrace(list.kind === 'list' && Array.isArray(list.items), 'objeto de checkpoint inválido'); items += list.items.length; list.items.forEach(reference); }
   requireTrace(Object.keys(heap).length === c.nextObjectId - 1 && items === c.heapItems, 'contadores de checkpoint inconsistentes');
+}
+/** Reverse a validated delta against its actual posterior values. Operates on a
+ * private staging VM; callers publish only after this completes successfully. */
+export function restoreValidatedReverse(state: MachineState, program: Program, step: DeepReadonly<Step>, maxFrames: number): void {
+  for (const c of [...step.changes].reverse()) {
+    if (c.kind === 'control') requireTrace(same(state.control, c.after), 'controle posterior inconsistente');
+    else if (c.kind === 'binding') { const f = state.frames.find(f => f.id === c.frameId); requireTrace(f && same(Object.hasOwn(f.locals, c.name) ? { exists: true, value: f.locals[c.name] } : { exists: false }, c.after), 'binding posterior inconsistente'); }
+    else if (c.kind === 'heap-allocation') requireTrace(same(state.heap[c.id], c.object), 'alocação posterior inconsistente');
+    else if (c.kind === 'heap-splice') requireTrace(state.heap[c.id] && same(state.heap[c.id]!.items.slice(c.index, c.index + c.added.length), c.added), 'heap posterior inconsistente');
+    else { const list = c.kind === 'frames' ? state.frames : c.kind === 'output' ? state.output : state.operands; requireTrace(same(list.slice(c.index, c.index + c.added.length), c.added), 'splice posterior inconsistente'); }
+    applyChange(state, c as Change, 'backward');
+  }
+  restoreValidatedStep(state, program, step, maxFrames); applyStep(state, step, 'backward');
 }
 
 export function restoreValidatedStep(state: MachineState, program: Program, input: unknown, maxFrames: number): Step {

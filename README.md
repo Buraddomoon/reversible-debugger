@@ -20,6 +20,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Abrir** usa um cache limitado e checkpoints persistidos para carregar somente os blocos necessários. A demo mostra leituras, reutilizações e despejos; cancelar mantém o cursor anterior. **Completo** carrega a gravação inteira para editar, exportar ou comparar.
 
+**Gravar sessão** salva blocos durante a execução e mostra o último passo durável e as pendências da aba. **Retomar** recupera a sessão após recarregar; **Salvar pendências** publica o buffer e a posição atual. Falhas de escrita pausam a gravação e preservam os passos ainda na aba. [Contrato e demo](docs/live-recording.md).
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -109,6 +111,10 @@ Na primeira abertura, o Worker valida a cadeia inteira sem reter todos os deltas
 ![Firefox: biblioteca de execuções preservada e histórico reaberto](docs/execution-library.png)
 
 ![Firefox: cache de 256 KiB com dois blocos carregados de uma gravação de 37](docs/paged-history.png)
+
+Para persistir enquanto executa, use **Gravar sessão**, dê um nome e avance normalmente. O buffer tem até 128 passos/256 KiB; cada bloco publica uma fronteira atômica. **Voltar**, **Início** e **Último** preservam o futuro e reaplicam deltas. Antes de sair, use **Salvar pendências**: um reload forçado recupera somente os passos já salvos. A biblioteca de sessões é separada de scripts/capturas e permite **Retomar** e **Excluir**. [Quotas, recuperação, falhas e testes no Firefox](docs/live-recording.md).
+
+![Firefox: sessão gravada durante a execução e retomada no cursor salvo](docs/live-recording.png)
 
 ## Listas e referências compartilhadas
 
@@ -229,6 +235,7 @@ console.log(session.historyStats);    // Intervalo atual e cursores dos checkpoi
 npm run check         # TypeScript + testes do núcleo
 npm run build         # TypeScript + build estático em dist/
 npm run test:firefox  # Firefox instalado, sem baixar outro navegador
+npm run test:firefox -- --live-only # Gravação contínua, recuperação e quota
 npm run bench:history # Payload e latência: deltas, checkpoints e snapshots
 npm run bench:visual  # Explicações, lotes, índice e navegação com 18–19 mil passos
 npm run bench:portable # Arquivos, importação/exportação, forks e atrasos de timer

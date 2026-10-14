@@ -153,11 +153,22 @@ Critério atendido: Firefox instalado salva/recarrega/reabre o passo 64 da soma 
 
 Critério atendido: núcleo compara todos os estados nos dois sentidos e saltos gerados, inclusive aliases/ciclos/erros/recursão. Firefox reabre 9.261 passos/37 blocos com uma leitura, navega com cache de 256 KiB, compara estados completos com referência sequencial, cancela antes do ACK, substitui destino, recupera checkpoints despejados e recusa corrupção sem estado parcial. Materialização, exclusão, scripts e 390 px verificados. [Contrato e diagnóstico](paged-history.md).
 
-## Próximo marco — gravação paginada e validação de segmentos
+## Gravação incremental persistida — implementado
 
-- Persistir blocos durante gravação, com fronteira durável explícita, buffers limitados e falha de I/O atômica, preservando os passos ainda não persistidos.
+- Sessões nomeadas em journal separado; gravação em blocos de até 128 passos/256 KiB, cache LRU e fronteira durável explícita.
+- Cabeça/checkpoint/catálogo publicados atomicamente com cada bloco; revisões, lease de escritor e checksums encadeados.
+- Retomada do prefixo salvo após interrupção, sem reexecutar instruções; navegação preserva futuro durável e volátil.
+- Falhas de I/O/quota mantêm buffer e estado; retry reconcilia respostas incertas sem duplicar passos/saída.
+- Preparação/ACK/commit em Worker, fila limitada e pausa concluindo somente o lote aceito de até 16 passos.
+- Fechamento normal salva antes de sair; captura integral inclui passos pendentes para exportação/comparação. Scripts e bibliotecas anteriores preservados.
+- Testes de reversibilidade, quotas, corrupção, concorrência, interrupção, rollback e resgate; Firefox nativo verifica reload/retomada, RPC, quota atômica e 390 px.
+
+Critério: gravação não retém todos os deltas em memória; passos novos são persistidos durante a execução e os estados são iguais nos dois sentidos. Reload recupera somente a fronteira durável, conforme indicado na tela. Limites de 20.000 passos/256 frames mantidos. [Contrato e demo](live-recording.md).
+
+## Próximo marco — validação de segmentos e medidas de escala
+
 - Definir contrato de validação/reutilização de checkpoints e segmentos para reduzir o custo da primeira abertura de sessões maiores.
-- Aplicar paginação às execuções graváveis e estudar comparação sem materializar todas as transações.
+- Estudar comparação sem materializar todas as transações e checkpoints esparsos para saltos em sessões graváveis.
 - Medir picos temporários, cópias, renderização e latência de leitura/gravação em programas diferentes antes de ampliar os 20.000 passos.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.

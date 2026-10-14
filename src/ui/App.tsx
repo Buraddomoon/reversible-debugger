@@ -27,6 +27,7 @@ import { ExecutionLibraryPanel } from './ExecutionLibraryPanel';
 import { activeHistoryBudget, defaultActiveBudget, stagingHistoryBudget } from '../core/page-budget';
 import { PagedDebugger, type FullAction } from './PagedDebugger';
 import type { PagedRecordingClient } from './paged-client';
+import { RecordingSessionsPanel } from './RecordingSessionsPanel';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript, maxHistoryBytes?: number) {
@@ -66,6 +67,8 @@ export function App() {
   useEffect(() => () => paged?.dispose(), [paged]);
   const [transferBusy, setTransferBusy] = useState(false);
   const [libraryBusy, setLibraryBusy] = useState(false);
+  const [recordingBusy, setRecordingBusy] = useState(false);
+  const [leavingRecording, setLeavingRecording] = useState(false);
   const controller = useMemo(() => new ExecutionControl(session), [session]);
   const [exampleId, setExampleId] = useState(initial.selection);
   const [draft, setDraft] = useState(initial.source);
@@ -129,6 +132,11 @@ export function App() {
     refresh();
   };
   const pause = () => { seeker.cancel(); controller.cancel(); setPlaying(false); setRewinding(false); setPagedPauseEpoch(value => value + 1); refresh(); };
+  const leaveRecording = async (action: () => void) => {
+    pause(); if (!paged?.isLive) { action(); return; } setLeavingRecording(true);
+    try { await paged.closeLive(); action(); setNotice(null); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setLeavingRecording(false); }
+  };
   const toggleBreakpoint = (line: number) => { pause(); controller.toggleBreakpoint(line); };
   useEffect(() => {
     if (!playing && !rewinding) return;
@@ -266,16 +274,18 @@ export function App() {
     <main>
       <div className="intro-row"><div><p className="eyebrow">LABORATÓRIO DE EXECUÇÃO</p><h1>Veja o programa pensar.<br /><span>E volte quando ele errar.</span></h1></div><div className="intro-note"><span className="note-mark">01 /</span><p>Explore cada decisão.<br />O estado acompanha você nos dois sentidos.</p></div></div>
       <section className="example-bar" aria-label="Escolha do programa">
-        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={paged ? `paged:${paged.header.entry.id}` : exampleId} onChange={event => load(event.target.value)}>{paged && <optgroup label="Execução salva"><option value={`paged:${paged.header.entry.id}`}>{paged.header.entry.name}</option></optgroup>}{histories.length > 0 && <optgroup label="Históricos importados">{histories.map(history => <option key={history.id} value={history.id}>{history.displayName}</option>)}</optgroup>}{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
+        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" disabled={leavingRecording} value={paged ? `paged:${paged.header.entry.id}` : exampleId} onChange={event => { const id = event.target.value; void leaveRecording(() => load(id)); }}>{paged && <optgroup label="Execução salva"><option value={`paged:${paged.header.entry.id}`}>{paged.header.entry.name}</option></optgroup>}{histories.length > 0 && <optgroup label="Históricos importados">{histories.map(history => <option key={history.id} value={history.id}>{history.displayName}</option>)}</optgroup>}{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
         <p>{paged || selectedHistory ? 'Execução registrada. Navegue pelos estados ou compare com outra versão.' : example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
         <span className="example-tag">{paged || selectedHistory ? 'Histórico' : example?.tag ?? 'Programa personalizado'}</span>
-        <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
-        {!paged && <button className="compare-script" disabled={editing || rewinding || comparing || transferBusy || libraryBusy} onClick={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }}>Comparar execuções</button>}
+        <button className="add-script" disabled={leavingRecording} onClick={() => void leaveRecording(newScript)}><Icon name="code" />Adicionar script</button>
+        {!paged && <button className="compare-script" disabled={editing || rewinding || comparing || transferBusy || libraryBusy || recordingBusy} onClick={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }}>Comparar execuções</button>}
         {!paged && selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
-        {(paged || selectedHistory) && <button disabled={rewinding} onClick={() => paged ? setPaged(null) : closeHistory()}>Fechar histórico</button>}
+        {(paged || selectedHistory) && <button disabled={rewinding || leavingRecording} onClick={() => void leaveRecording(() => paged ? setPaged(null) : closeHistory())}>Fechar histórico</button>}
       </section>
-      {!paged && <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || libraryBusy} onBusyChange={setTransferBusy} onPause={pause} onImport={importRecording} onError={setNotice} />}
-      <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} pagedId={paged?.header.entry.id} pagedReservation={paged ? paged.snapshot.stats.limitTotalBytes * 2 : 0} disabled={editing || rewinding || comparing || transferBusy} onBusyChange={setLibraryBusy} onPause={pause} onOpenPaged={client => { setComparing(false); setPaged(client); }} onOpenFull={(history, id) => { importRecording(history, id); setPaged(null); }} onDeletePaged={id => { if (paged?.header.entry.id === id) setPaged(null); }} onSelect={load} />
+      {!paged && <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || libraryBusy || recordingBusy} onBusyChange={setTransferBusy} onPause={pause} onImport={importRecording} onError={setNotice} />}
+      <RecordingSessionsPanel session={session} metadata={{ name: comparisonPrimary.name, filename }} active={Boolean(paged)} disabled={editing || rewinding || comparing || transferBusy || libraryBusy || leavingRecording} budget={() => stagingHistoryBudget(histories, session, 2)} onPause={pause} onBusy={setRecordingBusy} onOpen={(client, fresh) => { if (fresh) { session.restart(); refresh(); } setComparing(false); setPaged(client); setNotice(null); }} />
+      <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} pagedId={paged?.header.entry.id} pagedReservation={paged ? paged.snapshot.stats.limitTotalBytes * 2 : 0} disabled={editing || rewinding || comparing || transferBusy || recordingBusy || Boolean(paged?.isLive)} onBusyChange={setLibraryBusy} onPause={pause} onOpenPaged={client => { setComparing(false); setPaged(client); }} onOpenFull={(history, id) => { importRecording(history, id); setPaged(null); }} onDeletePaged={id => { if (paged?.header.entry.id === id) setPaged(null); }} onSelect={load} />
+      {paged && notice && <div className="error-banner" role="alert">{notice}</div>}
       {!paged && session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Salve esta execução na biblioteca ou exporte um arquivo para reabrir depois.</span></div>}
       {paged ? <PagedDebugger key={paged.header.entry.id} client={paged} histories={histories} pauseEpoch={pagedPauseEpoch} materializeBudget={() => stagingHistoryBudget(histories, session, 2, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)} onFull={materializedRecording} /> : comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
@@ -293,7 +303,7 @@ export function App() {
         <StepControls disabled={editing || rewinding} canForward={session.canForward} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
         {seeker.progress && <SeekStatus current={seeker.progress.cursor} target={seeker.progress.to} completed={seeker.progress.appliedSteps} total={seeker.progress.totalSteps} onCancel={() => { seeker.cancel(true); refresh(); }} />}
         {seeker.message && <p className="seek-message" aria-live="polite" data-testid="seek-message">{seeker.message}</p>}
-        <StoragePanel key={exampleId} session={session} maxAvailableBytes={activeHistoryBudget(histories)} disabled={editing || rewinding || transferBusy || libraryBusy} onBudget={bytes => { pause(); setNotice(null); try { if (bytes > activeHistoryBudget(histories)) throw new Error('Limite excede o orçamento agregado da página. Feche um histórico antes de aumentar.'); session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
+        <StoragePanel key={exampleId} session={session} maxAvailableBytes={activeHistoryBudget(histories)} disabled={editing || rewinding || transferBusy || libraryBusy || recordingBusy} onBudget={bytes => { pause(); setNotice(null); try { if (bytes > activeHistoryBudget(histories)) throw new Error('Limite excede o orçamento agregado da página. Feche um histórico antes de aumentar.'); session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
         {breakpointLine !== null && <div className="breakpoint-pause" data-testid="debug-pause"><strong>Breakpoint na linha {breakpointLine}</strong><span>Parado antes do comando. Executar retoma esta passagem; o breakpoint continua ativo nas próximas.</span></div>}
         {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
         <div className="workspace">

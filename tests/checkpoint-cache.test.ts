@@ -23,6 +23,8 @@ describe('cache auxiliar de checkpoints', () => {
     await expect(cache.readCheckpoint(token, point!)).rejects.toThrow(/corrompido/);
   });
   it('evita crescimento ilimitado por bytes e por entradas, despejando somente dados derivados', async () => {
+    // Give each access a distinct timestamp; same-millisecond UUID ties have no LRU order.
+    let tick = Date.now(); vi.spyOn(Date, 'now').mockImplementation(() => ++tick);
     const { cache } = setup({ maxDiskBytes: 1200, maxEntries: 2 });
     const a = await cache.begin('a'); const point = await cache.checkpoint(a, 1, 'a'.repeat(800)); await cache.publish(a, '{}');
     const b = await cache.begin('b'); await cache.checkpoint(b, 2, 'b'.repeat(800)); await cache.publish(b, '{}');

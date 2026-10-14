@@ -1,0 +1,108 @@
+{
+  "browser": "150.0",
+  "steps": 777,
+  "beforeAck": true,
+  "afterAck": true,
+  "blocksDuringExecution": 28,
+  "captureIncludedVolatileFuture": true,
+  "limitsPreserved": true,
+  "fullStateOracle": true,
+  "samples": [
+    {
+      "cursor": 33,
+      "durable": 26,
+      "pendingBytes": 3190,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 49,
+      "durable": 43,
+      "pendingBytes": 2777,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 65,
+      "durable": 60,
+      "pendingBytes": 2138,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 81,
+      "durable": 77,
+      "pendingBytes": 1742,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 97,
+      "durable": 94,
+      "pendingBytes": 1344,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 113,
+      "durable": 111,
+      "pendingBytes": 952,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 129,
+      "durable": 128,
+      "pendingBytes": 530,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 145,
+      "durable": 136,
+      "pendingBytes": 3986,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 161,
+      "durable": 153,
+      "pendingBytes": 3590,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 177,
+      "durable": 170,
+      "pendingBytes": 3207,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 193,
+      "durable": 187,
+      "pendingBytes": 2883,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 209,
+      "durable": 204,
+      "pendingBytes": 2339,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 225,
+      "durable": 221,
+      "pendingBytes": 1798,
+      "cacheBytes": 0
+    },
+    {
+      "cursor": 241,
+      "durable": 238,
+      "pendingBytes": 1401,
+      "cacheBytes": 0
+    }
+  ],
+  "note": "IndexedDB e Worker de produção no Firefox instalado; estado completo comparado com executor sequencial. Payload não mede RAM.",
+  "recovery": {
+    "durable": 5,
+    "volatileLostOnForcedReload": 3,
+    "exactVisibleState": true
+  },
+  "fault": {
+    "atomicNativeQuotaRollback": true,
+    "pendingPreserved": 20,
+    "retryWithoutDuplicate": true
+  },
+  "mobileWidth": 390
+}

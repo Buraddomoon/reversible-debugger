@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { createServer } from 'vite';
 import { runPagedBrowserFlows } from './paged-browser-flows.mjs';
+import { runLiveBrowserFlows } from './live-browser-flows.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = join(root, '.artifacts');
@@ -128,10 +129,12 @@ try {
     }
     throw new Error('Arquivo de histórico não foi baixado no perfil isolado');
   };
+  const input = (selector, value) => evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, ${JSON.stringify(value)}); element.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   const uploadHistory = (content, name = 'execucao.rewind.json') => evaluate(`(() => { const input = document.querySelector('#trace-file'); const data = new DataTransfer(); data.items.add(new File([${JSON.stringify(content)}], ${JSON.stringify(name)}, { type: 'application/json' })); input.files = data.files; input.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
   await command('browsingContext.navigate', { context, url: 'http://127.0.0.1:5178/', wait: 'complete' });
   await waitFor("document.querySelector('[data-testid=step-count]')");
+  if (!process.argv.includes('--live-only')) {
   assert.match(await text('.source-runtime'), /Python 3/);
   const locals = async () => JSON.parse(await evaluate("JSON.stringify(Object.fromEntries(Array.from(document.querySelectorAll('.variable-row')).map(row => [row.querySelector('code').textContent, row.querySelector('strong').textContent])))"));
   assert.equal(await evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Sair da função').disabled"), true);
@@ -273,7 +276,6 @@ try {
   assert.equal(await text('[data-testid=result-value]'), '10');
   console.log('PASS: bug, chamada, retorno, reinício e reaplicação exata.');
 
-  const input = (selector, value) => evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, ${JSON.stringify(value)}); element.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   const historyLength = await text('[data-testid=history-length]');
   await click('Início');
   await waitFor("document.querySelector('[data-testid=step-count]').textContent === '000'");
@@ -878,6 +880,8 @@ try {
   await writeFile(join(artifacts, 'execution-library-browser.json'), JSON.stringify({ browser: session.capabilities.browserVersion, entry: blockEvidence, saveWallMs: +blockSaveWall.toFixed(2), loadWallMs: +blockReadWall.toFixed(2), cancellation: true, reload: true, cursor: 123, note: 'IndexedDB real e Worker local; tempos incluem BiDi, modal/paint, validação e restauração. Payload salvo, não espaço físico nem RAM. Reinício, reload, futuro, comparação e exclusão preservaram scripts.' }, null, 2));
   console.log('PASS: IndexedDB real, blocos e checksums, recarga, cursor/futuro, comparação, cancelamento de gravação/leitura, troca sem callbacks antigos, exclusão isolada e layout móvel.');
   await runPagedBrowserFlows({ evaluate, command, context, click, activate, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+  }
+  await runLiveBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
   assert.deepEqual(pageErrors, []);
   console.log('PASS: ausência de erros no console.');
   await command('session.end');

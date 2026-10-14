@@ -209,6 +209,14 @@ O Worker e a sessão privada de restauração recebem o orçamento de payload re
 
 `paged-history.worker.ts` controla a VM/cache e confirma destinos com a UI antes de publicar; cancelar a resposta preparada mantém o cursor anterior no Worker. `paged-client.ts` numeriza pedidos, descarta respostas antigas e envia ACK apenas para o destino aceito. `PagedDebugger` mostra estados, fonte, pilha, heap, explicações por instrução, cache e linha do tempo baseada em eventos. Materialização explícita mantém comparação/edição/exportação nos stores integrais, com orçamento/cancelamento. Nenhum limite de execução ampliado. [Contrato, diagnóstico e restrições](paged-history.md).
 
+## Gravação contínua com journal
+
+`LiveRecording` mantém uma VM na fronteira e outra no cursor observado, buffer de deltas congelados (128 passos/256 KiB), cache LRU e eventos compactos. Instruções novas são admitidas antes de publicar; navegação usa registros duráveis ou pendentes e nunca chama o executor. A escrita guarda somente o checkpoint da última fronteira por bloco, sem snapshots por passo.
+
+`RecordingJournal` usa banco próprio v1 (`rewind.recording-journal`), fonte imutável e cadeia de selos SHA-256. Transações publicam bloco/cabeça/catálogo juntos; lease e revisão protegem o escritor entre abas. Falhas preservam prefixo durável e buffer volátil; resposta incerta é reconciliada sem duplicar. Retomada valida a cadeia em fluxo e compara seu estado final com o checkpoint antes de assumir o escritor.
+
+`live-recording.worker.ts` serializa pedidos e exige confirmação antes do commit. Cancelamento anterior ao ACK abandona staging; posterior conclui o pedido aceito (execução em lotes de até 16). `PagedRecordingClient` transporta ambos os atores e materializa registros em lotes para edição/exportação/comparação. `RecordingSessionsPanel` separa sessões contínuas de scripts/capturas; `PagedDebugger` mostra a fronteira e pendências. Fechar/trocar pela UI tenta flush; reload abrupto recupera somente o prefixo salvo. Nenhum limite ampliado. [Contrato, quotas e demonstração](live-recording.md).
+
 ## Criação e biblioteca de scripts
 
 `NewScriptModal` usa um `dialog` nativo para nome, linguagem e versão, com foco inicial, cancelamento por Escape e normalização da extensão. A criação registra um script vazio com ID estável e troca a sessão, sem carregar variáveis, saída ou histórico da sessão anterior. Nomes repetidos são rejeitados para não criar entradas ambíguas. `DeleteScriptModal` confirma a exclusão pelo nome.

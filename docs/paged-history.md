@@ -56,7 +56,7 @@ O cache auxiliar pode ser recomputado; seu despejo nunca apaga scripts ou execu�
 
 **Fechar histórico** termina o Worker e libera a reserva do viewer. **Excluir** a execução atualmente explorada fecha esse viewer, conforme o modal, pois as leituras futuras dependem do disco. Históricos que já foram carregados por inteiro ficam independentes e continuam preservados. Exclusão em outra aba pode fazer uma leitura futura falhar; o último estado publicado permanece disponível. A aba original do debugger e os scripts não são substituídos ao explorar uma captura.
 
-Não há retenção parcial, compressão, paginação da VM ativa gravável nem aumento do teto de **20.000 passos**. Execução nova, importação de arquivo e comparação ainda usam o store integral. A evolução seguinte deve tratar validação de segmentos e o ciclo de gravação/paginação, além de medir picos temporários, antes de ampliar sessões.
+Não há retenção parcial, compressão nem aumento do teto de **20.000 passos**. O caminho de execução comum, importação de arquivo e comparação usa o store integral. O marco seguinte adicionou **Gravar sessão**, com um journal separado, buffer limitado e paginação de execuções graváveis; consulte [gravação contínua](live-recording.md). Validação reutilizável de segmentos e medidas de picos temporários continuam necessárias antes de ampliar sessões.
 
 ## Validação e diagnóstico
 
