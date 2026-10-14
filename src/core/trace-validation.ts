@@ -95,6 +95,20 @@ function change(item: unknown, program: Program): asserts item is Change {
 /** Validate schema, exact splice/binding preconditions and control flow while
  * replaying into a private staging VM. Never evaluates program expressions.
  * Integrity/compatibility is checked separately by the portable envelope. */
+/** Check a persisted checkpoint's shape, IDs, counters and all heap references. */
+export function validateMachineState(input: unknown, program: Program, maxFrames: number): asserts input is MachineState {
+  const s = fields(input, ['control', 'frames', 'operands', 'output', 'heap']); control(s.control, program); list(s.frames); list(s.operands); list(s.output); const heap = object(s.heap);
+  requireTrace(s.frames.length >= 1 && s.frames.length <= maxFrames && s.operands.length <= 20_000 && s.output.length <= 20_000, 'checkpoint excede os limites');
+  const c = s.control as Control;
+  const reference = (v: unknown) => { value(v, program); if (v !== null && typeof v === 'object' && 'kind' in v && v.kind === 'list') requireTrace(Object.hasOwn(heap, (v as { id: number }).id), 'referência de checkpoint ausente'); };
+  const ids = new Set<number>();
+  for (const [index, raw] of s.frames.entries()) { frame(raw, program); const f = raw as Frame; requireTrace(!ids.has(f.id) && f.id < c.nextFrameId && f.operandBase <= s.operands.length && (index !== 0 || f.id === 0), 'frames do checkpoint inconsistentes'); ids.add(f.id); Object.values(f.locals).forEach(reference); }
+  s.operands.forEach(reference); for (const line of s.output) text(line, 100_000);
+  let items = 0;
+  for (const [key, raw] of Object.entries(heap)) { const id = Number(key); integer(id, 1, c.nextObjectId - 1); requireTrace(String(id) === key, 'ID de checkpoint inválido'); const list = fields(raw, ['kind', 'items']); requireTrace(list.kind === 'list' && Array.isArray(list.items), 'objeto de checkpoint inválido'); items += list.items.length; list.items.forEach(reference); }
+  requireTrace(Object.keys(heap).length === c.nextObjectId - 1 && items === c.heapItems, 'contadores de checkpoint inconsistentes');
+}
+
 export function restoreValidatedStep(state: MachineState, program: Program, input: unknown, maxFrames: number): Step {
   const item = fields(input, ['index', 'op', 'span', 'description', 'changes']);
   integer(item.index, 0, program.instructions.length - 1); text(item.description); list(item.changes);

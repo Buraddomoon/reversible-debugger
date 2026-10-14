@@ -12,7 +12,7 @@
 4. Reinicie o programa ou recarregue a página. Os scripts permanecem na biblioteca existente; a execução salva aparece na nova biblioteca.
 5. Clique em **Abrir**: o frame de `sum_to`, seus locais, operandos e próxima instrução reaparecem no passo `64`.
 6. Vá ao início e ao último passo. O resultado continua `10`, sem executar código novamente. Compare a gravação com a soma corrigida para observar `10` / `15`.
-7. **Fechar histórico** libera a entrada carregada nesta página. **Excluir** na biblioteca remove a execução do navegador, com confirmação, preservando scripts, arquivos exportados e históricos já abertos.
+7. **Fechar histórico** libera a entrada carregada nesta página. **Excluir** na biblioteca remove a execução do navegador, com confirmação, preservando scripts, arquivos exportados e históricos carregados por inteiro. Se essa execução estiver no viewer paginado, o modal informa que ele será fechado, pois as leituras dependem do disco.
 
 Salvar cria uma captura imutável com novo ID. Navegar, gravar passos novos ou reiniciar depois não altera essa captura; salve novamente para guardar outra posição. Recarregar restaura a lista de execuções, sem carregar todas as VMs nem substituir o rascunho selecionado. Abrir uma entrada já carregada reutiliza seu histórico e restaura o cursor da captura original.
 
@@ -63,9 +63,9 @@ Usar o mesmo navegador e endereço (origem, incluindo porta) é necessário para
 
 Um Worker local lê **um bloco por vez**, valida checksum/cadeia e transfere lotes de até **16 transações**, aguardando confirmação da UI. A UI valida diretamente em outro builder privado, sem acumular uma segunda lista completa de transações decodificadas. A sessão só aparece depois de todos os blocos e da restauração cancelável do cursor. Cancelar encerra o Worker; pedidos numerados e troca de sessão invalidam callbacks antigos.
 
-Esta entrega separa biblioteca em disco de execuções carregadas, mas **ainda carrega todos os deltas de uma execução aberta**, dentro do limite atual de 20.000 passos. Não é uma VM com paginação de deltas sob demanda. Compilação, hash/JSON de um bloco, uma transação individual, cópia de checkpoint e renderização podem ser indivisíveis. Gravação rende entre blocos e por alvo de 6 ms durante a codificação; os tempos não são garantia de tempo real.
+O marco original separou biblioteca em disco de execuções carregadas, com restauração integral. O marco seguinte acrescentou [paginação sob demanda](paged-history.md): **Abrir** usa cache/VM no Worker e checkpoints auxiliares; **Completo** mantém a restauração integral para edição/exportação/comparação. O limite atual segue em 20.000 passos. Compilação, hash/JSON de um bloco, uma transação individual, cópia de checkpoint e renderização podem ser indivisíveis. Gravação rende entre blocos e por alvo de 6 ms durante a codificação; os tempos não são garantia de tempo real.
 
-Não há retenção parcial automática nem descarte silencioso do início. O próximo marco deve definir um `HistoryStore` paginado, checkpoints persistidos para acesso aleatório, orçamento de cache e cancelamento durante troca de blocos, medindo cópias/latência antes de ampliar o teto de passos.
+Não há retenção parcial automática nem descarte silencioso do início. O viewer paginado mantém cache limitado e cancelamento ao trocar blocos. Gravação paginada/validação de segmentos e medidas de picos temporários vêm antes de ampliar o teto de passos.
 
 ## Validação e medidas
 

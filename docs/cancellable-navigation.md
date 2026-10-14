@@ -51,7 +51,7 @@ while (!progress.done) {
 
 6 ms é um alvo cooperativo. Cópia de checkpoint, uma transação individual, cálculos de diferenças, alinhamento e renderização continuam indivisíveis. Uma dessas operações pode passar do alvo; não há promessa de tempo real ou transferência da VM inteira para Worker neste marco. Timers acrescentam latência total, em troca de permitir entrada, atualização da página e cancelamento.
 
-Os limites existentes de 20.000 passos, 256 frames, heap e orçamento por sessão permanecem. Navegação por si só não grava dados em IndexedDB. O marco seguinte acrescentou **Salvar execução** e a [biblioteca persistida em blocos](persistent-histories.md), com quotas, integridade, recuperação e leitura cancelável. Scripts continuam separados e arquivos v2 permanecem compatíveis. Paginação sob demanda das execuções abertas vem antes de ampliar sessões.
+Os limites existentes de 20.000 passos, 256 frames, heap e orçamento por sessão permanecem. Navegação por si só não grava novos deltas em IndexedDB. Os marcos seguintes acrescentaram **Salvar execução**, a [biblioteca em blocos](persistent-histories.md) e [paginação sob demanda](paged-history.md) com checkpoints auxiliares persistidos. Scripts continuam separados e arquivos v2 permanecem compatíveis. Gravação paginada e medidas vêm antes de ampliar sessões.
 
 ## Verificações e medidas
 

@@ -1,5 +1,5 @@
 import { DebugSession, recordingYield, type RecordingJob } from './debugger';
-import { captureRecording, decodeBlock, encodeBlocks, utf8Bytes, validateManifest, type BlockDescriptor, type ExecutionHeader } from './history-blocks';
+import { captureRecording, decodeBlock, encodeBlocks, utf8Bytes, validateManifest, type BlockDescriptor, type ExecutionHeader, type ExecutionManifest } from './history-blocks';
 import { digest, MAX_TRACE_BYTES, type ImportedHistory, type TraceMetadata } from './portable-history';
 import { fields, integer, requireTrace, text } from './trace-validation';
 import type { DeepReadonly, Step } from './machine';
@@ -16,6 +16,7 @@ export interface SavedExecution {
 interface CatalogRow extends SavedExecution { status: 'writing' | 'ready'; lease: number; written: number }
 interface ManifestRow { id: string; content: string; checksum: string }
 export interface LibraryStats { count: number; bytes: number; pending: number }
+export interface StoredRecording { entry: SavedExecution; manifest: ExecutionManifest; checksum: string }
 export interface LibraryReadJob extends RecordingJob {
   maxHistoryBytes?: number;
   onHeader?: (header: ExecutionHeader, bytes: number, checksum: string) => void;
@@ -144,21 +145,28 @@ export class ExecutionLibrary {
       throw message(cause);
     }
   }
-  async load(id: string, job: LibraryReadJob = {}): Promise<ImportedHistory> {
+  async openRecording(id: string, signal?: AbortSignal): Promise<StoredRecording> {
     const saved = await this.transaction(['catalog', 'manifests'], 'readonly', async tx => {
       const raw = await request(tx.objectStore('catalog').get(id)); requireTrace(raw !== undefined, 'execução excluída ou indisponível');
       const entry = row(raw); requireTrace(entry.status === 'ready', 'execução ainda não concluída');
       const m = fields(await request(tx.objectStore('manifests').get(id)), ['id', 'content', 'checksum']); requireTrace(m.id === id, 'manifesto pertence a outra execução'); text(m.content, MAX_TRACE_BYTES); text(m.checksum, 64);
       return { entry, content: m.content, checksum: m.checksum };
-    }, job.signal);
-    const manifest = await validateManifest(saved.content, saved.checksum, id); aborted(job.signal);
+    }, signal);
+    const manifest = await validateManifest(saved.content, saved.checksum, id); aborted(signal);
     const h = manifest.header, r = saved.entry;
     requireTrace(r.cursor === h.cursor && r.count === h.count && r.blocks === manifest.blocks.length && r.createdAt === h.createdAt && r.name === h.metadata.name && r.filename === h.metadata.filename && r.language === h.runtime.language && r.version === h.runtime.version && r.bytes === utf8Bytes(saved.content) + manifest.blocks.reduce((sum, b) => sum + b.bytes, 0), 'catálogo e manifesto não conferem');
+    return { entry: summary(r), manifest, checksum: saved.checksum };
+  }
+  async readBlock(recording: StoredRecording, descriptor: BlockDescriptor, signal?: AbortSignal): Promise<unknown[]> {
+    const raw = await this.transaction(['blocks'], 'readonly', tx => request(tx.objectStore('blocks').get([recording.entry.id, descriptor.index])), signal);
+    const records = await decodeBlock(raw, descriptor, recording.entry.id); aborted(signal); return records;
+  }
+  async load(id: string, job: LibraryReadJob = {}): Promise<ImportedHistory> {
+    const saved = await this.openRecording(id, job.signal), { manifest } = saved, h = manifest.header, r = saved.entry;
     const builder = DebugSession.recordingBuilder(h.source, { ...h.runtime, ...h.limits, maxHistoryBytes: job.maxHistoryBytes }, h.count, h.cursor);
     job.onHeader?.(h, r.bytes, saved.checksum);
     for (const descriptor of manifest.blocks) {
-      const raw = await this.transaction(['blocks'], 'readonly', tx => request(tx.objectStore('blocks').get([id, descriptor.index])), job.signal);
-      const records = await decodeBlock(raw, descriptor, id); aborted(job.signal);
+      const records = await this.readBlock(saved, descriptor, job.signal);
       for (let offset = 0; offset < records.length; offset += 16) {
         const chunk = records.slice(offset, offset + 16); builder.append(chunk);
         // Each chunk has already passed VM-chain validation. UI uses its own private builder.

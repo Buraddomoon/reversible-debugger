@@ -145,7 +145,7 @@ export class CheckpointHistory implements HistoryStore {
   }
 }
 
-function freezePayload<T extends object>(value: T): DeepReadonly<T> {
+export function freezePayload<T extends object>(value: T): DeepReadonly<T> {
   if (!Object.isFrozen(value)) {
     for (const child of Object.values(value)) if (child !== null && typeof child === 'object') freezePayload(child);
     Object.freeze(value);

@@ -18,7 +18,7 @@ function Formula({ operation, language, reverse }: { operation: OperationEvidenc
   </div>;
 }
 function bindingText(binding: RecordedBinding, language: LanguageId): string { return binding.exists ? formatValue(binding.value, language) : 'ausente'; }
-function Evidence({ explanation, language, reverse }: { explanation: StepExplanation; language: LanguageId; reverse: boolean }) {
+export function Evidence({ explanation, language, reverse }: { explanation: StepExplanation; language: LanguageId; reverse: boolean }) {
   const format = (value: DeepReadonly<Value>) => formatValue(value, language);
   switch (explanation.kind) {
     case 'heap': {

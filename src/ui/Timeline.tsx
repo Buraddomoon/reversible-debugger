@@ -5,19 +5,23 @@ import { firstEventAfter, HistoryEventIndex, type EventKind, type HistoryEvent }
 const labels: Record<EventKind, string> = { call: 'Chamada', return: 'Retorno', mutation: 'Lista', decision: 'Decisão', output: 'Saída', error: 'Erro', end: 'Fim' };
 const symbols: Record<EventKind, string> = { call: '↳', return: '↰', mutation: '▦', decision: '◇', output: '▤', error: '!', end: '■' };
 const priority: Record<EventKind, number> = { decision: 0, mutation: 1, output: 1, call: 2, return: 3, end: 4, error: 5 };
+const emptyHistory: readonly DeepReadonly<Step>[] = [];
 
-export function Timeline({ history, cursor, disabled, pendingTarget, onSeek }: {
-  history: readonly DeepReadonly<Step>[];
+export function Timeline({ history = emptyHistory, persistedEvents, recordedLength, selectedStep, cursor, disabled, pendingTarget, onSeek }: {
+  history?: readonly DeepReadonly<Step>[];
+  persistedEvents?: readonly HistoryEvent[];
+  recordedLength?: number;
+  selectedStep?: Pick<Step, 'span' | 'description'> | null;
   cursor: number;
   disabled: boolean;
   pendingTarget?: number;
   onSeek: (cursor: number) => void;
 }) {
-  const length = history.length;
+  const length = recordedLength ?? history.length;
   const [target, setTarget] = useState('');
-  useEffect(() => setTarget(''), [history]);
+  useEffect(() => setTarget(''), [history, persistedEvents]);
   const [index] = useState(() => new HistoryEventIndex());
-  const events = index.update(history);
+  const events = persistedEvents ?? index.update(history);
   const markers = useMemo(() => {
     const bins = new Map<number, HistoryEvent>();
     for (const event of events) {
@@ -35,7 +39,7 @@ export function Timeline({ history, cursor, disabled, pendingTarget, onSeek }: {
   const visible = events.slice(start, start + 8);
   const number = target === '' ? cursor : Number(target);
   const valid = Number.isSafeInteger(number) && number >= 0 && number <= length;
-  const step = history[cursor - 1];
+  const step = selectedStep ?? history[cursor - 1];
   return <section className="timeline" aria-label="Linha do tempo">
     <div className="timeline-heading"><div><h2>Linha do tempo</h2><span data-testid="history-length">{length} passos registrados</span></div><span className="timeline-mode">{cursor < length ? 'Explorando o histórico' : 'Último estado registrado'}</span></div>
     <div className="timeline-controls">

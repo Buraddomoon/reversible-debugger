@@ -25,6 +25,8 @@ import { useHistorySeek } from './useHistorySeek';
 import { SeekStatus } from './SeekStatus';
 import { ExecutionLibraryPanel } from './ExecutionLibraryPanel';
 import { activeHistoryBudget, defaultActiveBudget, stagingHistoryBudget } from '../core/page-budget';
+import { PagedDebugger, type FullAction } from './PagedDebugger';
+import type { PagedRecordingClient } from './paged-client';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript, maxHistoryBytes?: number) {
@@ -59,6 +61,9 @@ export function App() {
   const store = useScriptLibrary(initial.stored);
   const [session, setSession] = useState(initial.session);
   const [histories, setHistories] = useState<OpenHistory[]>([]);
+  const [paged, setPaged] = useState<PagedRecordingClient | null>(null);
+  const [pagedPauseEpoch, setPagedPauseEpoch] = useState(0);
+  useEffect(() => () => paged?.dispose(), [paged]);
   const [transferBusy, setTransferBusy] = useState(false);
   const [libraryBusy, setLibraryBusy] = useState(false);
   const controller = useMemo(() => new ExecutionControl(session), [session]);
@@ -123,7 +128,7 @@ export function App() {
     catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
     refresh();
   };
-  const pause = () => { seeker.cancel(); controller.cancel(); setPlaying(false); setRewinding(false); refresh(); };
+  const pause = () => { seeker.cancel(); controller.cancel(); setPlaying(false); setRewinding(false); setPagedPauseEpoch(value => value + 1); refresh(); };
   const toggleBreakpoint = (line: number) => { pause(); controller.toggleBreakpoint(line); };
   useEffect(() => {
     if (!playing && !rewinding) return;
@@ -150,7 +155,7 @@ export function App() {
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const element = event.target as HTMLElement;
-      if (comparing || creating || deleting || document.querySelector('dialog[open]') || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (paged || comparing || creating || deleting || document.querySelector('dialog[open]') || editing || rewinding || element.matches('input, textarea, select, button') || element.isContentEditable || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === 'ArrowRight') { event.preventDefault(); move('forward'); }
       if (event.key === 'ArrowLeft') { event.preventDefault(); move('backward'); }
     };
@@ -158,6 +163,7 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKey);
   });
   const load = (id: string) => {
+    setPaged(null);
     seeker.cancel();
     setComparing(false);
     controller.cancel();
@@ -194,6 +200,12 @@ export function App() {
     // Keep the validated recording separate from the active, navigable VM.
     const active = history.session.forkRecording();
     setHistories(items => [...items, opened]); openHistory(opened, active);
+    return { opened, active };
+  };
+  const materializedRecording = (history: ImportedHistory, action: FullAction) => {
+    const { opened, active } = importRecording(history, paged?.header.entry.id); setPaged(null);
+    if (action === 'restart') { active.restart(); refresh(); }
+    if (action === 'compare') { try { setComparisonBudget(stagingHistoryBudget([...histories, opened], active, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }
   };
   const closeHistory = () => {
     setHistories(items => items.filter(item => item.id !== exampleId));
@@ -211,6 +223,7 @@ export function App() {
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };
   const newScript = () => {
+    setPaged(null);
     seeker.cancel();
     controller.cancel();
     setPlaying(false); setRewinding(false); setCreating(true);
@@ -253,18 +266,18 @@ export function App() {
     <main>
       <div className="intro-row"><div><p className="eyebrow">LABORATÓRIO DE EXECUÇÃO</p><h1>Veja o programa pensar.<br /><span>E volte quando ele errar.</span></h1></div><div className="intro-note"><span className="note-mark">01 /</span><p>Explore cada decisão.<br />O estado acompanha você nos dois sentidos.</p></div></div>
       <section className="example-bar" aria-label="Escolha do programa">
-        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={exampleId} onChange={event => load(event.target.value)}>{histories.length > 0 && <optgroup label="Históricos importados">{histories.map(history => <option key={history.id} value={history.id}>{history.displayName}</option>)}</optgroup>}{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
-        <p>{selectedHistory ? 'Execução registrada. Navegue pelos estados ou compare com outra versão.' : example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
-        <span className="example-tag">{selectedHistory ? 'Histórico' : example?.tag ?? 'Programa personalizado'}</span>
+        <div className="example-select"><label htmlFor="example">Programa</label><select id="example" value={paged ? `paged:${paged.header.entry.id}` : exampleId} onChange={event => load(event.target.value)}>{paged && <optgroup label="Execução salva"><option value={`paged:${paged.header.entry.id}`}>{paged.header.entry.name}</option></optgroup>}{histories.length > 0 && <optgroup label="Históricos importados">{histories.map(history => <option key={history.id} value={history.id}>{history.displayName}</option>)}</optgroup>}{store.library.scripts.length > 0 && <optgroup label="Seus scripts">{store.library.scripts.map(script => <option key={script.id} value={script.id}>{script.name}</option>)}</optgroup>}<optgroup label="Exemplos">{examples.map(item => <option value={item.id} key={item.id}>{item.title}</option>)}</optgroup></select></div>
+        <p>{paged || selectedHistory ? 'Execução registrada. Navegue pelos estados ou compare com outra versão.' : example?.description ?? 'Seu código está pronto. Use os controles para explorar a execução.'}</p>
+        <span className="example-tag">{paged || selectedHistory ? 'Histórico' : example?.tag ?? 'Programa personalizado'}</span>
         <button className="add-script" onClick={newScript}><Icon name="code" />Adicionar script</button>
-        <button className="compare-script" disabled={editing || rewinding || comparing || transferBusy || libraryBusy} onClick={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }}>Comparar execuções</button>
-        {selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
-        {selectedHistory && <button disabled={rewinding} onClick={closeHistory}>Fechar histórico</button>}
+        {!paged && <button className="compare-script" disabled={editing || rewinding || comparing || transferBusy || libraryBusy} onClick={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }}>Comparar execuções</button>}
+        {!paged && selectedScript && <button className="delete-script" onClick={() => { pause(); setRewinding(false); setDeleting(selectedScript); }}>Excluir script</button>}
+        {(paged || selectedHistory) && <button disabled={rewinding} onClick={() => paged ? setPaged(null) : closeHistory()}>Fechar histórico</button>}
       </section>
-      <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || libraryBusy} onBusyChange={setTransferBusy} onPause={pause} onImport={importRecording} onError={setNotice} />
-      <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || transferBusy} onBusyChange={setLibraryBusy} onPause={pause} onOpen={importRecording} onSelect={load} />
-      {session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Salve esta execução na biblioteca ou exporte um arquivo para reabrir depois.</span></div>}
-      {comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
+      {!paged && <TraceControls session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} disabled={editing || rewinding || comparing || libraryBusy} onBusyChange={setTransferBusy} onPause={pause} onImport={importRecording} onError={setNotice} />}
+      <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} pagedId={paged?.header.entry.id} pagedReservation={paged ? paged.snapshot.stats.limitTotalBytes * 2 : 0} disabled={editing || rewinding || comparing || transferBusy} onBusyChange={setLibraryBusy} onPause={pause} onOpenPaged={client => { setComparing(false); setPaged(client); }} onOpenFull={(history, id) => { importRecording(history, id); setPaged(null); }} onDeletePaged={id => { if (paged?.header.entry.id === id) setPaged(null); }} onSelect={load} />
+      {!paged && session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Salve esta execução na biblioteca ou exporte um arquivo para reabrir depois.</span></div>}
+      {paged ? <PagedDebugger key={paged.header.entry.id} client={paged} histories={histories} pauseEpoch={pagedPauseEpoch} materializeBudget={() => stagingHistoryBudget(histories, session, 2, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)} onFull={materializedRecording} /> : comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>

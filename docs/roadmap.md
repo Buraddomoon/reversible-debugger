@@ -141,12 +141,25 @@ Critério atendido: Firefox restaura milhares de passos com heartbeat/renderiza�
 
 Critério atendido: Firefox instalado salva/recarrega/reabre o passo 64 da soma com o mesmo frame/locais/operandos/instrução, navega pelo futuro e compara 10/15. Execução de 9.261 passos reabre no passo 123 em 37 blocos; cancelamento de gravação/leitura, troca de sessão, exclusão e layout móvel preservam scripts. Testes incluem reversibilidade completa, navegação gerada, quotas/abas concorrentes, corrupção, versões e recuperação. [Contrato, limites e medidas](persistent-histories.md).
 
-## Próximo marco — paginação de execuções abertas
+## Paginação de execuções abertas — implementado
 
-- `HistoryStore` assíncrono que carregue uma janela de deltas sob demanda, com cache limitado por bytes; hoje abrir valida/carrega a gravação inteira dentro dos limites atuais.
-- Checkpoints persistidos, identidade e validação de segmentos para acesso aleatório; saltos/cancelamento/troca de blocos restaurando somente estados completos.
-- Medir latência, buffers de transferência e cópias/transações/renderização indivisíveis antes de ampliar os 20.000 passos.
-- Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; preservar início/futuro ou pedir ação do usuário para removê-los.
-- Verificar compatibilidade de banco/arquivos e todos os testes de reversibilidade antes de liberar sessões maiores.
+- `PagedHistoryStore` assíncrono, VM no Worker e cache LRU de deltas limitado por bytes; interface recebe somente estado publicado, eventos e explicação atual.
+- Primeira abertura valida a cadeia em fluxo, sem reter todos os deltas; reabertura lê o índice e os blocos próximos ao destino. Linha do tempo usa metadados e não força leitura integral.
+- Checkpoints auxiliares persistidos e íntegros por identidade do manifesto original, até 128 cópias conforme quota. Banco auxiliar tem 64 MiB/16 indexações, com despejo seguro e recuperação de reservas expiradas.
+- Busca em VM privada nos dois sentidos; confirmação da UI antes do commit impede cursor invisível no Worker ao cancelar a resposta final. Corrupção/erro/cancelamento preservam posição publicada.
+- Cache padrão de 2 MiB, configuração na interface, métricas de leitura/reutilização/despejo e transação grande lida isoladamente. Reservas de estado/índice/último delta e staging dentro do orçamento agregado.
+- **Abrir** explora com cache; **Completo**, **Abrir debugger completo** e comparação materializam a gravação inteira, com quota e cancelamento. Edição/exportação/passos por comando continuam disponíveis nesse caminho.
+- Banco original v1 e arquivos v2 compatíveis; nenhuma retenção parcial ou ampliação de limites.
+
+Critério atendido: núcleo compara todos os estados nos dois sentidos e saltos gerados, inclusive aliases/ciclos/erros/recursão. Firefox reabre 9.261 passos/37 blocos com uma leitura, navega com cache de 256 KiB, compara estados completos com referência sequencial, cancela antes do ACK, substitui destino, recupera checkpoints despejados e recusa corrupção sem estado parcial. Materialização, exclusão, scripts e 390 px verificados. [Contrato e diagnóstico](paged-history.md).
+
+## Próximo marco — gravação paginada e validação de segmentos
+
+- Persistir blocos durante gravação, com fronteira durável explícita, buffers limitados e falha de I/O atômica, preservando os passos ainda não persistidos.
+- Definir contrato de validação/reutilização de checkpoints e segmentos para reduzir o custo da primeira abertura de sessões maiores.
+- Aplicar paginação às execuções graváveis e estudar comparação sem materializar todas as transações.
+- Medir picos temporários, cópias, renderização e latência de leitura/gravação em programas diferentes antes de ampliar os 20.000 passos.
+- Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
+- Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.
 
 Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.

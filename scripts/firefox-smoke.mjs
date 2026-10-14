@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, writeFile, readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { createServer } from 'vite';
+import { runPagedBrowserFlows } from './paged-browser-flows.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = join(root, '.artifacts');
@@ -91,6 +92,7 @@ try {
   const click = async name => {
     await activate(name);
     if (['Início', 'Último', 'Ir', 'Evento anterior', 'Próximo evento', 'Primeira diferença', 'Próxima diferença', 'Diferença anterior', 'Final da comparação', 'Início da comparação', 'Próximo ponto', 'Ponto anterior'].includes(name)) await waitFor("!document.querySelector('[data-testid=seek-progress]')");
+    if (name === 'Comparar execuções') await waitFor("document.querySelector('[aria-label=\"Programa da execução B\"]')");
   };
   const waitFor = async (expression, timeout = 15_000) => {
     try {
@@ -875,6 +877,7 @@ try {
   })()`); assert.equal(deletedBlockCount, 0);
   await writeFile(join(artifacts, 'execution-library-browser.json'), JSON.stringify({ browser: session.capabilities.browserVersion, entry: blockEvidence, saveWallMs: +blockSaveWall.toFixed(2), loadWallMs: +blockReadWall.toFixed(2), cancellation: true, reload: true, cursor: 123, note: 'IndexedDB real e Worker local; tempos incluem BiDi, modal/paint, validação e restauração. Payload salvo, não espaço físico nem RAM. Reinício, reload, futuro, comparação e exclusão preservaram scripts.' }, null, 2));
   console.log('PASS: IndexedDB real, blocos e checksums, recarga, cursor/futuro, comparação, cancelamento de gravação/leitura, troca sem callbacks antigos, exclusão isolada e layout móvel.');
+  await runPagedBrowserFlows({ evaluate, command, context, click, activate, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
   assert.deepEqual(pageErrors, []);
   console.log('PASS: ausência de erros no console.');
   await command('session.end');
