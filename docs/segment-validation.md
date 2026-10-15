@@ -61,4 +61,4 @@ O relatório mede tempo de gravação/retomada/saltos, leituras para validação
 
 O Firefox instalado verifica IndexedDB e Worker reais: restauração exata, indicador de prefixo reutilizado, checkbox de conferência integral, comparação e layout de 390 px. O cliente RPC compara a execução de 777 passos com uma referência, alternando retomada com cache e validação integral no mesmo cursor 7. Um prefixo antigo de 238 passos é reutilizado enquanto apenas os 539 passos restantes são conferidos; o estado final coincide com a referência. [Relatório no navegador](segment-validation-browser.json).
 
-Os **20.000 passos / 256 frames** permanecem. Comparação ainda materializa os históricos completos; checkpoints esparsos durante gravação e comparação paginada são o próximo marco. Nenhum passo inicial ou futuro é removido automaticamente.
+Os **20.000 passos / 256 frames** permanecem. O marco seguinte implementou checkpoints intermediários e **Comparar gravações**, com leitores paginados para sessões/capturas persistidas. O comparador de fontes continua integral. [Contrato e demo](streaming-comparison.md). Nenhum passo inicial ou futuro é removido automaticamente.

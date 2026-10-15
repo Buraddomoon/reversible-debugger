@@ -18,6 +18,7 @@
     "bench:storage": "node scripts/storage-benchmark.mjs",
     "bench:navigation": "node scripts/navigation-benchmark.mjs",
     "bench:segments": "node scripts/segment-benchmark.mjs",
+    "bench:streaming": "node scripts/streaming-benchmark.mjs",
     "check": "tsc --noEmit && vitest run"
   },
   "dependencies": {

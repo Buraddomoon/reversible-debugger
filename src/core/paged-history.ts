@@ -125,6 +125,11 @@ export class PagedHistoryStore {
     if (descriptor.bytes <= this.cacheLimit) { this.cache.set(index, { records, bytes: descriptor.bytes }); this.cacheSize += descriptor.bytes; } else this.largeBlocks++;
     return records;
   }
+  async readRange(first: number, count: number, job: PagedSeekJob = {}): Promise<readonly DeepReadonly<Step>[]> {
+    integer(first, 0, this.count); integer(count, 0, 16); integer(first + count, 0, this.count); const records: DeepReadonly<Step>[] = [], epoch = this.epoch;
+    while (records.length < count) { const index = first + records.length, id = this.blockAt(index), block = await this.block(id, epoch, job), start = this.recording.manifest.blocks[id]!.first; records.push(...block.slice(index - start, Math.min(block.length, first + count - start))); }
+    return records;
+  }
   async seek(target: number, job: PagedSeekJob = {}): Promise<void> {
     integer(target, 0, this.count); job.signal?.throwIfAborted(); const epoch = ++this.epoch, from = this.position;
     let state = structuredClone(this.machine), cursor = from;

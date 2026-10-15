@@ -1,6 +1,6 @@
 import type { Program } from './compiler';
 import type { Value } from './language';
-import type { DeepReadonly, MachineState, Step } from './machine';
+import type { DeepReadonly, MachineState } from './machine';
 import type { RuntimeSelection } from './runtime';
 import type { DebugSession } from './debugger';
 
@@ -27,7 +27,7 @@ export interface ComparisonRunView {
   readonly program: Program;
   readonly state: DeepReadonly<MachineState>;
   readonly cursor: number;
-  readonly history: readonly DeepReadonly<Step>[];
+  readonly history: { readonly length: number };
   readonly points: readonly ComparisonPoint[];
   readonly limitReached: boolean;
   readonly finalResult: DifferenceValue;

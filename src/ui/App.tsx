@@ -25,6 +25,7 @@ import { useHistorySeek } from './useHistorySeek';
 import { SeekStatus } from './SeekStatus';
 import { ExecutionLibraryPanel } from './ExecutionLibraryPanel';
 import { activeHistoryBudget, defaultActiveBudget, stagingHistoryBudget } from '../core/page-budget';
+import { PagedComparisonPanel } from './PagedComparisonPanel';
 import { PagedDebugger, type FullAction } from './PagedDebugger';
 import type { PagedRecordingClient } from './paged-client';
 import { RecordingSessionsPanel } from './RecordingSessionsPanel';
@@ -63,6 +64,8 @@ export function App() {
   const [session, setSession] = useState(initial.session);
   const [histories, setHistories] = useState<OpenHistory[]>([]);
   const [paged, setPaged] = useState<PagedRecordingClient | null>(null);
+  const [pagedComparison, setPagedComparison] = useState(false);
+  useEffect(() => setPagedComparison(false), [paged]);
   const [pagedPauseEpoch, setPagedPauseEpoch] = useState(0);
   useEffect(() => () => paged?.dispose(), [paged]);
   const [transferBusy, setTransferBusy] = useState(false);
@@ -287,7 +290,7 @@ export function App() {
       <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} pagedId={paged?.header.entry.id} pagedReservation={paged ? paged.snapshot.stats.limitTotalBytes * 2 : 0} disabled={editing || rewinding || comparing || transferBusy || recordingBusy || Boolean(paged?.isLive)} onBusyChange={setLibraryBusy} onPause={pause} onOpenPaged={client => { setComparing(false); setPaged(client); }} onOpenFull={(history, id) => { importRecording(history, id); setPaged(null); }} onDeletePaged={id => { if (paged?.header.entry.id === id) setPaged(null); }} onSelect={load} />
       {paged && notice && <div className="error-banner" role="alert">{notice}</div>}
       {!paged && session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Salve esta execução na biblioteca ou exporte um arquivo para reabrir depois.</span></div>}
-      {paged ? <PagedDebugger key={paged.header.entry.id} client={paged} histories={histories} pauseEpoch={pagedPauseEpoch} materializeBudget={() => stagingHistoryBudget(histories, session, 2, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)} onFull={materializedRecording} /> : comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
+      {paged ? pagedComparison ? <PagedComparisonPanel primary={{ kind: paged.isLive ? 'journal' : 'saved', id: paged.header.entry.id, name: paged.header.entry.name }} runtime={paged.header.program.runtime} budget={comparisonBudget} onClose={() => setPagedComparison(false)} /> : <PagedDebugger key={paged.header.entry.id} client={paged} histories={histories} pauseEpoch={pagedPauseEpoch} materializeBudget={() => stagingHistoryBudget(histories, session, 2, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)} onCompare={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)); setPagedComparison(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }} onFull={materializedRecording} /> : comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>

@@ -6,6 +6,7 @@ import { utf8Bytes } from './history-blocks';
 import { MAX_SOURCE_CHARS } from './language';
 import { fields, integer, requireTrace, text, same, validateMachineState } from './trace-validation';
 import type { SavedExecution } from './execution-library';
+import { JournalCheckpoints } from './journal-checkpoints';
 import { JournalValidationCache } from './journal-validation-cache';
 
 export const JOURNAL_DB = 'rewind.recording-journal';
@@ -31,10 +32,11 @@ export class WriterConflictError extends Error { constructor() { super('Esta ses
  * Published prefixes never expire or get automatically deleted. */
 export class RecordingJournal {
   readonly validation: JournalValidationCache;
+  readonly checkpoints: JournalCheckpoints;
   private database: Promise<IDBDatabase> | null = null;
   private readonly limit: number;
   private readonly maxEntries: number;
-  constructor(private readonly factory: IDBFactory = globalThis.indexedDB, private readonly name = JOURNAL_DB, options: { maxDiskBytes?: number; maxEntries?: number } = {}) { this.validation = new JournalValidationCache(factory, `${name}.validation-cache`); this.limit = options.maxDiskBytes ?? JOURNAL_DISK_BYTES; this.maxEntries = options.maxEntries ?? JOURNAL_ENTRIES; integer(this.limit, 1, JOURNAL_DISK_BYTES); integer(this.maxEntries, 1, JOURNAL_ENTRIES); }
+  constructor(private readonly factory: IDBFactory = globalThis.indexedDB, private readonly name = JOURNAL_DB, options: { maxDiskBytes?: number; maxEntries?: number } = {}) { this.validation = new JournalValidationCache(factory, `${name}.validation-cache`); this.checkpoints = new JournalCheckpoints(factory, `${name}.seek-checkpoints`); this.limit = options.maxDiskBytes ?? JOURNAL_DISK_BYTES; this.maxEntries = options.maxEntries ?? JOURNAL_ENTRIES; integer(this.limit, 1, JOURNAL_DISK_BYTES); integer(this.maxEntries, 1, JOURNAL_ENTRIES); }
   private openDB(): Promise<IDBDatabase> {
     if (this.database) return this.database;
     this.database = new Promise((resolve, reject) => {
@@ -96,6 +98,6 @@ export class RecordingJournal {
       if (candidate.block) await request(tx.objectStore('blocks').add(candidate.block)); await request(tx.objectStore('heads').put({ id: r.id, content: candidate.content, checksum: candidate.checksum })); await request(tx.objectStore('catalog').put(next)); return next;
     }, signal);
   }
-  async delete(id: string): Promise<void> { await this.tx(['catalog', 'sources', 'heads', 'blocks'], 'readwrite', async tx => { const raw = await request(tx.objectStore('catalog').get(id)); if (!raw) return; const r = entry(raw); if (r.owner !== null && r.lease > Date.now()) throw new Error('Feche a sessão em gravação antes de excluí-la.'); for (const store of ['catalog', 'sources', 'heads']) await request(tx.objectStore(store).delete(id)); const keys = await request(tx.objectStore('blocks').index('runId').getAllKeys(id)); await Promise.all(keys.map(k => request(tx.objectStore('blocks').delete(k)))); }); await this.validation.delete(id).catch(() => {}); }
-  async close(): Promise<void> { const pending = this.database; this.database = null; if (pending) (await pending).close(); await this.validation.close(); }
+  async delete(id: string): Promise<void> { await this.tx(['catalog', 'sources', 'heads', 'blocks'], 'readwrite', async tx => { const raw = await request(tx.objectStore('catalog').get(id)); if (!raw) return; const r = entry(raw); if (r.owner !== null && r.lease > Date.now()) throw new Error('Feche a sessão em gravação antes de excluí-la.'); for (const store of ['catalog', 'sources', 'heads']) await request(tx.objectStore(store).delete(id)); const keys = await request(tx.objectStore('blocks').index('runId').getAllKeys(id)); await Promise.all(keys.map(k => request(tx.objectStore('blocks').delete(k)))); }); await this.validation.delete(id).catch(() => {}); await this.checkpoints.delete(id).catch(() => {}); }
+  async close(): Promise<void> { const pending = this.database; this.database = null; if (pending) (await pending).close(); await this.validation.close(); await this.checkpoints.close(); }
 }

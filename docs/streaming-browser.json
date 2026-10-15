@@ -1,0 +1,242 @@
+{
+  "browser": "150.0",
+  "checkpoints": [
+    {
+      "target": 700,
+      "restoredFrom": 640,
+      "appliedSteps": 60,
+      "warning": null,
+      "checkpoints": 15
+    },
+    {
+      "target": 400,
+      "restoredFrom": 384,
+      "appliedSteps": 16,
+      "warning": null,
+      "checkpoints": 15
+    },
+    {
+      "target": 900,
+      "restoredFrom": 896,
+      "appliedSteps": 4,
+      "warning": null,
+      "checkpoints": 15
+    },
+    {
+      "target": 1,
+      "restoredFrom": 0,
+      "appliedSteps": 1,
+      "warning": null,
+      "checkpoints": 15
+    },
+    {
+      "target": 1882,
+      "restoredFrom": 1882,
+      "appliedSteps": 0,
+      "warning": null,
+      "checkpoints": 15
+    },
+    {
+      "target": 0,
+      "restoredFrom": 0,
+      "appliedSteps": 0,
+      "warning": null,
+      "checkpoints": 15
+    },
+    {
+      "target": 650,
+      "restoredFrom": 640,
+      "appliedSteps": 10,
+      "warning": null,
+      "checkpoints": 15
+    }
+  ],
+  "steps": 1882,
+  "comparison": {
+    "rows": 24,
+    "firstDifference": 17,
+    "preAckPreservedPair": true,
+    "postAckPublishedPair": true,
+    "sourcePreserved": true,
+    "noFullHistoryArray": true,
+    "samples": [
+      {
+        "target": 0,
+        "left": {
+          "bytes": 30639,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 50,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 978,
+          "reservedMachineBytes": 3456,
+          "estimatedBytes": 35073,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "right": {
+          "bytes": 36462,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 56,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 1115,
+          "reservedMachineBytes": 1514,
+          "estimatedBytes": 39091,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "indexBytes": 15362,
+        "indexLimit": 4194304
+      },
+      {
+        "target": 17,
+        "left": {
+          "bytes": 30639,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 52,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 978,
+          "reservedMachineBytes": 3456,
+          "estimatedBytes": 35073,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "right": {
+          "bytes": 36462,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 58,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 1115,
+          "reservedMachineBytes": 1514,
+          "estimatedBytes": 39091,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "indexBytes": 15362,
+        "indexLimit": 4194304
+      },
+      {
+        "target": 23,
+        "left": {
+          "bytes": 30639,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 53,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 978,
+          "reservedMachineBytes": 3456,
+          "estimatedBytes": 35073,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "right": {
+          "bytes": 36462,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 59,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 1115,
+          "reservedMachineBytes": 1514,
+          "estimatedBytes": 39091,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "indexBytes": 15362,
+        "indexLimit": 4194304
+      },
+      {
+        "target": 1,
+        "left": {
+          "bytes": 30639,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 55,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 978,
+          "reservedMachineBytes": 3456,
+          "estimatedBytes": 35073,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "right": {
+          "bytes": 36462,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 61,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 1115,
+          "reservedMachineBytes": 1514,
+          "estimatedBytes": 39091,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "indexBytes": 15362,
+        "indexLimit": 4194304
+      },
+      {
+        "target": 0,
+        "left": {
+          "bytes": 30639,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 55,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 978,
+          "reservedMachineBytes": 3456,
+          "estimatedBytes": 35073,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "right": {
+          "bytes": 36462,
+          "limitBytes": 524288,
+          "blocks": 1,
+          "hits": 61,
+          "reads": 1,
+          "evictions": 0,
+          "largeBlocks": 0,
+          "indexBytes": 1115,
+          "reservedMachineBytes": 1514,
+          "estimatedBytes": 39091,
+          "limitTotalBytes": 4194304,
+          "checkpoints": 1,
+          "indexBuilt": false
+        },
+        "indexBytes": 15362,
+        "indexLimit": 4194304
+      }
+    ]
+  },
+  "mobileWidth": 390,
+  "note": "Firefox instalado, IndexedDB e Workers de produção. Quotas de payload, não RAM real. Nenhuma instalação global."
+}

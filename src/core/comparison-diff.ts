@@ -1,7 +1,7 @@
 import type { Value } from './language';
 import type { DeepReadonly } from './machine';
 import type { ComparisonRow, DifferenceValue, StateDifference } from './comparison-types';
-import type { RecordedComparisonRun } from './comparison-trace';
+import type { ComparisonRunView } from './comparison-types';
 import { isList } from './heap';
 import { compareHeapRoots } from './heap-comparison';
 import { previewValue } from './runtime';
@@ -17,7 +17,7 @@ function sameArray<T>(a: readonly T[], b: readonly T[], equals: (a: T, b: T) => 
 }
 /** Compare observable state at selected semantic points; bytecode addresses and
  * allocation counters are execution-specific, while seek still restores them exactly. */
-export function compareStates(left: RecordedComparisonRun, right: RecordedComparisonRun, row: ComparisonRow): StateDifference[] {
+export function compareStates(left: ComparisonRunView, right: ComparisonRunView, row: ComparisonRow): StateDifference[] {
   const differences: StateDifference[] = [];
   const add = (category: StateDifference['category'], name: string, a: DifferenceValue, b: DifferenceValue) => differences.push({ category, name, left: a, right: b });
   const pointA = row.leftPoint === null ? null : left.points[row.leftPoint]!;

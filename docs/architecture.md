@@ -219,6 +219,12 @@ O Worker e a sessão privada de restauração recebem o orçamento de payload re
 
 `live-recording.worker.ts` serializa pedidos e exige confirmação antes do commit. Cancelamento anterior ao ACK abandona staging; posterior conclui o pedido aceito (execução em lotes de até 16). `PagedRecordingClient` transporta ambos os atores e materializa registros em lotes para edição/exportação/comparação. `RecordingSessionsPanel` separa sessões contínuas de scripts/capturas; `PagedDebugger` mostra a fronteira e pendências. Fechar/trocar pela UI tenta flush; reload abrupto recupera somente o prefixo salvo. Nenhum limite ampliado. [Contrato, quotas e demonstração](live-recording.md).
 
+## Checkpoints graváveis e comparação paginada
+
+`JournalCheckpoints` publica estados auxiliares em bordas duráveis, com identidade da fonte/validador/selo e conteúdo verificado. Catálogos separados evitam ler estados de outras sessões. O intervalo inicial de 128 passos aumenta ao reduzir pontos por quota; até 128 pontos/8 MiB por sessão e 16 sessões/64 MiB no banco auxiliar. `LiveRecording.seek` usa o ponto mais próximo quando seu custo é menor, sem alterar deltas/futuro. Falha ou despejo permite replay; `navigation` informa origem e passos aplicados.
+
+`ComparisonProjection` é compartilhada pelos dois comparadores. `PagedExecutionComparison` lê lotes de até 16 registros, guarda metadados semânticos e usa leitores limitados (`LiveRecording` em modo somente leitura ou `PagedHistoryStore`). Navegação prepara o par em cursores privados e publica ambos somente após confirmação; falhas/cancelamento preservam o par mostrado. `paged-comparison.worker.ts` serializa pedidos com fila limitada; `PagedComparisonClient` transporta índices uma vez e estados/diferenças por salto. `PagedComparisonPanel` usa os mesmos painéis de escopo, pilha, heap e diferenças. A sessão principal permanece pausada, com VM/lease/cursor próprios. [Contrato, limites e relatórios](streaming-comparison.md).
+
 ## Criação e biblioteca de scripts
 
 `NewScriptModal` usa um `dialog` nativo para nome, linguagem e versão, com foco inicial, cancelamento por Escape e normalização da extensão. A criação registra um script vazio com ID estável e troca a sessão, sem carregar variáveis, saída ou histórico da sessão anterior. Nomes repetidos são rejeitados para não criar entradas ambíguas. `DeleteScriptModal` confirma a exclusão pelo nome.

@@ -176,10 +176,21 @@ Critério: gravação não retém todos os deltas em memória; passos novos são
 
 Critério: reabrir uma sessão com prefixo completo exige zero leituras de blocos para sua validação, além das leituras necessárias ao cursor/última instrução; um cache antigo valida só o sufixo. Falhas auxiliares não invalidam commits duráveis. [Contrato, limites e relatórios](segment-validation.md).
 
-## Próximo marco — checkpoints esparsos graváveis e comparação paginada
+## Checkpoints graváveis e comparação paginada — implementado
 
-- Adicionar checkpoints esparsos para saltos em sessões graváveis, com quota e despejo independentes dos deltas originais.
-- Implementar comparação sem materializar todas as transações, preservando alinhamento semântico e publicação atômica dos dois lados.
+- Checkpoints auxiliares em bordas duráveis, intervalo inicial de 128 passos, quotas próprias e redução adaptativa. Saltos usam o ponto próximo e mostram a quantidade de deltas aplicados.
+- Corrupção, despejo e falhas auxiliares permitem replay pelos deltas, sem apagar o começo/futuro ou desfazer commits duráveis.
+- Comparação de sessões/capturas persistidas com leitores limitados e projeção semântica compartilhada com o comparador integral; nenhum array integral de transações transferido à UI.
+- Análise em lotes, índice limitado, navegação do par com preparação/ACK/publicação e preservação da sessão principal, inclusive seu escritor.
+- Testes de todos os estados/pontos nos dois sentidos, falhas/cancelamento, quotas, aliases, recursão, ciclos, erros e prefixos parciais. Firefox verifica journal/captura, confirmação, origem intacta e 390 px.
+- Benchmark de saltos com/sem checkpoints e comparação paginada, com referência integral. Limites de execução mantidos.
+
+Critério: comparar 10/15 e 99/2 com o mesmo alinhamento/diferenças do comparador integral, mantendo deltas em caches limitados. Reabrir uma sessão preserva os checkpoints auxiliares e saltos aplicam menos transações. [Contrato, demo e relatórios](streaming-comparison.md).
+
+## Próximo marco — controles unificados de depuração
+
+- Disponibilizar breakpoints e passos por comando diretamente no modo contínuo/paginado, sem exigir materialização integral.
+- Preservar regras de entrada/retorno, recursão, condições e busca reversa, usando os mesmos registros e respeitando a fronteira gravada.
 - Medir picos temporários, cópias, renderização e latência de leitura/gravação em programas diferentes antes de ampliar os 20.000 passos.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.

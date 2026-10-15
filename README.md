@@ -24,6 +24,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Retomar** reaproveita prefixos já validados e confere apenas os blocos novos. A tela mostra o reaproveitamento; **Verificar todo o histórico ao retomar** pede uma conferência integral. Cache indisponível é reconstruído pelos blocos originais. [Contrato e medidas](docs/segment-validation.md).
 
+**Comparar gravações** compara duas sessões/capturas salvas com caches limitados e restaura os dois lados juntos, preservando o cursor original. Sessões contínuas também têm checkpoints intermediários para acelerar os saltos. [Demo, contrato e medidas](docs/streaming-comparison.md).
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -245,6 +247,8 @@ npm run bench:heap    # Mutação por item, busca exata e custo dos checkpoints
 npm run bench:storage # Orçamento, checkpoints reduzidos, busca e retomada
 npm run bench:navigation # Lotes, latência total e heartbeat em saltos longos
 npm run bench:segments # Retomadas sem cache/com cache, sufixos e payloads
+npm run bench:streaming # Checkpoints graváveis e comparação em blocos
+npm run test:firefox -- --streaming-only # Fluxos novos no Firefox instalado
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -307,6 +311,7 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Histórico sob demanda e cache de checkpoints](docs/paged-history.md)
 - [Arquitetura e decisões](docs/architecture.md)
 - [Especificação da linguagem](docs/language.md)
+- [Checkpoints graváveis e comparação paginada](docs/streaming-comparison.md)
 - [Python 3: recursos e limitações](docs/python.md)
 - [Etapas e próximos marcos](docs/roadmap.md)
 - [Medidas e política de checkpoints](docs/history-performance.md)
@@ -318,4 +323,4 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Orçamento do histórico](docs/storage-budget.md)
 - [Navegação cancelável](docs/cancellable-navigation.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. A próxima evolução trata gravação paginada e validação de segmentos, com medidas antes de ampliar sessões.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. O próximo marco unifica os controles de depuração nesses modos, com medidas antes de ampliar sessões.
