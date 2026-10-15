@@ -165,10 +165,21 @@ Critério atendido: núcleo compara todos os estados nos dois sentidos e saltos 
 
 Critério: gravação não retém todos os deltas em memória; passos novos são persistidos durante a execução e os estados são iguais nos dois sentidos. Reload recupera somente a fronteira durável, conforme indicado na tela. Limites de 20.000 passos/256 frames mantidos. [Contrato e demo](live-recording.md).
 
-## Próximo marco — validação de segmentos e medidas de escala
+## Validação de segmentos e medidas de escala — implementado
 
-- Definir contrato de validação/reutilização de checkpoints e segmentos para reduzir o custo da primeira abertura de sessões maiores.
-- Estudar comparação sem materializar todas as transações e checkpoints esparsos para saltos em sessões graváveis.
+- Prefixos contínuos vinculados à fonte, versão do validador e selo de fronteira; checkpoint/índice auxiliares publicados após commit ou validação completa.
+- Retomada reutiliza o prefixo e confere somente o sufixo. Estado final é comparado com a cabeça durável antes da aquisição do escritor.
+- Cache próprio v1 limitado a 16 entradas/64 MiB, catálogo leve e substituição atômica. Falhas, versões incompatíveis e despejos permitem validação pela origem.
+- Opção de conferência integral e indicadores de passos reutilizados/conferidos; corrupção em blocos lidos continua recusada sem publicar estado parcial.
+- Benchmark de gravação, retomadas, sufixos, saltos e payload/processo em quatro perfis, com referência sequencial; Firefox verifica o ator e IndexedDB reais.
+- Limites de execução e formatos anteriores preservados; nenhuma retenção parcial.
+
+Critério: reabrir uma sessão com prefixo completo exige zero leituras de blocos para sua validação, além das leituras necessárias ao cursor/última instrução; um cache antigo valida só o sufixo. Falhas auxiliares não invalidam commits duráveis. [Contrato, limites e relatórios](segment-validation.md).
+
+## Próximo marco — checkpoints esparsos graváveis e comparação paginada
+
+- Adicionar checkpoints esparsos para saltos em sessões graváveis, com quota e despejo independentes dos deltas originais.
+- Implementar comparação sem materializar todas as transações, preservando alinhamento semântico e publicação atômica dos dois lados.
 - Medir picos temporários, cópias, renderização e latência de leitura/gravação em programas diferentes antes de ampliar os 20.000 passos.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.

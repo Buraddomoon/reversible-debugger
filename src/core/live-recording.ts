@@ -1,6 +1,7 @@
 import { executeInstruction, applyStep, initialState, type DeepReadonly, type MachineState, type Step } from './machine';
 import { RecordingJournal, LIVE_BLOCK_BYTES, LIVE_BLOCK_STEPS, type JournalSnapshot } from './recording-journal';
 import { type RuntimeSelection } from './runtime';
+import { JOURNAL_VALIDATOR } from './journal-validation-cache';
 import { encode, type TraceMetadata } from './portable-history';
 import { utf8Bytes } from './history-blocks';
 import { freezePayload, HistoryBudgetError, validateHistoryBudget } from './history';
@@ -10,8 +11,8 @@ import { restoreValidatedStep, restoreValidatedReverse, requireTrace, integer, s
 import { recordingYield, SeekSupersededError } from './debugger';
 import type { PagedCacheStats, PagedPreparedState, PagedSeekJob } from './paged-history';
 
-export interface LiveOptions { maxHistoryBytes?: number; cacheBytes?: number; bufferBytes?: number; maxSteps?: number; maxFrames?: number }
-export interface RecordingLedger { id: string; frontier: number; durable: number; blocks: number; pendingSteps: number; pendingBytes: number; bufferLimit: number; pauseReason: string | null; canRecord: boolean; diskBytes: number; revision: number; oversized: boolean }
+export interface LiveOptions { maxHistoryBytes?: number; cacheBytes?: number; bufferBytes?: number; maxSteps?: number; maxFrames?: number; validateAll?: boolean }
+export interface RecordingLedger { id: string; frontier: number; durable: number; blocks: number; pendingSteps: number; pendingBytes: number; bufferLimit: number; pauseReason: string | null; canRecord: boolean; diskBytes: number; revision: number; oversized: boolean; validation: { reusedSteps: number; checkedSteps: number; blockReads: number; cacheWarning: string | null } }
 interface PendingStep { step: DeepReadonly<Step>; json: string; bytes: number }
 /** Executes each new instruction once, buffers frozen deltas, and writes a
  * durable prefix. Navigation never executes; writer and viewed VM are detached. */
@@ -35,6 +36,10 @@ export class LiveRecording {
   private largeBlocks = 0;
   private epoch = 0;
   private pauseReason: string | null = null;
+  private reusedSteps = 0;
+  private checkedSteps = 0;
+  private validationReads = 0;
+  private cacheWarning: string | null = null;
   private currentStep: DeepReadonly<Step> | null = null;
   readonly events: HistoryEvent[] = [];
   private eventBytes = 2;
@@ -48,13 +53,33 @@ export class LiveRecording {
   }
   static async resume(journal: RecordingJournal, id: string, options: LiveOptions = {}, job: PagedSeekJob = {}): Promise<LiveRecording> {
     const store = new LiveRecording(journal, options); store.recording = await journal.open(id, job.signal); store.descriptorBytes = encodedBytes(store.recording.head.blocks);
-    for (const block of store.recording.head.blocks) {
-      const records = await journal.readBlock(store.recording, block, job.signal);
-      for (const raw of records) { const step = restoreValidatedStep(store.frontierMachine, store.program, raw, store.maxFrames); store.payload = accountStep(store.payload, step, 'forward'); store.maxMachine = Math.max(store.maxMachine, store.payload.totalBytes); store.maxStep = Math.max(store.maxStep, encodedBytes(step)); store.frontier++; store.addEvent(step, store.frontier); store.admit(0, block.bytes); if (store.frontier % 16 === 0) { job.onProgress?.(store.frontier, store.recording.head.frontier); await recordingYield(job); } }
+    try {
+      const cached = options.validateAll ? null : await journal.validation.read(store.recording); job.signal?.throwIfAborted();
+      if (cached) {
+        const { prefix, state } = cached;
+        store.frontierMachine = state; store.payload = measureMachine(state); store.maxMachine = prefix.maxMachineBytes; store.maxStep = prefix.maxStepBytes;
+        store.frontier = prefix.frontier; store.reusedSteps = prefix.frontier;
+        store.events.push(...prefix.events); store.eventBytes = 2 + prefix.events.reduce((bytes, event) => bytes + encodedBytes(event) + 1, 0);
+      }
+    } catch (cause) { job.signal?.throwIfAborted(); store.cacheWarning = cause instanceof Error ? cause.message : String(cause); await journal.validation.delete(id).catch(() => {}); }
+    store.admit();
+    try { for (const block of store.recording.head.blocks) {
+      if (block.first < store.frontier) continue;
+      const records = await journal.readBlock(store.recording, block, job.signal); store.validationReads++;
+      for (const raw of records) { const step = restoreValidatedStep(store.frontierMachine, store.program, raw, store.maxFrames); store.payload = accountStep(store.payload, step, 'forward'); store.maxMachine = Math.max(store.maxMachine, store.payload.totalBytes); store.maxStep = Math.max(store.maxStep, encodedBytes(step)); store.frontier++; store.checkedSteps++; store.addEvent(step, store.frontier); store.admit(0, block.bytes); if (store.frontier % 16 === 0) { job.onProgress?.(store.frontier, store.recording.head.frontier); await recordingYield(job); } }
     }
-    requireTrace(same(encode(store.frontierMachine), JSON.parse(store.recording.head.state)), 'checkpoint não corresponde ao prefixo durável'); job.signal?.throwIfAborted();
+    requireTrace(same(encode(store.frontierMachine), JSON.parse(store.recording.head.state)), 'checkpoint não corresponde ao prefixo durável');
+    } catch (cause) {
+      job.signal?.throwIfAborted();
+      if (!store.reusedSteps || cause instanceof HistoryBudgetError) throw cause;
+      // A stale/corrupt derived checkpoint must not make healthy source blocks
+      // inaccessible. Retry once from the origin; primary corruption still fails.
+      await journal.validation.delete(id).catch(() => {});
+      return LiveRecording.resume(journal, id, { ...options, validateAll: true }, job);
+    }
+    job.signal?.throwIfAborted();
     await journal.claim(store.recording, store.owner);
-    try { await store.seek(store.recording.head.cursor, job); return store; } catch (cause) { await journal.release(id, store.owner).catch(() => {}); throw cause; }
+    try { await store.seek(store.recording.head.cursor, job); await store.cachePrefix(); job.signal?.throwIfAborted(); return store; } catch (cause) { await journal.release(id, store.owner).catch(() => {}); throw cause; }
   }
   get program() { return this.recording.program; }
   get source() { return this.recording.source; }
@@ -64,7 +89,7 @@ export class LiveRecording {
   get count(): number { return this.frontier; }
   get lastStep(): DeepReadonly<Step> | null { return this.currentStep; }
   private get maxFrames() { return this.source.maxFrames; }
-  get ledger(): RecordingLedger { return { id: this.entry.id, frontier: this.frontier, durable: this.recording.head.frontier, blocks: this.recording.head.blocks.length, pendingSteps: this.buffer.length, pendingBytes: this.buffer.length ? this.bufferSize : 0, bufferLimit: this.bufferLimit, pauseReason: this.pauseReason, canRecord: this.pauseReason === null && this.frontierMachine.control.status === 'running' && this.frontier < this.source.maxSteps, diskBytes: this.entry.bytes, revision: this.recording.head.revision, oversized: this.bufferSize > this.bufferLimit && this.buffer.length === 1 }; }
+  get ledger(): RecordingLedger { return { id: this.entry.id, frontier: this.frontier, durable: this.recording.head.frontier, blocks: this.recording.head.blocks.length, pendingSteps: this.buffer.length, pendingBytes: this.buffer.length ? this.bufferSize : 0, bufferLimit: this.bufferLimit, pauseReason: this.pauseReason, canRecord: this.pauseReason === null && this.frontierMachine.control.status === 'running' && this.frontier < this.source.maxSteps, diskBytes: this.entry.bytes, revision: this.recording.head.revision, oversized: this.bufferSize > this.bufferLimit && this.buffer.length === 1, validation: { reusedSteps: this.reusedSteps, checkedSteps: this.checkedSteps, blockReads: this.validationReads, cacheWarning: this.cacheWarning } }; }
   get stats(): PagedCacheStats { const indexBytes = this.eventBytes + this.descriptorBytes, reservedMachineBytes = this.maxMachine * 5 + this.maxStep * 2 + this.bufferSize * 2; return { bytes: this.cacheSize, limitBytes: this.cacheLimit, blocks: this.cache.size, hits: this.hits, reads: this.reads, evictions: this.evictions, largeBlocks: this.largeBlocks, indexBytes, reservedMachineBytes, estimatedBytes: this.cacheSize + indexBytes + reservedMachineBytes, limitTotalBytes: this.limitBytes, checkpoints: 1, indexBuilt: false }; }
   cancel(): void { this.epoch++; }
   stop(reason: string): void { this.pauseReason = reason; }
@@ -85,8 +110,16 @@ export class LiveRecording {
         const disk = await this.journal.open(this.entry.id).catch(() => null);
         if (disk?.entry.headHash !== candidate.checksum) throw cause; next = disk.entry;
       }
-      this.recording = { ...this.recording, entry: next, head: candidate.head }; this.descriptorBytes = encodedBytes(candidate.head.blocks); this.buffer = []; this.bufferSize = 2; this.pauseReason = null; return true;
+      this.recording = { ...this.recording, entry: next, head: candidate.head }; this.descriptorBytes = encodedBytes(candidate.head.blocks); this.buffer = []; this.bufferSize = 2; this.pauseReason = null; await this.cachePrefix(); return true;
     } catch (cause) { this.pauseReason = cause instanceof Error ? cause.message : String(cause); return false; }
+  }
+  private async cachePrefix(): Promise<void> {
+    try {
+      await this.journal.validation.publish({ validator: JOURNAL_VALIDATOR, runId: this.entry.id, sourceHash: this.entry.sourceHash,
+        frontier: this.recording.head.frontier, seal: this.recording.head.lastSeal, state: this.recording.head.state,
+        maxMachineBytes: this.maxMachine, maxStepBytes: this.maxStep, events: this.events });
+      this.cacheWarning = null;
+    } catch (cause) { this.cacheWarning = cause instanceof Error ? cause.message : String(cause); }
   }
   async close(): Promise<void> { if (!await this.flush()) throw new Error(this.pauseReason ?? 'Pendências não foram salvas'); await this.journal.release(this.entry.id, this.owner); }
   private async advance(job: PagedSeekJob): Promise<void> {

@@ -1,0 +1,263 @@
+{
+  "node": "v24.18.0",
+  "platform": "linux",
+  "bufferBytes": 16384,
+  "cacheBytes": 8192,
+  "note": "Diagnóstico local com fake-indexeddb; não mede disco real. Tempos incluem codec/checksums/validação. Picos de heap/RSS são amostras do processo inteiro, incluindo Vite, emulação do banco e efeitos de GC; não são picos isolados da VM. logicalPeak mede payload reservado, não RAM. Oráculos criados após medir gravação/retomadas. Limites de 20.000 passos/256 frames mantidos.",
+  "results": [
+    {
+      "name": "loop escalar",
+      "steps": 2089,
+      "blocks": 60,
+      "diskBytes": 958137,
+      "recordMs": 105.578,
+      "logicalPeak": 64756,
+      "bufferPeak": 16255,
+      "heapUsedPeakSampled": 52861248,
+      "rssPeakSampled": 495525888,
+      "yields": 285,
+      "cold": {
+        "ms": 80.446,
+        "reusedSteps": 0,
+        "checkedSteps": 2089,
+        "blockReads": 60,
+        "cacheWarning": null
+      },
+      "warm": {
+        "ms": 3.116,
+        "reusedSteps": 2089,
+        "checkedSteps": 0,
+        "blockReads": 0,
+        "cacheWarning": null
+      },
+      "suffix": {
+        "ms": 56.362,
+        "reusedSteps": 512,
+        "checkedSteps": 1577,
+        "blockReads": 45,
+        "cacheWarning": null
+      },
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 0.009,
+          "cacheBytes": 1288
+        },
+        {
+          "target": 1044,
+          "ms": 29.23,
+          "cacheBytes": 0
+        },
+        {
+          "target": 2089,
+          "ms": 1.185,
+          "cacheBytes": 1288
+        },
+        {
+          "target": 1,
+          "ms": 1.355,
+          "cacheBytes": 0
+        },
+        {
+          "target": 2088,
+          "ms": 0.425,
+          "cacheBytes": 1288
+        },
+        {
+          "target": 0,
+          "ms": 0.004,
+          "cacheBytes": 1288
+        }
+      ]
+    },
+    {
+      "name": "202 locais",
+      "steps": 1217,
+      "blocks": 35,
+      "diskBytes": 572588,
+      "recordMs": 119.341,
+      "logicalPeak": 74710,
+      "bufferPeak": 16141,
+      "heapUsedPeakSampled": 57525840,
+      "rssPeakSampled": 506535936,
+      "yields": 154,
+      "cold": {
+        "ms": 95.101,
+        "reusedSteps": 0,
+        "checkedSteps": 1217,
+        "blockReads": 35,
+        "cacheWarning": null
+      },
+      "warm": {
+        "ms": 6.112,
+        "reusedSteps": 1217,
+        "checkedSteps": 0,
+        "blockReads": 0,
+        "cacheWarning": null
+      },
+      "suffix": {
+        "ms": 53.367,
+        "reusedSteps": 512,
+        "checkedSteps": 705,
+        "blockReads": 20,
+        "cacheWarning": null
+      },
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 0.005,
+          "cacheBytes": 0
+        },
+        {
+          "target": 608,
+          "ms": 21.153,
+          "cacheBytes": 0
+        },
+        {
+          "target": 1217,
+          "ms": 0.556,
+          "cacheBytes": 0
+        },
+        {
+          "target": 1,
+          "ms": 1.25,
+          "cacheBytes": 0
+        },
+        {
+          "target": 1216,
+          "ms": 0.831,
+          "cacheBytes": 0
+        },
+        {
+          "target": 0,
+          "ms": 0.005,
+          "cacheBytes": 0
+        }
+      ]
+    },
+    {
+      "name": "heap compartilhado e saída",
+      "steps": 2652,
+      "blocks": 73,
+      "diskBytes": 1209556,
+      "recordMs": 171.08,
+      "logicalPeak": 103451,
+      "bufferPeak": 16379,
+      "heapUsedPeakSampled": 102536464,
+      "rssPeakSampled": 566595584,
+      "yields": 370,
+      "cold": {
+        "ms": 232.676,
+        "reusedSteps": 0,
+        "checkedSteps": 2652,
+        "blockReads": 73,
+        "cacheWarning": null
+      },
+      "warm": {
+        "ms": 20.9,
+        "reusedSteps": 2652,
+        "checkedSteps": 0,
+        "blockReads": 0,
+        "cacheWarning": null
+      },
+      "suffix": {
+        "ms": 243.136,
+        "reusedSteps": 512,
+        "checkedSteps": 2140,
+        "blockReads": 59,
+        "cacheWarning": null
+      },
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 0.011,
+          "cacheBytes": 0
+        },
+        {
+          "target": 1326,
+          "ms": 103.239,
+          "cacheBytes": 0
+        },
+        {
+          "target": 2652,
+          "ms": 4.538,
+          "cacheBytes": 0
+        },
+        {
+          "target": 1,
+          "ms": 6.73,
+          "cacheBytes": 0
+        },
+        {
+          "target": 2651,
+          "ms": 3.883,
+          "cacheBytes": 0
+        },
+        {
+          "target": 0,
+          "ms": 0.009,
+          "cacheBytes": 0
+        }
+      ]
+    },
+    {
+      "name": "recursão e erro reversível",
+      "steps": 120,
+      "blocks": 4,
+      "diskBytes": 58948,
+      "recordMs": 27.12,
+      "logicalPeak": 33331,
+      "bufferPeak": 14227,
+      "heapUsedPeakSampled": 71218448,
+      "rssPeakSampled": 568352768,
+      "yields": 10,
+      "cold": {
+        "ms": 20.746,
+        "reusedSteps": 0,
+        "checkedSteps": 120,
+        "blockReads": 4,
+        "cacheWarning": null
+      },
+      "warm": {
+        "ms": 1.848,
+        "reusedSteps": 120,
+        "checkedSteps": 0,
+        "blockReads": 0,
+        "cacheWarning": null
+      },
+      "suffix": null,
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 0.005,
+          "cacheBytes": 8163
+        },
+        {
+          "target": 60,
+          "ms": 3,
+          "cacheBytes": 0
+        },
+        {
+          "target": 120,
+          "ms": 0.394,
+          "cacheBytes": 8163
+        },
+        {
+          "target": 1,
+          "ms": 1.116,
+          "cacheBytes": 0
+        },
+        {
+          "target": 119,
+          "ms": 0.453,
+          "cacheBytes": 8163
+        },
+        {
+          "target": 0,
+          "ms": 0.005,
+          "cacheBytes": 8163
+        }
+      ]
+    }
+  ]
+}

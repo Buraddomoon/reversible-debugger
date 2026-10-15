@@ -22,6 +22,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Gravar sessão** salva blocos durante a execução e mostra o último passo durável e as pendências da aba. **Retomar** recupera a sessão após recarregar; **Salvar pendências** publica o buffer e a posição atual. Falhas de escrita pausam a gravação e preservam os passos ainda na aba. [Contrato e demo](docs/live-recording.md).
 
+**Retomar** reaproveita prefixos já validados e confere apenas os blocos novos. A tela mostra o reaproveitamento; **Verificar todo o histórico ao retomar** pede uma conferência integral. Cache indisponível é reconstruído pelos blocos originais. [Contrato e medidas](docs/segment-validation.md).
+
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
 ![Demo no Firefox: script Python importado, resultado 42 e saída reversível de print](docs/demo.png)
@@ -242,6 +244,7 @@ npm run bench:portable # Arquivos, importação/exportação, forks e atrasos de
 npm run bench:heap    # Mutação por item, busca exata e custo dos checkpoints
 npm run bench:storage # Orçamento, checkpoints reduzidos, busca e retomada
 npm run bench:navigation # Lotes, latência total e heartbeat em saltos longos
+npm run bench:segments # Retomadas sem cache/com cache, sufixos e payloads
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 

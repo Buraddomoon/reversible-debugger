@@ -36,7 +36,7 @@ Uma transação curta publica **bloco + cabeça + catálogo**. Hashes/serializa�
 
 Uma lease de escritor de cinco segundos, renovada a cada 1,5 segundo, impede duas abas de avançarem a mesma sessão. A aquisição compara a revisão validada. Depois de um reload abrupto, a lease anterior pode levar até cinco segundos para expirar. O fechamento normal libera o escritor. Exclusão exige sessão fechada ou lease expirada e remove somente os registros daquele ID.
 
-Retomar verifica fonte/programa/runtime e encadeamento, lê um bloco por vez, valida/aplica cada delta e compara o estado final com o checkpoint durável. Só então assume o escritor e restaura o cursor. Não retém todo o histórico decodificado, mas ainda percorre todo o prefixo: validação reutilizável de segmentos é o próximo marco.
+Retomar verifica fonte/programa/runtime e encadeamento, reutiliza um prefixo previamente validado quando disponível e confere o sufixo lendo um bloco por vez. Compara o estado final com o checkpoint durável antes de assumir o escritor e restaurar o cursor. Sem cache, ou com **Verificar todo o histórico ao retomar**, percorre todos os passos sem reter o histórico inteiro decodificado. [Contrato da validação reutilizável, falhas e medidas](segment-validation.md).
 
 Os bancos anteriores de scripts, capturas e checkpoints auxiliares permanecem compatíveis. Arquivos exportados continuam **v2 / rewind-vm/2**. Um banco de versão futura é recusado, sem apagar dados.
 
