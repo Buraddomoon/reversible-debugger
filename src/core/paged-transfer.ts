@@ -1,3 +1,5 @@
+import type { RunMode } from './execution-control';
+import type { PagedDebugState } from './paged-execution-control';
 import type { Program } from './compiler';
 import type { SavedExecution } from './execution-library';
 import type { StepExplanation } from './explanations';
@@ -9,12 +11,13 @@ import type { TraceMetadata } from './portable-history';
 import type { RuntimeSelection } from './runtime';
 
 export interface PagedHeader { entry: SavedExecution; program: Program; events: readonly HistoryEvent[]; limits?: { maxSteps: number; maxFrames: number } }
-export interface PagedSnapshot { cursor: number; count: number; state: DeepReadonly<MachineState>; step: Pick<Step, 'span' | 'op' | 'description'> | null; evidence: StepExplanation | null; reverse: boolean; changedNames: string[]; stats: PagedCacheStats; recording?: RecordingLedger }
+export interface PagedSnapshot { cursor: number; count: number; state: DeepReadonly<MachineState>; step: Pick<Step, 'span' | 'op' | 'description'> | null; evidence: StepExplanation | null; reverse: boolean; changedNames: string[]; stats: PagedCacheStats; recording?: RecordingLedger; debug?: PagedDebugState }
 export type PagedRequest = { id: number } & (
   { kind: 'open'; recordingId: string; options: PagedOptions } | { kind: 'seek'; target: number } | { kind: 'cache'; bytes: number } | { kind: 'cancel' }
-  | { kind: 'ack' }
+  | { kind: 'ack' } | { kind: 'control'; mode?: RunMode } | { kind: 'breakpoints'; lines: readonly number[]; enabled: boolean } | { kind: 'pause' }
 );
 export type PagedResponse =
+  | { id: number; kind: 'prepared'; snapshot: PagedSnapshot }
   | { id: number; kind: 'index-progress'; done: number; total: number }
   | { id: number; kind: 'seek-progress'; progress: PagedSeekProgress }
   | { id: number; kind: 'state'; snapshot: PagedSnapshot; header?: PagedHeader }

@@ -29,6 +29,7 @@ export class LiveRecording {
   private payload = measureMachine(this.frontierMachine);
   private maxMachine = this.payload.totalBytes;
   private maxStep = 0;
+  private maxBlockBytes = 0;
   private cache = new Map<number, { records: readonly DeepReadonly<Step>[]; bytes: number }>();
   private cacheSize = 0;
   private hits = 0;
@@ -61,7 +62,7 @@ export class LiveRecording {
     const store = new LiveRecording(journal, options); store.admit(); job.signal?.throwIfAborted(); store.recording = await journal.create(source, runtime, details, store.owner, { maxSteps: options.maxSteps ?? 20_000, maxFrames: options.maxFrames ?? 256 }, job.signal); return store;
   }
   static async resume(journal: RecordingJournal, id: string, options: LiveOptions = {}, job: PagedSeekJob = {}): Promise<LiveRecording> {
-    const store = new LiveRecording(journal, options); store.recording = await journal.open(id, job.signal); store.descriptorBytes = encodedBytes(store.recording.head.blocks);
+    const store = new LiveRecording(journal, options); store.recording = await journal.open(id, job.signal); store.descriptorBytes = encodedBytes(store.recording.head.blocks); store.maxBlockBytes = store.recording.head.blocks.reduce((max, block) => Math.max(max, block.bytes), 0);
     try {
       const cached = options.validateAll ? null : await journal.validation.read(store.recording); job.signal?.throwIfAborted();
       if (cached) {
@@ -100,13 +101,15 @@ export class LiveRecording {
   get lastStep(): DeepReadonly<Step> | null { return this.currentStep; }
   private get maxFrames() { return this.source.maxFrames; }
   get ledger(): RecordingLedger { return { id: this.entry.id, frontier: this.frontier, durable: this.recording.head.frontier, blocks: this.recording.head.blocks.length, pendingSteps: this.buffer.length, pendingBytes: this.buffer.length ? this.bufferSize : 0, bufferLimit: this.bufferLimit, pauseReason: this.pauseReason, canRecord: !this.readOnly && this.pauseReason === null && this.frontierMachine.control.status === 'running' && this.frontier < this.source.maxSteps, diskBytes: this.entry.bytes, revision: this.recording.head.revision, oversized: this.bufferSize > this.bufferLimit && this.buffer.length === 1, validation: { reusedSteps: this.reusedSteps, checkedSteps: this.checkedSteps, blockReads: this.validationReads, cacheWarning: this.cacheWarning }, navigation: { restoredFrom: this.restoredFrom, appliedSteps: this.appliedSteps, warning: this.checkpointWarning } }; }
-  get stats(): PagedCacheStats { const indexBytes = this.eventBytes + this.descriptorBytes + this.pointBytes, reservedMachineBytes = this.maxMachine * 5 + this.maxStep * 2 + this.bufferSize * 2; return { bytes: this.cacheSize, limitBytes: this.cacheLimit, blocks: this.cache.size, hits: this.hits, reads: this.reads, evictions: this.evictions, largeBlocks: this.largeBlocks, indexBytes, reservedMachineBytes, estimatedBytes: this.cacheSize + indexBytes + reservedMachineBytes, limitTotalBytes: this.limitBytes, checkpoints: this.points.length + 1, indexBuilt: false }; }
+  get stats(): PagedCacheStats { const indexBytes = this.eventBytes + this.descriptorBytes + this.pointBytes, reservedMachineBytes = this.maxMachine * 5 + this.maxStep * 2 + this.bufferSize * 2 + Math.max(this.maxBlockBytes, this.bufferSize); return { bytes: this.cacheSize, limitBytes: this.cacheLimit, blocks: this.cache.size, hits: this.hits, reads: this.reads, evictions: this.evictions, largeBlocks: this.largeBlocks, indexBytes, reservedMachineBytes, estimatedBytes: this.cacheSize + indexBytes + reservedMachineBytes, limitTotalBytes: this.limitBytes, checkpoints: this.points.length + 1, indexBuilt: false }; }
   cancel(): void { this.epoch++; }
   stop(reason: string): void { this.pauseReason = reason; }
   private check(epoch: number, job: PagedSeekJob): void { job.signal?.throwIfAborted(); if (epoch !== this.epoch) throw new SeekSupersededError(); }
   private addEvent(step: DeepReadonly<Step>, cursor: number): void { const event = historyEvent(step, cursor); if (event) { const compact = { ...event, description: event.description.slice(0, 240) }, bytes = encodedBytes(compact) + 1; if (this.eventBytes + bytes > 4 * 1024 * 1024) throw new Error('Índice de eventos excede 4 MiB'); this.events.push(compact); this.eventBytes += bytes; } }
-  private evict(extra = 0): void { while (this.cache.size && this.cacheSize + extra > this.cacheLimit) { const id = this.cache.keys().next().value!; this.cacheSize -= this.cache.get(id)!.bytes; this.cache.delete(id); this.evictions++; } }
-  private admit(bufferBytes = this.bufferSize, transient = 0, machineBytes = this.maxMachine, stepBytes = this.maxStep, futureEventBytes = 0): void { const minimum = machineBytes * 5 + stepBytes * 2 + bufferBytes * 2 + this.eventBytes + futureEventBytes + this.descriptorBytes + this.pointBytes + transient; if (minimum > this.limitBytes) throw new HistoryBudgetError(this.limitBytes, minimum); while (this.cacheSize + minimum > this.limitBytes && this.cache.size) { const id = this.cache.keys().next().value!; this.cacheSize -= this.cache.get(id)!.bytes; this.cache.delete(id); this.evictions++; } }
+  private evict(extra = 0, limit = this.cacheLimit): void { while (this.cache.size && this.cacheSize + extra > limit) { const id = this.cache.keys().next().value!; this.cacheSize -= this.cache.get(id)!.bytes; this.cache.delete(id); this.evictions++; } }
+  // Retain room to read any durable block even when recording pauses at its
+  // payload limit. Otherwise a valid prefix could become impossible to undo.
+  private admit(bufferBytes = this.bufferSize, transient = 0, machineBytes = this.maxMachine, stepBytes = this.maxStep, futureEventBytes = 0): void { const minimum = machineBytes * 5 + stepBytes * 2 + bufferBytes * 2 + this.eventBytes + futureEventBytes + this.descriptorBytes + this.pointBytes + Math.max(transient, this.maxBlockBytes, bufferBytes); if (minimum > this.limitBytes) throw new HistoryBudgetError(this.limitBytes, minimum); while (this.cacheSize + minimum > this.limitBytes && this.cache.size) { const id = this.cache.keys().next().value!; this.cacheSize -= this.cache.get(id)!.bytes; this.cache.delete(id); this.evictions++; } }
   setCacheBudget(bytes: number): void { integer(bytes, 1, 8 * 1024 * 1024); if (bytes + this.stats.reservedMachineBytes + this.stats.indexBytes > this.limitBytes) throw new HistoryBudgetError(this.limitBytes, bytes + this.stats.reservedMachineBytes + this.stats.indexBytes); this.cancel(); this.cacheLimit = bytes; this.evict(); }
   async renew(): Promise<void> { try { await this.journal.renew(this.entry.id, this.owner); } catch (cause) { this.pauseReason = cause instanceof Error ? cause.message : String(cause); } }
   async flush(signal?: AbortSignal): Promise<boolean> {
@@ -114,14 +117,14 @@ export class LiveRecording {
     try {
       signal?.throwIfAborted(); await this.journal.renew(this.entry.id, this.owner);
       const candidate = await this.journal.prepare(this.recording, this.buffer.map(item => item.json), this.frontierMachine, this.position);
-      this.admit(2, Math.max(0, encodedBytes(candidate.head.blocks) - this.descriptorBytes));
+      this.admit(2, Math.max(0, encodedBytes(candidate.head.blocks) - this.descriptorBytes) + Math.max(this.maxBlockBytes, candidate.block?.bytes ?? 0));
       let next;
       try { next = await this.journal.commit(this.recording, this.owner, candidate, signal); }
       catch (cause) { // Reconcile an uncertain response without duplicating a durable block.
         const disk = await this.journal.open(this.entry.id).catch(() => null);
         if (disk?.entry.headHash !== candidate.checksum) throw cause; next = disk.entry;
       }
-      this.recording = { ...this.recording, entry: next, head: candidate.head }; this.descriptorBytes = encodedBytes(candidate.head.blocks); this.buffer = []; this.bufferSize = 2; this.pauseReason = null; await this.savePoint(); await this.cachePrefix(); return true;
+      this.recording = { ...this.recording, entry: next, head: candidate.head }; this.descriptorBytes = encodedBytes(candidate.head.blocks); this.maxBlockBytes = Math.max(this.maxBlockBytes, candidate.block?.bytes ?? 0); this.buffer = []; this.bufferSize = 2; this.pauseReason = null; await this.savePoint(); await this.cachePrefix(); return true;
     } catch (cause) { this.pauseReason = cause instanceof Error ? cause.message : String(cause); return false; }
   }
   private async refreshPoints(): Promise<void> {
@@ -168,7 +171,12 @@ export class LiveRecording {
     const descriptor = this.recording.head.blocks.find(b => index >= b.first && index < b.first + b.count)!; const hit = this.cache.get(descriptor.index);
     if (hit) { this.hits++; this.cache.delete(descriptor.index); this.cache.set(descriptor.index, hit); return { records: hit.records, first: descriptor.first }; }
     this.admit(this.bufferSize, descriptor.bytes); this.evict(descriptor.bytes); const records = freezePayload(await this.journal.readBlock(this.recording, descriptor, job.signal) as Step[]); this.reads++;
-    if (descriptor.bytes <= this.cacheLimit) { this.cache.set(descriptor.index, { records, bytes: descriptor.bytes }); this.cacheSize += descriptor.bytes; } else this.largeBlocks++;
+    // A loaded block may be transiently admissible yet leave no room for
+    // retention alongside the reserved next read. Keep replay possible instead
+    // of exhausting that reserve by caching it.
+    const stats = this.stats, retainedLimit = Math.min(this.cacheLimit, this.limitBytes - stats.indexBytes - stats.reservedMachineBytes);
+    this.evict(descriptor.bytes, retainedLimit);
+    if (descriptor.bytes <= retainedLimit) { this.cache.set(descriptor.index, { records, bytes: descriptor.bytes }); this.cacheSize += descriptor.bytes; } else this.largeBlocks++;
     return { records, first: descriptor.first };
   }
   async readRange(first: number, count: number, job: PagedSeekJob = {}): Promise<readonly DeepReadonly<Step>[]> { integer(first, 0, this.frontier); integer(count, 0, 16); integer(first + count, 0, this.frontier); const records: DeepReadonly<Step>[] = []; while (records.length < count) { job.signal?.throwIfAborted(); const batch = await this.recordsAt(first + records.length, job); records.push(...batch.records.slice(first + records.length - batch.first, first + count - batch.first)); } return records; }

@@ -69,3 +69,7 @@ session.seek(0);
 ```
 
 `runBatch` aceita de 1 a 1.000 transações e informa direção, origem, quantidade percorrida, última instrução e parada. Uma ação longa continua no próximo lote; a UI devolve o controle ao navegador entre eles. `canStepOut` indica se existe um frame de função ativo. IDs de frames, em vez de apenas profundidade, distinguem o frame original de suas chamadas recursivas.
+
+## Controles no modo paginado/contínuo
+
+Os mesmos breakpoints e passos por comando estão disponíveis diretamente em **Abrir**, **Gravar sessão** e **Retomar**, com política compartilhada, lotes de até 16 e fronteira parcial explícita. [Contrato, demo e testes](paged-controls.md). A explicação paginada corresponde à última instrução do lote; o debugger completo oferece a agregação por comando.

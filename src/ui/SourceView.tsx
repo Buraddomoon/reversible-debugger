@@ -13,13 +13,14 @@ export function highlightSyntax(text: string, language: LanguageId): ReactNode[]
   });
 }
 
-export function SourceView({ source, span, language, breakableLines, breakpoints, enabled, onToggle }: {
+export function SourceView({ source, span, language, breakableLines, breakpoints, enabled, disabled = false, onToggle }: {
   source: string;
   span?: Span;
   language: LanguageId;
   breakableLines: readonly number[];
   breakpoints: readonly number[];
   enabled: boolean;
+  disabled?: boolean;
   onToggle: (line: number) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
@@ -54,7 +55,7 @@ export function SourceView({ source, span, language, breakableLines, breakpoints
       const active = number === span?.line;
       const point = points.has(number);
       return <div className={`code-line ${active ? 'current' : ''} ${point ? 'has-breakpoint' : ''}`} key={index} style={{ top: index * viewport.lineHeight }} data-testid={active ? 'current-line' : undefined} aria-current={active ? 'step' : undefined}>
-        <button className={`line-number breakpoint-toggle ${point ? 'set' : ''} ${enabled ? '' : 'inactive'}`} disabled={!eligible.has(number)} onClick={() => onToggle(number)} aria-label={`${point ? 'Remover' : 'Adicionar'} breakpoint na linha ${number}`} aria-pressed={point} title={eligible.has(number) ? `${point ? 'Remover' : 'Adicionar'} breakpoint antes do comando na linha ${number}` : 'Essa linha não inicia um comando executável'}>{number}</button>
+        <button className={`line-number breakpoint-toggle ${point ? 'set' : ''} ${enabled ? '' : 'inactive'}`} disabled={disabled || !eligible.has(number)} onClick={() => onToggle(number)} aria-label={`${point ? 'Remover' : 'Adicionar'} breakpoint na linha ${number}`} aria-pressed={point} title={eligible.has(number) ? `${point ? 'Remover' : 'Adicionar'} breakpoint antes do comando na linha ${number}` : 'Essa linha não inicia um comando executável'}>{number}</button>
         <span className="line-marker" aria-hidden="true">{active ? '▸' : ''}</span>
         <code>{highlightSyntax(line || ' ', language)}</code>
       </div>;

@@ -187,11 +187,21 @@ Critério: reabrir uma sessão com prefixo completo exige zero leituras de bloco
 
 Critério: comparar 10/15 e 99/2 com o mesmo alinhamento/diferenças do comparador integral, mantendo deltas em caches limitados. Reabrir uma sessão preserva os checkpoints auxiliares e saltos aplicam menos transações. [Contrato, demo e relatórios](streaming-comparison.md).
 
-## Próximo marco — controles unificados de depuração
+## Controles unificados de depuração — implementado
 
-- Disponibilizar breakpoints e passos por comando diretamente no modo contínuo/paginado, sem exigir materialização integral.
-- Preservar regras de entrada/retorno, recursão, condições e busca reversa, usando os mesmos registros e respeitando a fronteira gravada.
+- Breakpoints por linha, ativação/remoção e todos os passos por comando diretamente nas sessões contínuas e capturas paginadas.
+- Uma política de parada compartilhada pelos drivers síncrono/assíncrono, preservando chamadas, retornos no meio de expressões, recursão e busca reversa.
+- Planos mantêm frame/origem entre lotes de até 16 instruções. Dois Workers serializados usam preparação/ACK/publicação, pausa e substituição de pedidos pendentes.
+- Fronteira parcial explícita, quotas preservadas, falhas com último estado válido e reserva para ler blocos depois da pausa por bytes.
+- Transferência dos pontos para o debugger completo/reinício; explicação da última instrução no modo paginado.
+- Testes gerados de equivalência/estado completo nos dois runtimes; Firefox instalado valida UI, Workers, IndexedDB, ACK, destinos concorrentes e 390 px. [Demo, contrato e medidas](paged-controls.md).
+
+Critério atendido: depurar em ambos os modos sem materializar o histórico, obtendo as mesmas paradas e os mesmos estados do controlador clássico; replay não executa código nem cria registros novos. A captura parcial termina na sua fronteira.
+
+## Próxima etapa — perfil de recursos e limites maiores
+
 - Medir picos temporários, cópias, renderização e latência de leitura/gravação em programas diferentes antes de ampliar os 20.000 passos.
+- Diferenciar payload estimado e memória real do navegador; definir metas reproduzíveis para máquina/ambiente e falhas de armazenamento.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.
 

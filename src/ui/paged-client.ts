@@ -1,3 +1,4 @@
+import type { RunMode } from '../core/execution-control';
 import type { PagedOptions, PagedSeekProgress } from '../core/paged-history';
 import type { PagedHeader, PagedRequest, PagedSnapshot, LiveRequest, LiveResponse } from '../core/paged-transfer';
 import { DebugSession, recordingYield, type RecordingJob } from '../core/debugger';
@@ -36,7 +37,6 @@ export class PagedRecordingClient {
         else if (message.kind === 'records') { if (pending.job.signal?.aborted) pending.reject(pending.job.signal.reason); else pending.resolve(message); }
         else if (!pending.acknowledged && (message.id !== this.latest || pending.job.signal?.aborted)) { this.worker.postMessage({ kind: 'cancel', id: message.id } satisfies PagedRequest); pending.reject(new DOMException('Pedido substituído ou cancelado', 'AbortError')); }
         else {
-          if (!this.isLive) this.worker.postMessage({ kind: 'ack', id: message.id } satisfies PagedRequest);
           if (message.header) this.header = message.header;
           if ('events' in message && message.events?.length) this.header = { ...this.header, events: [...this.header.events, ...message.events] };
           if (message.id === this.latest) { this.snapshot = message.snapshot; for (const listener of this.listeners) listener(this.snapshot); }
@@ -63,6 +63,9 @@ export class PagedRecordingClient {
   }
   private async stateRequest(input: Input, job: ClientJob = {}): Promise<PagedSnapshot> { const response = await this.request(input, job); if (response.kind !== 'state') throw new Error('Resposta de sessão inconsistente'); return response.snapshot; }
   async seek(target: number, job: ClientJob = {}): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'seek', target }, job); }
+  async control(mode?: RunMode, job: ClientJob = {}): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'control', mode }, job); }
+  async configureBreakpoints(lines: readonly number[], enabled: boolean, job: ClientJob = {}): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'breakpoints', lines, enabled }, job); }
+  async pause(): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'pause' }); }
   async run(job: ClientJob = {}): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'run' }, job); }
   async flush(job: ClientJob = {}): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'flush' }, job); }
   async closeLive(): Promise<void> { if (!this.isLive) return; const response = await this.stateRequest({ kind: 'close' }); if (response.recording?.pauseReason || response.recording?.pendingSteps) throw new Error(response.recording.pauseReason ?? 'Passos pendentes não foram salvos'); }

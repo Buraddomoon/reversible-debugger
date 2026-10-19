@@ -1,0 +1,41 @@
+{
+  "browser": "150.0",
+  "liveId": "d1398ea9-9592-4860-b820-82fe86a91ce1",
+  "savedId": "364f48e1-7459-4350-8483-afb5b4c2a0d1",
+  "steps": 102,
+  "results": [
+    {
+      "kind": "live",
+      "batches": 72,
+      "maxCache": 0,
+      "latencyMs": {
+        "median": 14,
+        "p95": 41
+      },
+      "preAckPreserved": true,
+      "postAckCompleted16": true,
+      "newestWaitingWins": true
+    },
+    {
+      "kind": "saved",
+      "batches": 72,
+      "maxCache": 0,
+      "latencyMs": {
+        "median": 30,
+        "p95": 74
+      },
+      "preAckPreserved": true,
+      "postAckCompleted16": true,
+      "newestWaitingWins": true
+    }
+  ],
+  "partialFrontier": 17,
+  "budgetReserve": {
+    "limit": 65536,
+    "frontier": 980,
+    "reverseToStart": true,
+    "replayPreserved": true
+  },
+  "mobileWidth": 390,
+  "note": "Firefox instalado, IndexedDB e Workers de produção. Estados completos, paradas e lotes comparados com o controlador clássico. Latências incluem I/O, validação, codec e RPC; payload do cache, não RAM real."
+}

@@ -57,3 +57,9 @@ O Worker usa **preparação → ACK da UI → commit/escrita → estado publicad
 No Firefox 150.0, a referência sequencial conferiu os estados de uma execução de 777 instruções com alias, mutações de lista e saída. Esse cenário usa buffer de 4 KiB e cache de 2 KiB para forçar fronteiras frequentes; já havia 28 blocos publicados enquanto a execução ainda estava no passo 241. O fluxo de UI usa os padrões e verifica cinco passos salvos/três voláteis antes de um reload controlado.
 
 O relatório reproduzível fica em `.artifacts/live-recording-browser.json`; uma cópia desta entrega está em [live-recording-browser.json](live-recording-browser.json). O teste não baixa navegador nem instala ou atualiza componentes globais.
+
+A reserva de payload inclui também a leitura do maior bloco durável ou do buffer que formará um bloco. Isso mantém a navegação disponível após uma pausa por bytes; o limite pode ser atingido mais cedo, preservando o prefixo aceito.
+
+## Controles no modo paginado/contínuo
+
+Os mesmos breakpoints e passos por comando estão disponíveis diretamente em **Abrir**, **Gravar sessão** e **Retomar**, com política compartilhada, lotes de até 16 e fronteira parcial explícita. [Contrato, demo e testes](paged-controls.md). A explicação paginada corresponde à última instrução do lote; o debugger completo oferece a agregação por comando.

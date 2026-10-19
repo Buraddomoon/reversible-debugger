@@ -63,7 +63,7 @@ export async function runPagedBrowserFlows({ evaluate, command, context, click, 
       // Cancel precisely when a prepared response arrives, before the client ACK.
       // This test-owned client can intercept its handler; the app exposes no VM.
       const receiver=client.worker.onmessage,finalAbort=new AbortController();let armed=true;
-      client.worker.onmessage=event=>{if(armed&&event.data.kind==='state'){armed=false;finalAbort.abort();}receiver(event);};
+      client.worker.onmessage=event=>{if(armed&&event.data.kind==='prepared'){armed=false;finalAbort.abort();}receiver(event);};
       try{try{await client.seek(123,{signal:finalAbort.signal});throw new Error('Confirmação cancelada publicou destino');}catch(error){if(error.name!=='AbortError')throw error;}same(client,0);}finally{client.worker.onmessage=receiver;}
       await client.seek(1);same(client,1);if(!client.snapshot.evidence)throw new Error('Worker ficou num cursor invisível após cancelar confirmação');
       return JSON.stringify({browser:${JSON.stringify(browser)},steps:client.snapshot.count,warm,samples,allTargetsMs:+allTargetsMs.toFixed(2),heartbeats,paint,cancellationPreservedCursor:0,lastDestination:123,missingCheckpointRecovered:true,corruptionPreservedCursor:0,finalConfirmationCancelled:true,note:'Firefox instalado, IndexedDB e RPC de produção. Estados completos comparados com execução sequencial independente. Tempos incluem Worker/I-O/codec/timers/BiDi; bytes são payloads, não RAM.'});

@@ -8,7 +8,7 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Comparar execuções** mostra duas versões lado a lado, alinha seus eventos e identifica a primeira diferença observada, preservando a sessão principal.
 
-**O que mudou** explica operações, decisões, leituras e frames com os valores registrados, também ao desfazer. Passos por comando agregam as atribuições e permitem selecionar uma instrução do intervalo sem mover o programa.
+**O que mudou** explica operações, decisões, leituras e frames com os valores registrados, também ao desfazer. No debugger completo, passos por comando agregam atribuições e permitem selecionar uma instrução do intervalo sem mover o programa. O modo paginado explica a última instrução percorrida.
 
 **Exportar histórico** guarda a execução num arquivo; **Importar histórico** restaura o mesmo cursor e os estados já gravados. Históricos importados também podem ser comparados sem executar o código novamente.
 
@@ -25,6 +25,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 **Retomar** reaproveita prefixos já validados e confere apenas os blocos novos. A tela mostra o reaproveitamento; **Verificar todo o histórico ao retomar** pede uma conferência integral. Cache indisponível é reconstruído pelos blocos originais. [Contrato e medidas](docs/segment-validation.md).
 
 **Comparar gravações** compara duas sessões/capturas salvas com caches limitados e restaura os dois lados juntos, preservando o cursor original. Sessões contínuas também têm checkpoints intermediários para acelerar os saltos. [Demo, contrato e medidas](docs/streaming-comparison.md).
+
+**Breakpoints e passos por comando** também funcionam em **Gravar sessão**, **Retomar** e **Abrir**, com a mesma política de chamadas/retornos, lotes de até 16 instruções e navegação reversa. Não exigem carregar o histórico completo. [Contrato, demo e testes](docs/paged-controls.md).
 
 **Rewind é o nome do projeto.** A linguagem experimental dos arquivos `.rw` foi criada aqui; não é uma linguagem padrão. O suporte a Python tem parser e regras próprios, com limitações explícitas em [Python 3](docs/python.md).
 
@@ -94,7 +96,7 @@ A segunda fonte pode ser um exemplo ou um script salvo da mesma linguagem/versã
 
 Execute a soma Python com bug, escolha a última **Decisão** e clique em **Voltar**. O diagrama mostra `5 < 5 → False` e a decisão desfeita. Volte mais uma instrução para recuperar os operandos originais da comparação; avance para reaplicar o registro. Ao desfazer um retorno, o diagrama mostra o frame restaurado e seus locais.
 
-Nos controles por comando, consulte **Atribuições no intervalo** e as setas de **Registro**. Selecionar esse detalhe conserva o cursor atual. Variáveis e atribuições têm paginação para manter a interface utilizável com milhares de locais. Animações respeitam movimento reduzido. [Contrato, medidas e evolução do armazenamento](docs/visual-explanations.md).
+No debugger completo, consulte **Atribuições no intervalo** e as setas de **Registro**. Selecionar esse detalhe conserva o cursor atual. Variáveis e atribuições têm paginação para manter a interface utilizável com milhares de locais. Animações respeitam movimento reduzido. [Contrato, medidas e evolução do armazenamento](docs/visual-explanations.md).
 
 ![Explicação no Firefox: a comparação 5 < 5 faz a soma terminar cedo](docs/explanations.png)
 
@@ -189,6 +191,7 @@ examples/             Programas .py e .rw usados pela demo e pelos testes
 tests/core.test.ts    Semântica, reversibilidade e propriedades geradas
 tests/history.test.ts Busca exata, checkpoints, eventos e navegação gerada
 tests/execution-control.test.ts  Paradas, recursão, agrupamento e replay
+tests/paged-execution-control.test.ts  Controles contínuos/paginados, quotas e equivalência
 tests/comparison.test.ts  Divergência, alinhamento e restauração das duas sessões
 tests/explanations.test.ts  Proveniência, escopos, undo e índice incremental
 tests/portable-history.test.ts  Round trip, corrupção, quotas, forks e comparação
@@ -248,7 +251,8 @@ npm run bench:storage # Orçamento, checkpoints reduzidos, busca e retomada
 npm run bench:navigation # Lotes, latência total e heartbeat em saltos longos
 npm run bench:segments # Retomadas sem cache/com cache, sufixos e payloads
 npm run bench:streaming # Checkpoints graváveis e comparação em blocos
-npm run test:firefox -- --streaming-only # Fluxos novos no Firefox instalado
+npm run test:firefox -- --streaming-only # Comparação paginada e controles
+npm run test:firefox -- --controls-only # Comandos/breakpoints em Workers e UI
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -316,6 +320,7 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Etapas e próximos marcos](docs/roadmap.md)
 - [Medidas e política de checkpoints](docs/history-performance.md)
 - [Breakpoints e controles por comando](docs/breakpoints-stepping.md)
+- [Controles nas sessões contínuas e capturas paginadas](docs/paged-controls.md)
 - [Comparação entre execuções](docs/execution-comparison.md)
 - [Explicações visuais e escala](docs/visual-explanations.md)
 - [Históricos portáveis](docs/portable-histories.md)
@@ -323,4 +328,4 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Orçamento do histórico](docs/storage-budget.md)
 - [Navegação cancelável](docs/cancellable-navigation.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. O próximo marco unifica os controles de depuração nesses modos, com medidas antes de ampliar sessões.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. Os controles de depuração já estão unificados nesses modos. A próxima etapa mede picos temporários, cópias e latência em workloads diferentes antes de ampliar sessões.

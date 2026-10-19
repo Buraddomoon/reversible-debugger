@@ -234,3 +234,11 @@ O Worker e a sessão privada de restauração recebem o orçamento de payload re
 Essa biblioteca é separada da VM. Ao recarregar a página, o código selecionado é compilado novamente em uma sessão limpa. Se houver erro no rascunho salvo, o texto é mantido e aberto no editor; não é substituído por um exemplo ou por fonte vazia. Apenas o estado temporário da VM usa uma sessão vazia enquanto esse código é corrigido.
 
 Falhas de leitura não sobrescrevem a chave existente; falhas de gravação deixam o código na página e mostram um erro. A exclusão remove um ID da biblioteca e seleciona outro script, ou o exemplo inicial quando a biblioteca fica vazia. Scripts usam IDs em vez de nomes de arquivo para evitar que uma importação sobrescreva outro registro. O editor tem uma chave por ID, cancelando leituras de arquivo pendentes quando o usuário troca de script.
+
+## Controles compartilhados nos modos contínuo e paginado
+
+`ExecutionPolicy` emite pedidos de transação e aplica as regras de parada; `ExecutionControl` dirige a sessão síncrona e `PagedExecutionControl` dirige os stores assíncronos com a mesma política. O plano mantém cursor/frame original entre lotes de até 16, sem carregar ou transferir o histórico completo. Breakpoints e paradas pertencem à abertura atual, fora do estado da VM e dos formatos de gravação.
+
+Ambos os Workers serializam o pedido ativo e o destino pendente mais recente. Navegação manual calcula estado privado antes do ACK; controles recebem ACK antes de executar um lote limitado. Depois da aceitação, o prefixo válido é publicado mesmo em falha; pausa impede novos lotes. Snapshots incluem configuração, modo, parada e diagnóstico, além da explicação da última instrução. A materialização transfere os pontos para o controlador clássico, inclusive no reinício.
+
+A admissão do journal reserva leitura do maior bloco durável/buffer, evitando que uma pausa por orçamento impeça desfazer o prefixo já aceito. Essa reserva consta nas estatísticas de payload. Bancos e codec permanecem compatíveis. [Contrato, demonstração e validação](paged-controls.md).

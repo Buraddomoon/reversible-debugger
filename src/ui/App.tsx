@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
+import { useRef, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 import { DebugSession, HistoryBudgetError } from '../core/debugger';
 import { describeInstruction } from '../core/compiler';
 import { examples } from '../examples';
@@ -72,7 +72,12 @@ export function App() {
   const [libraryBusy, setLibraryBusy] = useState(false);
   const [recordingBusy, setRecordingBusy] = useState(false);
   const [leavingRecording, setLeavingRecording] = useState(false);
-  const controller = useMemo(() => new ExecutionControl(session), [session]);
+  const transferredBreakpoints = useRef(new WeakMap<DebugSession, { lines: readonly number[]; enabled: boolean }>());
+  const controller = useMemo(() => {
+    const control = new ExecutionControl(session), config = transferredBreakpoints.current.get(session);
+    if (config) control.configure(config.lines, config.enabled);
+    return control;
+  }, [session]);
   const [exampleId, setExampleId] = useState(initial.selection);
   const [draft, setDraft] = useState(initial.source);
   const [editing, setEditing] = useState(initial.editing);
@@ -214,7 +219,10 @@ export function App() {
     return { opened, active };
   };
   const materializedRecording = (history: ImportedHistory, action: FullAction) => {
-    const { opened, active } = importRecording(history, paged?.header.entry.id); setPaged(null);
+    const config = paged?.snapshot.debug;
+    const { opened, active } = importRecording(history, paged?.header.entry.id);
+    if (config) transferredBreakpoints.current.set(active, { lines: config.breakpoints, enabled: config.enabled });
+    setPaged(null);
     if (action === 'restart') { active.restart(); refresh(); }
     if (action === 'compare') { try { setComparisonBudget(stagingHistoryBudget([...histories, opened], active, 4)); setComparing(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }
   };

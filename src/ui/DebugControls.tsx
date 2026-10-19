@@ -24,7 +24,8 @@ export function StepControls({ disabled, canForward, canBackward, canStepOut, ru
   </section>;
 }
 
-export function BreakpointBar({ lines, enabled, onToggle, onEnabled, onClear }: {
+export function BreakpointBar({ lines, enabled, disabled = false, onToggle, onEnabled, onClear }: {
+  disabled?: boolean;
   lines: readonly number[];
   enabled: boolean;
   onToggle: (line: number) => void;
@@ -33,7 +34,7 @@ export function BreakpointBar({ lines, enabled, onToggle, onEnabled, onClear }: 
 }) {
   return <div className="breakpoint-bar" aria-label="Breakpoints">
     <span className="breakpoint-caption"><span aria-hidden="true">●</span> Breakpoints <strong>{lines.length}</strong></span>
-    {lines.length ? <div className="breakpoint-list">{lines.map(line => <button key={line} aria-label={`Remover breakpoint L${line}`} onClick={() => onToggle(line)}>L{line} <span aria-hidden="true">×</span></button>)}</div> : <p>Clique no número de uma linha executável.</p>}
-    {lines.length > 0 && <div className="breakpoint-settings"><label><input type="checkbox" checked={enabled} onChange={event => onEnabled(event.target.checked)} />Ativos</label><button onClick={onClear}>Limpar breakpoints</button></div>}
+    {lines.length ? <div className="breakpoint-list">{lines.map(line => <button key={line} disabled={disabled} aria-label={`Remover breakpoint L${line}`} onClick={() => onToggle(line)}>L{line} <span aria-hidden="true">×</span></button>)}</div> : <p>Clique no número de uma linha executável.</p>}
+    {lines.length > 0 && <div className="breakpoint-settings"><label><input type="checkbox" disabled={disabled} checked={enabled} onChange={event => onEnabled(event.target.checked)} />Ativos</label><button disabled={disabled} onClick={onClear}>Limpar breakpoints</button></div>}
   </div>;
 }

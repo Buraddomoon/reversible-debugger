@@ -57,4 +57,4 @@ O Firefox instalado usa IndexedDB/Workers de produção: checkpoints persistidos
 
 ![Firefox: comparação em blocos no layout de 390 px](paged-comparison-mobile.png)
 
-Os limites continuam em **20.000 passos / 256 frames**. Comparar fontes ainda usa o comparador integral; gravações importadas devem ser salvas como captura para entrar no novo fluxo. Breakpoints e passos por comando no modo contínuo permanecem para o próximo marco de controles unificados.
+Os limites continuam em **20.000 passos / 256 frames**. Comparar fontes ainda usa o comparador integral; gravações importadas devem ser salvas como captura para entrar no novo fluxo. Breakpoints e passos por comando nos modos contínuo/paginado foram implementados no [marco de controles unificados](paged-controls.md).
