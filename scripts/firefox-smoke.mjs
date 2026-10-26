@@ -9,6 +9,7 @@ import { runPagedBrowserFlows } from './paged-browser-flows.mjs';
 import { runLiveBrowserFlows } from './live-browser-flows.mjs';
 import { runStreamingBrowserFlows } from './streaming-browser-flows.mjs';
 import { runPagedControlsBrowserFlows } from './paged-controls-browser-flows.mjs';
+import { runResourceBrowserFlows } from './resource-browser-flows.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = join(root, '.artifacts');
@@ -31,7 +32,7 @@ await writeFile(join(profile, 'user.js'), [
   'user_pref("browser.download.useDownloadDir", true);',
   'user_pref("browser.helperApps.neverAsk.saveToDisk", "application/json");',
 ].join('\n'));
-const server = await createServer({ root, server: { host: '127.0.0.1', port: 5178, strictPort: true } });
+const server = await createServer({ root, server: { host: '127.0.0.1', port: 5178, strictPort: true, watch: { ignored: ['**/.artifacts/**'] } } });
 await server.listen();
 const port = process.env.REWIND_BIDI_PORT ?? '9238';
 const firefox = spawn(process.env.FIREFOX_BIN ?? 'firefox', [
@@ -136,7 +137,8 @@ try {
   await command('browsingContext.setViewport', { context, viewport: { width: 1440, height: 1100 }, devicePixelRatio: 1 });
   await command('browsingContext.navigate', { context, url: 'http://127.0.0.1:5178/', wait: 'complete' });
   await waitFor("document.querySelector('[data-testid=step-count]')");
-  if (!process.argv.includes('--live-only') && !process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only')) {
+  const resourcesOnly = process.argv.includes('--resources-only');
+  if (!process.argv.includes('--live-only') && !process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only') && !resourcesOnly) {
   assert.match(await text('.source-runtime'), /Python 3/);
   const locals = async () => JSON.parse(await evaluate("JSON.stringify(Object.fromEntries(Array.from(document.querySelectorAll('.variable-row')).map(row => [row.querySelector('code').textContent, row.querySelector('strong').textContent])))"));
   assert.equal(await evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Sair da função').disabled"), true);
@@ -883,9 +885,12 @@ try {
   console.log('PASS: IndexedDB real, blocos e checksums, recarga, cursor/futuro, comparação, cancelamento de gravação/leitura, troca sem callbacks antigos, exclusão isolada e layout móvel.');
   await runPagedBrowserFlows({ evaluate, command, context, click, activate, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
   }
-  if (!process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only')) await runLiveBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
-  if (!process.argv.includes('--controls-only')) await runStreamingBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
-  await runPagedControlsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+  if (resourcesOnly) await runResourceBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion, pid: firefox.pid });
+  else {
+    if (!process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only')) await runLiveBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+    if (!process.argv.includes('--controls-only')) await runStreamingBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+    await runPagedControlsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+  }
   assert.deepEqual(pageErrors, []);
   console.log('PASS: ausência de erros no console.');
   await command('session.end');

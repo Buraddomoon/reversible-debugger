@@ -38,7 +38,7 @@ export async function runStreamingBrowserFlows({ evaluate, command, context, cli
     const journal=new RecordingJournal(),before=await journal.open(${JSON.stringify(fixture.left.id)}),client=await PagedComparisonClient.open(${JSON.stringify(fixture.left)},${JSON.stringify(fixture.right)},4*1024*1024);
     try{if(Array.isArray(client.header.left.history)||Array.isArray(client.header.right.history))throw new Error('Histórico integral transferido');
       const pair=()=>JSON.stringify(encode([client.snapshot.left,client.snapshot.right])),initial=pair(),receiver=client.worker.onmessage,pre=new AbortController();let armed=true;
-      client.worker.onmessage=e=>{if(armed&&e.data.kind==='prepared'){armed=false;pre.abort();}receiver(e);};
+      client.worker.onmessage=e=>{if(armed&&e.data.kind==='prepared'){if(Object.keys(e.data).sort().join(',')!=='id,kind')throw new Error('Preparação da comparação transferiu estados');armed=false;pre.abort();}receiver(e);};
       try{await client.seek(client.header.firstDifference,{signal:pre.signal});throw new Error('Cancelamento antes do ACK aceito');}catch(error){if(error.name!=='AbortError')throw error;}finally{client.worker.onmessage=receiver;}
       if(client.snapshot.cursor!==0||pair()!==initial)throw new Error('Par parcial publicado');await client.seek(1);if(client.snapshot.cursor!==1)throw new Error('Worker não retomou após cancelar');
       const post=new AbortController();armed=true;client.worker.onmessage=e=>{receiver(e);if(armed&&e.data.kind==='prepared'){armed=false;post.abort();}};

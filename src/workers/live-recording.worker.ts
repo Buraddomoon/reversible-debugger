@@ -4,23 +4,23 @@ import { LiveRecording } from '../core/live-recording';
 import { explainStep, type StepExplanation } from '../core/explanations';
 import type { DeepReadonly, Step } from '../core/machine';
 import type { LiveRequest, LiveResponse, PagedSnapshot } from '../core/paged-transfer';
-import type { PagedPreparedState, PagedSeekJob } from '../core/paged-history';
+import type { PagedSeekJob } from '../core/paged-history';
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<LiveRequest>) => void) | null; postMessage: (message: LiveResponse) => void };
 const journal = new RecordingJournal(); let store: LiveRecording | null = null, control: PagedExecutionControl | null = null;
 interface Task { message: LiveRequest; abort: AbortController; committed: boolean }
 let active: Task | null = null, waiting: LiveRequest | null = null, acknowledge: (() => void) | null = null, heartbeat: ReturnType<typeof setInterval> | null = null, renewing = false;
-function snapshot(prepared?: PagedPreparedState, step: DeepReadonly<Step> | null = null, reverse = false): PagedSnapshot {
-  const live = store!, state = prepared?.state ?? live.state, cursor = prepared?.cursor ?? live.cursor, last = prepared ? prepared.lastStep : live.lastStep; let evidence: StepExplanation | null = null;
+function snapshot(step: DeepReadonly<Step> | null = null, reverse = false): PagedSnapshot {
+  const live = store!, state = live.state, cursor = live.cursor, last = live.lastStep; let evidence: StepExplanation | null = null;
   if (step) { evidence = explainStep(live.program, [step], 0, reverse ? 'backward' : 'forward'); if (evidence.kind === 'read') { const instruction = live.program.instructions[step.index]!; if (instruction.op === 'LOAD') { const caller = state.frames.at(-1)!, origin = instruction.scope !== 'global' && Object.hasOwn(caller.locals, instruction.name) ? caller : Object.hasOwn(state.frames[0]!.locals, instruction.name) ? state.frames[0]! : null; evidence = { ...evidence, frameId: origin?.id ?? null, scope: origin?.name ?? 'builtins do Python' }; } } }
   return { cursor, count: live.count, state, step: last ? { span: last.span, op: last.op, description: last.description } : null, evidence, reverse, changedNames: step?.changes.flatMap(c => c.kind === 'binding' ? [c.name] : []) ?? [], stats: live.stats, recording: live.ledger, debug: control?.snapshot };
 }
-async function confirm(task: Task, prepared?: PagedPreparedState): Promise<void> {
+async function confirm(task: Task): Promise<void> {
   task.abort.signal.throwIfAborted();
-  await new Promise<void>((resolve, reject) => { const cleanup = () => { acknowledge = null; task.abort.signal.removeEventListener('abort', cancel); }, cancel = () => { cleanup(); reject(task.abort.signal.reason); }; acknowledge = () => { task.committed = true; cleanup(); resolve(); }; task.abort.signal.addEventListener('abort', cancel, { once: true }); scope.postMessage({ id: task.message.id, kind: 'prepared', snapshot: snapshot(prepared) }); });
+  await new Promise<void>((resolve, reject) => { const cleanup = () => { acknowledge = null; task.abort.signal.removeEventListener('abort', cancel); }, cancel = () => { cleanup(); reject(task.abort.signal.reason); }; acknowledge = () => { task.committed = true; cleanup(); resolve(); }; task.abort.signal.addEventListener('abort', cancel, { once: true }); scope.postMessage({ id: task.message.id, kind: 'prepared' }); });
 }
 function start(message: LiveRequest): void {
   const task: Task = { message, abort: new AbortController(), committed: false }; active = task;
-  const job: PagedSeekJob = { signal: task.abort.signal, onProgress: (done, total) => scope.postMessage({ id: message.id, kind: 'index-progress', done, total }), onSeekProgress: progress => scope.postMessage({ id: message.id, kind: 'seek-progress', progress }), beforePublish: prepared => confirm(task, prepared) };
+  const job: PagedSeekJob = { signal: task.abort.signal, onProgress: (done, total) => scope.postMessage({ id: message.id, kind: 'index-progress', done, total }), onSeekProgress: progress => scope.postMessage({ id: message.id, kind: 'seek-progress', progress }), beforePublish: () => confirm(task) };
   void (async () => {
     let step: DeepReadonly<Step> | null = null, reverse = false; const priorEvents = store?.events.length ?? 0;
     try {
@@ -48,7 +48,7 @@ function start(message: LiveRequest): void {
             for (let i = 0; i < 16 && (store.cursor < store.count || store.ledger.canRecord); i++) { await store.seek(store.cursor + 1); if (store.ledger.pauseReason) break; }
           }
         }
-        scope.postMessage({ id: message.id, kind: 'state', snapshot: snapshot(undefined, step, reverse), events: store.events.slice(priorEvents) });
+        scope.postMessage({ id: message.id, kind: 'state', snapshot: snapshot(step, reverse), events: store.events.slice(priorEvents) });
       }
     } catch (cause) {
       if (task.committed && store) { control?.fail(cause); store.stop(cause instanceof Error ? cause.message : String(cause)); scope.postMessage({ id: message.id, kind: 'state', snapshot: snapshot(), events: store.events.slice(priorEvents) }); }

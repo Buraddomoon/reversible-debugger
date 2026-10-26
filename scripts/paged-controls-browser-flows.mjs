@@ -27,7 +27,7 @@ export async function runPagedControlsBrowserFlows({ evaluate, command, context,
         // Cancellation before ACK must preserve both cursor and breakpoint-resume policy.
         await client.seek(0);oracle.seek(0);classic.cancel();await client.configureBreakpoints([1],true);classic.configure([1],true);await drive('continue');
         const receiver=client.worker.onmessage,pre=new AbortController();let armed=true;
-        client.worker.onmessage=e=>{if(armed&&e.data.kind==='prepared'){armed=false;pre.abort();}receiver(e);};
+        client.worker.onmessage=e=>{if(armed&&e.data.kind==='prepared'){if(Object.keys(e.data).sort().join(',')!=='id,kind')throw new Error('Preparação transferiu payload desnecessário');armed=false;pre.abort();}receiver(e);};
         try{await client.control('continue',{signal:pre.signal});throw new Error('Cancelamento antes do ACK aceito');}catch(error){if(error.name!=='AbortError')throw error;}finally{client.worker.onmessage=receiver;}same();
         await drive('continue');
         // Once accepted, even an abort immediately after ACK completes <=16 instructions.

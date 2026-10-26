@@ -3,7 +3,7 @@ import { LiveRecording } from '../core/live-recording';
 import { ExecutionLibrary } from '../core/execution-library';
 import { CheckpointCache } from '../core/checkpoint-cache';
 import { PagedHistoryStore } from '../core/paged-history';
-import { PagedExecutionComparison, type ComparisonReader, type ComparisonRecording, type PagedComparisonSnapshot } from '../core/paged-comparison';
+import { PagedExecutionComparison, type ComparisonReader, type ComparisonRecording } from '../core/paged-comparison';
 import type { ComparisonRequest, ComparisonResponse, ComparisonRunHeader } from '../core/comparison-transfer';
 import type { ComparisonRunView } from '../core/comparison-types';
 const scope = globalThis as unknown as { onmessage: ((event: MessageEvent<ComparisonRequest>) => void) | null; postMessage: (message: ComparisonResponse) => void };
@@ -19,11 +19,11 @@ async function reader(ref: ComparisonRecording, budget: number, signal: AbortSig
   return { name: ref.name, program: store.program, count: store.count, maxSteps: store.recording.manifest.header.limits.maxSteps, maxFrames: store.recording.manifest.header.limits.maxFrames, get state() { return store.state; }, get cursor() { return store.cursor; }, get stats() { return store.stats; }, seek: (target, job) => store.seek(target, job), readRange: (first, count, job) => store.readRange(first, count, job), cancel: () => store.cancel() };
 }
 function pack(run: ComparisonRunView): ComparisonRunHeader { return { name: run.name, identity: run.identity, program: run.program, history: run.history, points: run.points, limitReached: run.limitReached, finalResult: run.finalResult }; }
-async function confirm(task: Task, snapshot: PagedComparisonSnapshot): Promise<void> {
+async function confirm(task: Task): Promise<void> {
   task.abort.signal.throwIfAborted();
   await new Promise<void>((resolve, reject) => {
     const clean = () => { ack = null; task.abort.signal.removeEventListener('abort', cancel); }, cancel = () => { clean(); reject(task.abort.signal.reason); };
-    ack = () => { task.accepted = true; clean(); resolve(); }; task.abort.signal.addEventListener('abort', cancel, { once: true }); scope.postMessage({ id: task.message.id, kind: 'prepared', snapshot });
+    ack = () => { task.accepted = true; clean(); resolve(); }; task.abort.signal.addEventListener('abort', cancel, { once: true }); scope.postMessage({ id: task.message.id, kind: 'prepared' });
   });
 }
 function start(message: ComparisonRequest): void {
@@ -33,11 +33,11 @@ function start(message: ComparisonRequest): void {
     try {
       if (message.kind === 'open') {
         const left = await reader(message.left, message.budget, job.signal), right = await reader(message.right, message.budget, job.signal);
-        const prepared = await PagedExecutionComparison.prepare(left, right, message.budget, job); await confirm(task, prepared.snapshot); comparison = prepared;
+        const prepared = await PagedExecutionComparison.prepare(left, right, message.budget, job); await confirm(task); comparison = prepared;
         scope.postMessage({ id: message.id, kind: 'state', snapshot: comparison.snapshot, header: { left: pack(comparison.left), right: pack(comparison.right), rows: comparison.rows, firstDifference: comparison.firstDifference } });
       } else if (message.kind === 'seek') {
         if (!comparison) throw new Error('Prepare a comparação antes de navegar');
-        await comparison.seekRow(message.target, { ...job, beforePublish: snapshot => confirm(task, snapshot) }); scope.postMessage({ id: message.id, kind: 'state', snapshot: comparison.snapshot });
+        await comparison.seekRow(message.target, { ...job, beforePublish: () => confirm(task) }); scope.postMessage({ id: message.id, kind: 'state', snapshot: comparison.snapshot });
       }
     } catch (cause) { scope.postMessage({ id: message.id, kind: 'error', message: cause instanceof Error ? cause.message : String(cause), aborted: task.abort.signal.aborted || cause instanceof Error && cause.name === 'AbortError' }); }
     finally { if (active === task) active = null; const next = waiting; waiting = null; if (next) start(next); }

@@ -241,4 +241,6 @@ Falhas de leitura não sobrescrevem a chave existente; falhas de gravação deix
 
 Ambos os Workers serializam o pedido ativo e o destino pendente mais recente. Navegação manual calcula estado privado antes do ACK; controles recebem ACK antes de executar um lote limitado. Depois da aceitação, o prefixo válido é publicado mesmo em falha; pausa impede novos lotes. Snapshots incluem configuração, modo, parada e diagnóstico, além da explicação da última instrução. A materialização transfere os pontos para o controlador clássico, inclusive no reinício.
 
+Nos três atores paginados, incluindo comparação, `prepared` contém somente ID/tipo. O cliente usa identidade/cancelamento para decidir o ACK e recebe os estados apenas na publicação final, evitando uma cópia integral sem consumidor. O [perfil optativo de recursos](resource-profile.md) mede mensagens, payload, memória dos processos, RPCs e resposta da tela; a instrumentação fica nos scripts de benchmark, fora do bundle da aplicação.
+
 A admissão do journal reserva leitura do maior bloco durável/buffer, evitando que uma pausa por orçamento impeça desfazer o prefixo já aceito. Essa reserva consta nas estatísticas de payload. Bancos e codec permanecem compatíveis. [Contrato, demonstração e validação](paged-controls.md).

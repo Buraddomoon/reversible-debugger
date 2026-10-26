@@ -198,10 +198,20 @@ Critério: comparar 10/15 e 99/2 com o mesmo alinhamento/diferenças do comparad
 
 Critério atendido: depurar em ambos os modos sem materializar o histórico, obtendo as mesmas paradas e os mesmos estados do controlador clássico; replay não executa código nem cria registros novos. A captura parcial termina na sua fronteira.
 
-## Próxima etapa — perfil de recursos e limites maiores
+## Perfil inicial de recursos e redução de cópias — implementado
 
-- Medir picos temporários, cópias, renderização e latência de leitura/gravação em programas diferentes antes de ampliar os 20.000 passos.
-- Diferenciar payload estimado e memória real do navegador; definir metas reproduzíveis para máquina/ambiente e falhas de armazenamento.
+- Benchmark optativo no Firefox instalado, com quatro programas: 18.859 passos, listas/saída, recursão e 1.200 variáveis.
+- RSS/PSS/memória privada da instância isolada, amostras por fase, payload/caches, RPCs, timer, DOM e saltos da interface; dados ausentes explícitos e limitações de temporários documentadas.
+- Oráculo criado fora das fases de recursos, restauração exata em sete destinos por programa e UI de 390 px preservada.
+- Relatório HTML independente com filtro e curvas, JSON e referência anterior à otimização. [Método, dados e reprodução](resource-profile.md).
+- ACK transporta somente ID/tipo nos três atores paginados: 4.194 → 2.097 mensagens com estado completo nos lotes medidos, sem mudança de banco/arquivo ou garantias de cancelamento/publicação.
+
+Critério atendido: medir e distinguir memória do navegador de payload lógico, eliminar a cópia redundante identificada e preservar testes de reversibilidade, ACK, quotas e comparação. Os picos são amostrados e não autorizam inferir um teto de RAM ou ampliar limites automaticamente.
+
+## Próxima etapa — estresse de temporários e ampliação controlada
+
+- Explorar estados/checkpoints e transações individuais grandes, falhas/quota durante esses casos e inicialização fria; repetir distribuições por revisão/ambiente.
+- Investigar cópias temporárias não observáveis na amostragem antes de ampliar os 20.000 passos; manter critérios explícitos de memória, resposta e compatibilidade.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.
 

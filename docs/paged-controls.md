@@ -32,6 +32,8 @@ Os dois Workers usam fila serializada com um pedido ativo e o pedido pendente ma
 - **Ação por comando:** valida o pedido → envia `prepared` → recebe ACK → percorre até 16 transações ou uma parada → envia `state`. A UI pede o lote seguinte sem reiniciar o plano, devolvendo o controle ao navegador entre lotes.
 - **Pausar:** cancela o que ainda não foi aceito e encerra o plano depois do lote aceito. Cancelar depois do ACK não desfaz transações aceitas. Navegar substitui o plano; entre destinos pendentes somente o mais recente permanece na fila.
 
+`prepared` transporta somente ID/tipo. O estado privado permanece no Worker até o ACK; somente `state` leva o snapshot publicado. O [perfil de recursos](resource-profile.md) identificou e removeu a cópia anterior que o cliente não consumia, preservando o protocolo de aceitação.
+
 Falhas de leitura/escrita encerram o plano e mostram o último estado válido; não criam um erro fictício no programa. Falhas de escrita mantêm buffer e futuro para retry. Um erro da própria VM, por sua vez, continua sendo uma transação reversível. Limite de bytes/passos é identificado como pausa por orçamento. Comandos inválidos são recusados antes de aceitar o lote.
 
 **Última instrução** explica a transação final do lote, inclusive ao voltar. Esse painel não representa todas as mudanças do comando; intervalos e atribuições agregadas continuam disponíveis no debugger completo. Não há persistência de breakpoints entre aberturas, breakpoints condicionais ou aumento dos limites de execução neste marco.

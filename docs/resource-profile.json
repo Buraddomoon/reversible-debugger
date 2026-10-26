@@ -1,0 +1,3204 @@
+{
+  "version": 1,
+  "date": "2026-10-26T18:33:40.190Z",
+  "browser": "150.0",
+  "node": "v24.18.0",
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpus": 16,
+    "cpuModel": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "totalMemoryBytes": 16398606336,
+    "viewport": {
+      "width": 1440,
+      "height": 1100
+    },
+    "mode": "Vite dev / Firefox headless / isolated project profile"
+  },
+  "memoryMethod": "Linux /proc, isolated Firefox process tree. RSS sum includes shared pages more than once; PSS apportions shared pages. Private = Private_Clean + Private_Dirty. Samples are non-atomic lower bounds of peaks, include browser/JIT/GC/graphics/other tabs, and do not measure JS heap. No forced GC. Missing/denied measurements are null. Scans add overhead.",
+  "limits": {
+    "maxSteps": 20000,
+    "maxFrames": 256,
+    "cacheBytes": 65536,
+    "bufferBytes": 32768,
+    "maxHistoryBytes": 67108864
+  },
+  "workloads": [
+    {
+      "id": "numeric",
+      "phases": [
+        {
+          "name": "record",
+          "messages": {
+            "prepared": 1179,
+            "state": 1179
+          },
+          "fullStateMessages": 1179,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 354218,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 32549,
+          "maxIndexBytes": 257818,
+          "elapsedMs": 2252,
+          "rpc": {
+            "samples": 1179,
+            "medianMs": 1,
+            "p95Ms": 6,
+            "maxMs": 68
+          },
+          "heartbeat20ms": {
+            "samples": 111,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 18859,
+            "count": 18859,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 241365,
+              "reservedMachineBytes": 35498,
+              "estimatedBytes": 276863,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 67,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "70bb0551-aeb4-4ca6-a1ee-88ed6a15db0d",
+              "frontier": 18859,
+              "durable": 18859,
+              "blocks": 264,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 8616371,
+              "revision": 264,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 87,
+              "frameBytes": 127,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 273
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": {
+            "done": true,
+            "count": 18859
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 2276.57,
+            "samples": [
+              {
+                "elapsedMs": 6.19,
+                "scanMs": 6.19,
+                "processes": 1,
+                "rssBytes": 472379392,
+                "pssBytes": 361050112,
+                "privateBytes": 344051712,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 161.96,
+                "scanMs": 6.52,
+                "processes": 1,
+                "rssBytes": 510210048,
+                "pssBytes": 398936064,
+                "privateBytes": 381689856,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 317.73,
+                "scanMs": 5.69,
+                "processes": 1,
+                "rssBytes": 560963584,
+                "pssBytes": 448103424,
+                "privateBytes": 430821376,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 474.78,
+                "scanMs": 6.58,
+                "processes": 1,
+                "rssBytes": 584753152,
+                "pssBytes": 471639040,
+                "privateBytes": 454270976,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 632.83,
+                "scanMs": 7.54,
+                "processes": 1,
+                "rssBytes": 605786112,
+                "pssBytes": 494029824,
+                "privateBytes": 476659712,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 788.87,
+                "scanMs": 6.18,
+                "processes": 1,
+                "rssBytes": 638140416,
+                "pssBytes": 525093888,
+                "privateBytes": 507260928,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 944.53,
+                "scanMs": 6.07,
+                "processes": 1,
+                "rssBytes": 635031552,
+                "pssBytes": 521945088,
+                "privateBytes": 504086528,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1106.34,
+                "scanMs": 10.98,
+                "processes": 1,
+                "rssBytes": 605347840,
+                "pssBytes": 492201984,
+                "privateBytes": 474337280,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1262.94,
+                "scanMs": 6.13,
+                "processes": 1,
+                "rssBytes": 605356032,
+                "pssBytes": 492200960,
+                "privateBytes": 474341376,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1418.98,
+                "scanMs": 6.02,
+                "processes": 1,
+                "rssBytes": 605364224,
+                "pssBytes": 492209152,
+                "privateBytes": 474349568,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1574.89,
+                "scanMs": 5.93,
+                "processes": 1,
+                "rssBytes": 605392896,
+                "pssBytes": 492237824,
+                "privateBytes": 474378240,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1736.27,
+                "scanMs": 11.1,
+                "processes": 1,
+                "rssBytes": 605392896,
+                "pssBytes": 492237824,
+                "privateBytes": 474378240,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1893.32,
+                "scanMs": 6.31,
+                "processes": 1,
+                "rssBytes": 605421568,
+                "pssBytes": 492389376,
+                "privateBytes": 474529792,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 2050.9,
+                "scanMs": 6.82,
+                "processes": 1,
+                "rssBytes": 605437952,
+                "pssBytes": 492282880,
+                "privateBytes": 474423296,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 2210.42,
+                "scanMs": 8.99,
+                "processes": 1,
+                "rssBytes": 605507584,
+                "pssBytes": 492269568,
+                "privateBytes": 474390528,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 2276.53,
+                "scanMs": 9.7,
+                "processes": 1,
+                "rssBytes": 605507584,
+                "pssBytes": 492269568,
+                "privateBytes": 474390528,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "flush",
+          "messages": {
+            "prepared": 1,
+            "state": 1
+          },
+          "fullStateMessages": 1,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 276863,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 241365,
+          "elapsedMs": 9,
+          "rpc": {
+            "samples": 1,
+            "medianMs": 7,
+            "p95Ms": 7,
+            "maxMs": 7
+          },
+          "heartbeat20ms": {
+            "samples": 0,
+            "medianMs": null,
+            "p95Ms": null,
+            "maxMs": null
+          },
+          "final": {
+            "cursor": 18859,
+            "count": 18859,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 241365,
+              "reservedMachineBytes": 35498,
+              "estimatedBytes": 276863,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 67,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "70bb0551-aeb4-4ca6-a1ee-88ed6a15db0d",
+              "frontier": 18859,
+              "durable": 18859,
+              "blocks": 264,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 8616371,
+              "revision": 265,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 87,
+              "frameBytes": 127,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 273
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 26.29,
+            "samples": [
+              {
+                "elapsedMs": 6.56,
+                "scanMs": 6.56,
+                "processes": 1,
+                "rssBytes": 605507584,
+                "pssBytes": 492269568,
+                "privateBytes": 474390528,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 26.25,
+                "scanMs": 8.23,
+                "processes": 1,
+                "rssBytes": 605507584,
+                "pssBytes": 492269568,
+                "privateBytes": 474390528,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "seek",
+          "messages": {
+            "prepared": 9,
+            "state": 9,
+            "seek-progress": 9
+          },
+          "fullStateMessages": 9,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 341998,
+          "maxCacheBytes": 65135,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 241365,
+          "elapsedMs": 31,
+          "rpc": {
+            "samples": 9,
+            "medianMs": 3,
+            "p95Ms": 10,
+            "maxMs": 10
+          },
+          "heartbeat20ms": {
+            "samples": 1,
+            "medianMs": 20,
+            "p95Ms": 20,
+            "maxMs": 20
+          },
+          "final": {
+            "cursor": 18859,
+            "count": 18859,
+            "stats": {
+              "bytes": 47257,
+              "limitBytes": 65536,
+              "blocks": 2,
+              "hits": 6,
+              "reads": 7,
+              "evictions": 5,
+              "largeBlocks": 0,
+              "indexBytes": 241365,
+              "reservedMachineBytes": 35498,
+              "estimatedBytes": 324120,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 67,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "70bb0551-aeb4-4ca6-a1ee-88ed6a15db0d",
+              "frontier": 18859,
+              "durable": 18859,
+              "blocks": 264,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 8616371,
+              "revision": 265,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 18859,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 87,
+              "frameBytes": 127,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 273
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": [
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 0,
+              "hits": 0
+            },
+            {
+              "target": 18859,
+              "navigation": {
+                "restoredFrom": 18859,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 1,
+              "hits": 0
+            },
+            {
+              "target": 4714,
+              "navigation": {
+                "restoredFrom": 4741,
+                "appliedSteps": 27,
+                "warning": null
+              },
+              "reads": 2,
+              "hits": 1
+            },
+            {
+              "target": 14144,
+              "navigation": {
+                "restoredFrom": 14179,
+                "appliedSteps": 35,
+                "warning": null
+              },
+              "reads": 3,
+              "hits": 2
+            },
+            {
+              "target": 1,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 4,
+              "hits": 3
+            },
+            {
+              "target": 9429,
+              "navigation": {
+                "restoredFrom": 9317,
+                "appliedSteps": 112,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 4
+            },
+            {
+              "target": 18858,
+              "navigation": {
+                "restoredFrom": 18859,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 7,
+              "hits": 5
+            },
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 7,
+              "hits": 5
+            },
+            {
+              "target": 18859,
+              "navigation": {
+                "restoredFrom": 18859,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 7,
+              "hits": 6
+            }
+          ],
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 72.5,
+            "samples": [
+              {
+                "elapsedMs": 16.44,
+                "scanMs": 16.45,
+                "processes": 1,
+                "rssBytes": 605507584,
+                "pssBytes": 492269568,
+                "privateBytes": 474390528,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 72.46,
+                "scanMs": 8.94,
+                "processes": 1,
+                "rssBytes": 605409280,
+                "pssBytes": 492171264,
+                "privateBytes": 474292224,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "resume",
+          "messages": {
+            "prepared": 2,
+            "state": 2
+          },
+          "fullStateMessages": 2,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 324120,
+          "maxCacheBytes": 47257,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 241365,
+          "elapsedMs": 124,
+          "rpc": {
+            "samples": 2,
+            "medianMs": 105,
+            "p95Ms": 105,
+            "maxMs": 105
+          },
+          "heartbeat20ms": {
+            "samples": 6,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 18859,
+            "count": 18859,
+            "stats": {
+              "bytes": 14796,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 241365,
+              "reservedMachineBytes": 35498,
+              "estimatedBytes": 291659,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 67,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "70bb0551-aeb4-4ca6-a1ee-88ed6a15db0d",
+              "frontier": 18859,
+              "durable": 18859,
+              "blocks": 264,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 8616371,
+              "revision": 266,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 18859,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 18859,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 87,
+              "frameBytes": 127,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 273
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": {
+            "cursor": 18859,
+            "count": 18859,
+            "stats": {
+              "bytes": 14796,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 241365,
+              "reservedMachineBytes": 35498,
+              "estimatedBytes": 291659,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 67,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "70bb0551-aeb4-4ca6-a1ee-88ed6a15db0d",
+              "frontier": 18859,
+              "durable": 18859,
+              "blocks": 264,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 8616371,
+              "revision": 266,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 18859,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 18859,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 87,
+              "frameBytes": 127,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 273
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 141.26,
+            "samples": [
+              {
+                "elapsedMs": 8.51,
+                "scanMs": 8.51,
+                "processes": 1,
+                "rssBytes": 605409280,
+                "pssBytes": 492171264,
+                "privateBytes": 474292224,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 141.24,
+                "scanMs": 5.78,
+                "processes": 1,
+                "rssBytes": 605757440,
+                "pssBytes": 492425216,
+                "privateBytes": 474509312,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        }
+      ],
+      "name": "Loop numérico",
+      "recordingId": "70bb0551-aeb4-4ca6-a1ee-88ed6a15db0d",
+      "setupMemory": {
+        "supported": true,
+        "intervalMs": 150,
+        "elapsedMs": 65.23,
+        "samples": [
+          {
+            "elapsedMs": 5.38,
+            "scanMs": 5.37,
+            "processes": 1,
+            "rssBytes": 454144000,
+            "pssBytes": 344630272,
+            "privateBytes": 327761920,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          },
+          {
+            "elapsedMs": 65.21,
+            "scanMs": 5.57,
+            "processes": 1,
+            "rssBytes": 469307392,
+            "pssBytes": 358596608,
+            "privateBytes": 341598208,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          }
+        ]
+      },
+      "validation": {
+        "states": 7,
+        "count": 18859,
+        "fullStateExact": true
+      },
+      "ui": {
+        "samples": [
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 38,
+            "domElements": 342
+          },
+          {
+            "target": 18859,
+            "commitAndTwoFramesMs": 58,
+            "domElements": 349
+          },
+          {
+            "target": 9429,
+            "commitAndTwoFramesMs": 64,
+            "domElements": 349
+          },
+          {
+            "target": 18859,
+            "commitAndTwoFramesMs": 45,
+            "domElements": 349
+          },
+          {
+            "target": 1,
+            "commitAndTwoFramesMs": 32,
+            "domElements": 342
+          },
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 36,
+            "domElements": 347
+          }
+        ],
+        "memory": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 335.92,
+          "samples": [
+            {
+              "elapsedMs": 8.33,
+              "scanMs": 8.33,
+              "processes": 1,
+              "rssBytes": 569606144,
+              "pssBytes": 455957504,
+              "privateBytes": 438001664,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 165.49,
+              "scanMs": 6.7,
+              "processes": 1,
+              "rssBytes": 569638912,
+              "pssBytes": 455977984,
+              "privateBytes": 438034432,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 325.01,
+              "scanMs": 9.11,
+              "processes": 1,
+              "rssBytes": 565538816,
+              "pssBytes": 451877888,
+              "privateBytes": 433934336,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 335.89,
+              "scanMs": 10.87,
+              "processes": 1,
+              "rssBytes": 562049024,
+              "pssBytes": 448388096,
+              "privateBytes": 430444544,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      },
+      "mobileWidth": 390
+    },
+    {
+      "id": "heap-output",
+      "phases": [
+        {
+          "name": "record",
+          "messages": {
+            "prepared": 676,
+            "state": 676
+          },
+          "fullStateMessages": 676,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 385329,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 32668,
+          "maxIndexBytes": 215333,
+          "elapsedMs": 1491,
+          "rpc": {
+            "samples": 676,
+            "medianMs": 1,
+            "p95Ms": 8,
+            "maxMs": 29
+          },
+          "heartbeat20ms": {
+            "samples": 74,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 10816,
+            "count": 10816,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 215333,
+              "reservedMachineBytes": 112933,
+              "estimatedBytes": 328266,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 75,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "61a2db7c-6529-4b07-ab00-1a279ed1b302",
+              "frontier": 10816,
+              "durable": 10816,
+              "blocks": 149,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 4883844,
+              "revision": 149,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 176,
+              "operandBytes": 2,
+              "heapBytes": 10739,
+              "outputBytes": 4692,
+              "totalBytes": 15751
+            },
+            "frames": 1,
+            "locals": 4,
+            "outputLines": 600,
+            "heapObjects": 1
+          },
+          "extra": {
+            "done": true,
+            "count": 10816
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 1506.43,
+            "samples": [
+              {
+                "elapsedMs": 7.53,
+                "scanMs": 7.54,
+                "processes": 1,
+                "rssBytes": 457240576,
+                "pssBytes": 343548928,
+                "privateBytes": 325627904,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 164.01,
+                "scanMs": 6.15,
+                "processes": 1,
+                "rssBytes": 457248768,
+                "pssBytes": 343556096,
+                "privateBytes": 325636096,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 318.58,
+                "scanMs": 4.86,
+                "processes": 1,
+                "rssBytes": 457252864,
+                "pssBytes": 343559168,
+                "privateBytes": 325640192,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 478.32,
+                "scanMs": 9.14,
+                "processes": 1,
+                "rssBytes": 457252864,
+                "pssBytes": 343559168,
+                "privateBytes": 325640192,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 635.81,
+                "scanMs": 7.2,
+                "processes": 1,
+                "rssBytes": 457256960,
+                "pssBytes": 343563264,
+                "privateBytes": 325644288,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 794.9,
+                "scanMs": 9.31,
+                "processes": 1,
+                "rssBytes": 457326592,
+                "pssBytes": 343586816,
+                "privateBytes": 325648384,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 953.19,
+                "scanMs": 8.19,
+                "processes": 1,
+                "rssBytes": 457326592,
+                "pssBytes": 343586816,
+                "privateBytes": 325648384,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1118.15,
+                "scanMs": 14.77,
+                "processes": 1,
+                "rssBytes": 457265152,
+                "pssBytes": 343525376,
+                "privateBytes": 325586944,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1273.76,
+                "scanMs": 5.99,
+                "processes": 1,
+                "rssBytes": 457269248,
+                "pssBytes": 343513088,
+                "privateBytes": 325570560,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1428.84,
+                "scanMs": 4.42,
+                "processes": 1,
+                "rssBytes": 457351168,
+                "pssBytes": 343530496,
+                "privateBytes": 325566464,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 1506.4,
+                "scanMs": 4.65,
+                "processes": 1,
+                "rssBytes": 457351168,
+                "pssBytes": 343534592,
+                "privateBytes": 325570560,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "flush",
+          "messages": {
+            "prepared": 1,
+            "state": 1
+          },
+          "fullStateMessages": 1,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 328266,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 215333,
+          "elapsedMs": 8,
+          "rpc": {
+            "samples": 1,
+            "medianMs": 5,
+            "p95Ms": 5,
+            "maxMs": 5
+          },
+          "heartbeat20ms": {
+            "samples": 0,
+            "medianMs": null,
+            "p95Ms": null,
+            "maxMs": null
+          },
+          "final": {
+            "cursor": 10816,
+            "count": 10816,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 215333,
+              "reservedMachineBytes": 112933,
+              "estimatedBytes": 328266,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 75,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "61a2db7c-6529-4b07-ab00-1a279ed1b302",
+              "frontier": 10816,
+              "durable": 10816,
+              "blocks": 149,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 4883844,
+              "revision": 150,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 176,
+              "operandBytes": 2,
+              "heapBytes": 10739,
+              "outputBytes": 4692,
+              "totalBytes": 15751
+            },
+            "frames": 1,
+            "locals": 4,
+            "outputLines": 600,
+            "heapObjects": 1
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 20.8,
+            "samples": [
+              {
+                "elapsedMs": 4.63,
+                "scanMs": 4.63,
+                "processes": 1,
+                "rssBytes": 457351168,
+                "pssBytes": 343534592,
+                "privateBytes": 325570560,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 20.77,
+                "scanMs": 5.84,
+                "processes": 1,
+                "rssBytes": 457351168,
+                "pssBytes": 343533568,
+                "privateBytes": 325570560,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "seek",
+          "messages": {
+            "prepared": 9,
+            "state": 9,
+            "seek-progress": 8
+          },
+          "fullStateMessages": 9,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 393324,
+          "maxCacheBytes": 65058,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 215333,
+          "elapsedMs": 18,
+          "rpc": {
+            "samples": 9,
+            "medianMs": 1,
+            "p95Ms": 5,
+            "maxMs": 5
+          },
+          "heartbeat20ms": {
+            "samples": 0,
+            "medianMs": null,
+            "p95Ms": null,
+            "maxMs": null
+          },
+          "final": {
+            "cursor": 10816,
+            "count": 10816,
+            "stats": {
+              "bytes": 33360,
+              "limitBytes": 65536,
+              "blocks": 2,
+              "hits": 6,
+              "reads": 6,
+              "evictions": 4,
+              "largeBlocks": 0,
+              "indexBytes": 215333,
+              "reservedMachineBytes": 112933,
+              "estimatedBytes": 361626,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 75,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "61a2db7c-6529-4b07-ab00-1a279ed1b302",
+              "frontier": 10816,
+              "durable": 10816,
+              "blocks": 149,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 4883844,
+              "revision": 150,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 10816,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 176,
+              "operandBytes": 2,
+              "heapBytes": 10739,
+              "outputBytes": 4692,
+              "totalBytes": 15751
+            },
+            "frames": 1,
+            "locals": 4,
+            "outputLines": 600,
+            "heapObjects": 1
+          },
+          "extra": [
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 0,
+              "hits": 0
+            },
+            {
+              "target": 10816,
+              "navigation": {
+                "restoredFrom": 10816,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 1,
+              "hits": 0
+            },
+            {
+              "target": 2704,
+              "navigation": {
+                "restoredFrom": 2639,
+                "appliedSteps": 65,
+                "warning": null
+              },
+              "reads": 2,
+              "hits": 1
+            },
+            {
+              "target": 8112,
+              "navigation": {
+                "restoredFrom": 8041,
+                "appliedSteps": 71,
+                "warning": null
+              },
+              "reads": 3,
+              "hits": 2
+            },
+            {
+              "target": 1,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 4,
+              "hits": 3
+            },
+            {
+              "target": 5408,
+              "navigation": {
+                "restoredFrom": 5413,
+                "appliedSteps": 5,
+                "warning": null
+              },
+              "reads": 5,
+              "hits": 4
+            },
+            {
+              "target": 10815,
+              "navigation": {
+                "restoredFrom": 10816,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 5
+            },
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 5
+            },
+            {
+              "target": 10816,
+              "navigation": {
+                "restoredFrom": 10816,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 6
+            }
+          ],
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 29.3,
+            "samples": [
+              {
+                "elapsedMs": 4.86,
+                "scanMs": 4.87,
+                "processes": 1,
+                "rssBytes": 457351168,
+                "pssBytes": 343531520,
+                "privateBytes": 325570560,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 29.28,
+                "scanMs": 4.56,
+                "processes": 1,
+                "rssBytes": 457359360,
+                "pssBytes": 343537664,
+                "privateBytes": 325578752,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "resume",
+          "messages": {
+            "prepared": 2,
+            "state": 2
+          },
+          "fullStateMessages": 2,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 361626,
+          "maxCacheBytes": 33360,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 215333,
+          "elapsedMs": 79,
+          "rpc": {
+            "samples": 2,
+            "medianMs": 70,
+            "p95Ms": 70,
+            "maxMs": 70
+          },
+          "heartbeat20ms": {
+            "samples": 3,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 10816,
+            "count": 10816,
+            "stats": {
+              "bytes": 877,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 215333,
+              "reservedMachineBytes": 112933,
+              "estimatedBytes": 329143,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 75,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "61a2db7c-6529-4b07-ab00-1a279ed1b302",
+              "frontier": 10816,
+              "durable": 10816,
+              "blocks": 149,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 4883844,
+              "revision": 151,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 10816,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 10816,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 176,
+              "operandBytes": 2,
+              "heapBytes": 10739,
+              "outputBytes": 4692,
+              "totalBytes": 15751
+            },
+            "frames": 1,
+            "locals": 4,
+            "outputLines": 600,
+            "heapObjects": 1
+          },
+          "extra": {
+            "cursor": 10816,
+            "count": 10816,
+            "stats": {
+              "bytes": 877,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 215333,
+              "reservedMachineBytes": 112933,
+              "estimatedBytes": 329143,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 75,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "61a2db7c-6529-4b07-ab00-1a279ed1b302",
+              "frontier": 10816,
+              "durable": 10816,
+              "blocks": 149,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 4883844,
+              "revision": 151,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 10816,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 10816,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 176,
+              "operandBytes": 2,
+              "heapBytes": 10739,
+              "outputBytes": 4692,
+              "totalBytes": 15751
+            },
+            "frames": 1,
+            "locals": 4,
+            "outputLines": 600,
+            "heapObjects": 1
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 94.33,
+            "samples": [
+              {
+                "elapsedMs": 4.96,
+                "scanMs": 4.96,
+                "processes": 1,
+                "rssBytes": 457359360,
+                "pssBytes": 343543808,
+                "privateBytes": 325578752,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 94.3,
+                "scanMs": 8.46,
+                "processes": 1,
+                "rssBytes": 457383936,
+                "pssBytes": 343561216,
+                "privateBytes": 325599232,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        }
+      ],
+      "name": "Lista compartilhada e saída",
+      "recordingId": "61a2db7c-6529-4b07-ab00-1a279ed1b302",
+      "setupMemory": {
+        "supported": true,
+        "intervalMs": 150,
+        "elapsedMs": 82.37,
+        "samples": [
+          {
+            "elapsedMs": 7.97,
+            "scanMs": 7.97,
+            "processes": 1,
+            "rssBytes": 457211904,
+            "pssBytes": 343523328,
+            "privateBytes": 325603328,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          },
+          {
+            "elapsedMs": 82.34,
+            "scanMs": 6.32,
+            "processes": 1,
+            "rssBytes": 457240576,
+            "pssBytes": 343548928,
+            "privateBytes": 325627904,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          }
+        ]
+      },
+      "validation": {
+        "states": 7,
+        "count": 10816,
+        "fullStateExact": true
+      },
+      "ui": {
+        "samples": [
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 51,
+            "domElements": 366
+          },
+          {
+            "target": 10816,
+            "commitAndTwoFramesMs": 49,
+            "domElements": 451
+          },
+          {
+            "target": 5408,
+            "commitAndTwoFramesMs": 48,
+            "domElements": 447
+          },
+          {
+            "target": 10816,
+            "commitAndTwoFramesMs": 49,
+            "domElements": 451
+          },
+          {
+            "target": 1,
+            "commitAndTwoFramesMs": 50,
+            "domElements": 366
+          },
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 29,
+            "domElements": 371
+          }
+        ],
+        "memory": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 307.04,
+          "samples": [
+            {
+              "elapsedMs": 5.31,
+              "scanMs": 5.32,
+              "processes": 1,
+              "rssBytes": 457441280,
+              "pssBytes": 343611392,
+              "privateBytes": 325660672,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 160.19,
+              "scanMs": 5.19,
+              "processes": 1,
+              "rssBytes": 454971392,
+              "pssBytes": 341145600,
+              "privateBytes": 323194880,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 307.03,
+              "scanMs": 5.15,
+              "processes": 1,
+              "rssBytes": 452972544,
+              "pssBytes": 339076096,
+              "privateBytes": 321126400,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      },
+      "mobileWidth": 390
+    },
+    {
+      "id": "recursion",
+      "phases": [
+        {
+          "name": "record",
+          "messages": {
+            "prepared": 91,
+            "state": 91
+          },
+          "fullStateMessages": 91,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 195044,
+          "maxCacheBytes": 0,
+          "maxFrames": 121,
+          "maxPendingBytes": 31474,
+          "maxIndexBytes": 38474,
+          "elapsedMs": 245,
+          "rpc": {
+            "samples": 91,
+            "medianMs": 1,
+            "p95Ms": 8,
+            "maxMs": 17
+          },
+          "heartbeat20ms": {
+            "samples": 12,
+            "medianMs": 20,
+            "p95Ms": 22,
+            "maxMs": 22
+          },
+          "final": {
+            "cursor": 1452,
+            "count": 1452,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 38474,
+              "reservedMachineBytes": 99760,
+              "estimatedBytes": 138234,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 10,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "1e9ce627-7393-4506-b128-5b5db1535273",
+              "frontier": 1452,
+              "durable": 1452,
+              "blocks": 22,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 700282,
+              "revision": 22,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 88,
+              "frameBytes": 144,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 291
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": {
+            "done": true,
+            "count": 1452
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 260.07,
+            "samples": [
+              {
+                "elapsedMs": 6.51,
+                "scanMs": 6.51,
+                "processes": 1,
+                "rssBytes": 452120576,
+                "pssBytes": 338088960,
+                "privateBytes": 320143360,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 162.88,
+                "scanMs": 6.85,
+                "processes": 1,
+                "rssBytes": 451055616,
+                "pssBytes": 337022976,
+                "privateBytes": 319078400,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 260.06,
+                "scanMs": 6.39,
+                "processes": 1,
+                "rssBytes": 451063808,
+                "pssBytes": 337031168,
+                "privateBytes": 319086592,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "flush",
+          "messages": {
+            "prepared": 1,
+            "state": 1
+          },
+          "fullStateMessages": 1,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 138234,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 38474,
+          "elapsedMs": 12,
+          "rpc": {
+            "samples": 1,
+            "medianMs": 7,
+            "p95Ms": 7,
+            "maxMs": 7
+          },
+          "heartbeat20ms": {
+            "samples": 0,
+            "medianMs": null,
+            "p95Ms": null,
+            "maxMs": null
+          },
+          "final": {
+            "cursor": 1452,
+            "count": 1452,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 38474,
+              "reservedMachineBytes": 99760,
+              "estimatedBytes": 138234,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 10,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "1e9ce627-7393-4506-b128-5b5db1535273",
+              "frontier": 1452,
+              "durable": 1452,
+              "blocks": 22,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 700282,
+              "revision": 23,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 88,
+              "frameBytes": 144,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 291
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 29.9,
+            "samples": [
+              {
+                "elapsedMs": 7.13,
+                "scanMs": 7.13,
+                "processes": 1,
+                "rssBytes": 451063808,
+                "pssBytes": 337031168,
+                "privateBytes": 319086592,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 29.89,
+                "scanMs": 8.38,
+                "processes": 1,
+                "rssBytes": 451067904,
+                "pssBytes": 337035264,
+                "privateBytes": 319090688,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "seek",
+          "messages": {
+            "prepared": 9,
+            "state": 9,
+            "seek-progress": 7
+          },
+          "fullStateMessages": 9,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 203273,
+          "maxCacheBytes": 65039,
+          "maxFrames": 110,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 38474,
+          "elapsedMs": 32,
+          "rpc": {
+            "samples": 9,
+            "medianMs": 3,
+            "p95Ms": 10,
+            "maxMs": 10
+          },
+          "heartbeat20ms": {
+            "samples": 1,
+            "medianMs": 20,
+            "p95Ms": 20,
+            "maxMs": 20
+          },
+          "final": {
+            "cursor": 1452,
+            "count": 1452,
+            "stats": {
+              "bytes": 42475,
+              "limitBytes": 65536,
+              "blocks": 2,
+              "hits": 6,
+              "reads": 6,
+              "evictions": 4,
+              "largeBlocks": 0,
+              "indexBytes": 38474,
+              "reservedMachineBytes": 99760,
+              "estimatedBytes": 180709,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 10,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "1e9ce627-7393-4506-b128-5b5db1535273",
+              "frontier": 1452,
+              "durable": 1452,
+              "blocks": 22,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 700282,
+              "revision": 23,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 1452,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 88,
+              "frameBytes": 144,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 291
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": [
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 0,
+              "hits": 0
+            },
+            {
+              "target": 1452,
+              "navigation": {
+                "restoredFrom": 1452,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 1,
+              "hits": 0
+            },
+            {
+              "target": 363,
+              "navigation": {
+                "restoredFrom": 430,
+                "appliedSteps": 67,
+                "warning": null
+              },
+              "reads": 2,
+              "hits": 1
+            },
+            {
+              "target": 1089,
+              "navigation": {
+                "restoredFrom": 1145,
+                "appliedSteps": 56,
+                "warning": null
+              },
+              "reads": 3,
+              "hits": 2
+            },
+            {
+              "target": 1,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 4,
+              "hits": 3
+            },
+            {
+              "target": 726,
+              "navigation": {
+                "restoredFrom": 716,
+                "appliedSteps": 10,
+                "warning": null
+              },
+              "reads": 5,
+              "hits": 4
+            },
+            {
+              "target": 1451,
+              "navigation": {
+                "restoredFrom": 1452,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 5
+            },
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 5
+            },
+            {
+              "target": 1452,
+              "navigation": {
+                "restoredFrom": 1452,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 6
+            }
+          ],
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 50.47,
+            "samples": [
+              {
+                "elapsedMs": 6.87,
+                "scanMs": 6.88,
+                "processes": 1,
+                "rssBytes": 451067904,
+                "pssBytes": 337035264,
+                "privateBytes": 319090688,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 50.46,
+                "scanMs": 7.13,
+                "processes": 1,
+                "rssBytes": 451080192,
+                "pssBytes": 337047552,
+                "privateBytes": 319102976,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "resume",
+          "messages": {
+            "prepared": 2,
+            "state": 2
+          },
+          "fullStateMessages": 2,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 180709,
+          "maxCacheBytes": 42475,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 38474,
+          "elapsedMs": 70,
+          "rpc": {
+            "samples": 2,
+            "medianMs": 58,
+            "p95Ms": 58,
+            "maxMs": 58
+          },
+          "heartbeat20ms": {
+            "samples": 3,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 1452,
+            "count": 1452,
+            "stats": {
+              "bytes": 9762,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 38474,
+              "reservedMachineBytes": 99760,
+              "estimatedBytes": 147996,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 10,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "1e9ce627-7393-4506-b128-5b5db1535273",
+              "frontier": 1452,
+              "durable": 1452,
+              "blocks": 22,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 700282,
+              "revision": 24,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 1452,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 1452,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 88,
+              "frameBytes": 144,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 291
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": {
+            "cursor": 1452,
+            "count": 1452,
+            "stats": {
+              "bytes": 9762,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 38474,
+              "reservedMachineBytes": 99760,
+              "estimatedBytes": 147996,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 10,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "1e9ce627-7393-4506-b128-5b5db1535273",
+              "frontier": 1452,
+              "durable": 1452,
+              "blocks": 22,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 700282,
+              "revision": 24,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 1452,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 1452,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 88,
+              "frameBytes": 144,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 291
+            },
+            "frames": 1,
+            "locals": 2,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 87.59,
+            "samples": [
+              {
+                "elapsedMs": 8.04,
+                "scanMs": 8.05,
+                "processes": 1,
+                "rssBytes": 451080192,
+                "pssBytes": 337047552,
+                "privateBytes": 319102976,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 87.57,
+                "scanMs": 5.74,
+                "processes": 1,
+                "rssBytes": 451112960,
+                "pssBytes": 337070080,
+                "privateBytes": 319135744,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        }
+      ],
+      "name": "Pilha recursiva",
+      "recordingId": "1e9ce627-7393-4506-b128-5b5db1535273",
+      "setupMemory": {
+        "supported": true,
+        "intervalMs": 150,
+        "elapsedMs": 86.52,
+        "samples": [
+          {
+            "elapsedMs": 11.46,
+            "scanMs": 11.47,
+            "processes": 1,
+            "rssBytes": 453148672,
+            "pssBytes": 339117056,
+            "privateBytes": 321171456,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          },
+          {
+            "elapsedMs": 86.51,
+            "scanMs": 5.58,
+            "processes": 1,
+            "rssBytes": 453152768,
+            "pssBytes": 339121152,
+            "privateBytes": 321175552,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          }
+        ]
+      },
+      "validation": {
+        "states": 7,
+        "count": 1452,
+        "fullStateExact": true
+      },
+      "ui": {
+        "samples": [
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 67,
+            "domElements": 354
+          },
+          {
+            "target": 1452,
+            "commitAndTwoFramesMs": 49,
+            "domElements": 361
+          },
+          {
+            "target": 726,
+            "commitAndTwoFramesMs": 48,
+            "domElements": 722
+          },
+          {
+            "target": 1452,
+            "commitAndTwoFramesMs": 64,
+            "domElements": 361
+          },
+          {
+            "target": 1,
+            "commitAndTwoFramesMs": 30,
+            "domElements": 357
+          },
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 37,
+            "domElements": 361
+          }
+        ],
+        "memory": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 342.41,
+          "samples": [
+            {
+              "elapsedMs": 4.48,
+              "scanMs": 4.48,
+              "processes": 1,
+              "rssBytes": 451170304,
+              "pssBytes": 337127424,
+              "privateBytes": 319193088,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 162.73,
+              "scanMs": 7.5,
+              "processes": 1,
+              "rssBytes": 450809856,
+              "pssBytes": 336752640,
+              "privateBytes": 318812160,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 318,
+              "scanMs": 4.94,
+              "processes": 1,
+              "rssBytes": 450527232,
+              "pssBytes": 336470016,
+              "privateBytes": 318529536,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 342.38,
+              "scanMs": 14.18,
+              "processes": 1,
+              "rssBytes": 450527232,
+              "pssBytes": 336470016,
+              "privateBytes": 318529536,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      },
+      "mobileWidth": 390
+    },
+    {
+      "id": "locals",
+      "phases": [
+        {
+          "name": "record",
+          "messages": {
+            "prepared": 151,
+            "state": 151
+          },
+          "fullStateMessages": 151,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 255443,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 32667,
+          "maxIndexBytes": 16251,
+          "elapsedMs": 282,
+          "rpc": {
+            "samples": 151,
+            "medianMs": 1,
+            "p95Ms": 6,
+            "maxMs": 12
+          },
+          "heartbeat20ms": {
+            "samples": 14,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 2403,
+            "count": 2403,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 16251,
+              "reservedMachineBytes": 185987,
+              "estimatedBytes": 202238,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 18,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "39b0d49d-6b11-4c3f-be63-e9c06c162dc5",
+              "frontier": 2403,
+              "durable": 2403,
+              "blocks": 36,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 1204015,
+              "revision": 36,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 30281,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 30429
+            },
+            "frames": 1,
+            "locals": 1201,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": {
+            "done": true,
+            "count": 2403
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 296.3,
+            "samples": [
+              {
+                "elapsedMs": 6.49,
+                "scanMs": 6.49,
+                "processes": 1,
+                "rssBytes": 450342912,
+                "pssBytes": 336275456,
+                "privateBytes": 318345216,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 166.21,
+                "scanMs": 9.29,
+                "processes": 1,
+                "rssBytes": 450342912,
+                "pssBytes": 336275456,
+                "privateBytes": 318345216,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 296.28,
+                "scanMs": 5.06,
+                "processes": 1,
+                "rssBytes": 450351104,
+                "pssBytes": 336283648,
+                "privateBytes": 318353408,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "flush",
+          "messages": {
+            "prepared": 1,
+            "state": 1
+          },
+          "fullStateMessages": 1,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 202238,
+          "maxCacheBytes": 0,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 16251,
+          "elapsedMs": 17,
+          "rpc": {
+            "samples": 1,
+            "medianMs": 10,
+            "p95Ms": 10,
+            "maxMs": 10
+          },
+          "heartbeat20ms": {
+            "samples": 0,
+            "medianMs": null,
+            "p95Ms": null,
+            "maxMs": null
+          },
+          "final": {
+            "cursor": 2403,
+            "count": 2403,
+            "stats": {
+              "bytes": 0,
+              "limitBytes": 65536,
+              "blocks": 0,
+              "hits": 0,
+              "reads": 0,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 16251,
+              "reservedMachineBytes": 185987,
+              "estimatedBytes": 202238,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 18,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "39b0d49d-6b11-4c3f-be63-e9c06c162dc5",
+              "frontier": 2403,
+              "durable": 2403,
+              "blocks": 36,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 1204015,
+              "revision": 37,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 30281,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 30429
+            },
+            "frames": 1,
+            "locals": 1201,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 43.86,
+            "samples": [
+              {
+                "elapsedMs": 8.41,
+                "scanMs": 8.41,
+                "processes": 1,
+                "rssBytes": 450351104,
+                "pssBytes": 336283648,
+                "privateBytes": 318353408,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 43.84,
+                "scanMs": 11.38,
+                "processes": 1,
+                "rssBytes": 450363392,
+                "pssBytes": 336288768,
+                "privateBytes": 318361600,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "seek",
+          "messages": {
+            "prepared": 9,
+            "state": 9,
+            "seek-progress": 4
+          },
+          "fullStateMessages": 9,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 267210,
+          "maxCacheBytes": 64972,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 16251,
+          "elapsedMs": 34,
+          "rpc": {
+            "samples": 9,
+            "medianMs": 1,
+            "p95Ms": 10,
+            "maxMs": 10
+          },
+          "heartbeat20ms": {
+            "samples": 1,
+            "medianMs": 20,
+            "p95Ms": 20,
+            "maxMs": 20
+          },
+          "final": {
+            "cursor": 2403,
+            "count": 2403,
+            "stats": {
+              "bytes": 36543,
+              "limitBytes": 65536,
+              "blocks": 2,
+              "hits": 6,
+              "reads": 6,
+              "evictions": 4,
+              "largeBlocks": 0,
+              "indexBytes": 16251,
+              "reservedMachineBytes": 185987,
+              "estimatedBytes": 238781,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 18,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "39b0d49d-6b11-4c3f-be63-e9c06c162dc5",
+              "frontier": 2403,
+              "durable": 2403,
+              "blocks": 36,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 1204015,
+              "revision": 37,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 0,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 2403,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 30281,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 30429
+            },
+            "frames": 1,
+            "locals": 1201,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": [
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 0,
+              "hits": 0
+            },
+            {
+              "target": 2403,
+              "navigation": {
+                "restoredFrom": 2403,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 1,
+              "hits": 0
+            },
+            {
+              "target": 600,
+              "navigation": {
+                "restoredFrom": 556,
+                "appliedSteps": 44,
+                "warning": null
+              },
+              "reads": 2,
+              "hits": 1
+            },
+            {
+              "target": 1802,
+              "navigation": {
+                "restoredFrom": 1787,
+                "appliedSteps": 15,
+                "warning": null
+              },
+              "reads": 3,
+              "hits": 2
+            },
+            {
+              "target": 1,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 4,
+              "hits": 3
+            },
+            {
+              "target": 1201,
+              "navigation": {
+                "restoredFrom": 1243,
+                "appliedSteps": 42,
+                "warning": null
+              },
+              "reads": 5,
+              "hits": 4
+            },
+            {
+              "target": 2402,
+              "navigation": {
+                "restoredFrom": 2403,
+                "appliedSteps": 1,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 5
+            },
+            {
+              "target": 0,
+              "navigation": {
+                "restoredFrom": 0,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 5
+            },
+            {
+              "target": 2403,
+              "navigation": {
+                "restoredFrom": 2403,
+                "appliedSteps": 0,
+                "warning": null
+              },
+              "reads": 6,
+              "hits": 6
+            }
+          ],
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 55.97,
+            "samples": [
+              {
+                "elapsedMs": 13.27,
+                "scanMs": 13.28,
+                "processes": 1,
+                "rssBytes": 450363392,
+                "pssBytes": 336278528,
+                "privateBytes": 318361600,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 55.96,
+                "scanMs": 4.53,
+                "processes": 1,
+                "rssBytes": 450367488,
+                "pssBytes": 336293888,
+                "privateBytes": 318365696,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        },
+        {
+          "name": "resume",
+          "messages": {
+            "prepared": 2,
+            "state": 2
+          },
+          "fullStateMessages": 2,
+          "preparedFullStateMessages": 0,
+          "maxEstimatedBytes": 238781,
+          "maxCacheBytes": 36543,
+          "maxFrames": 1,
+          "maxPendingBytes": 0,
+          "maxIndexBytes": 16251,
+          "elapsedMs": 114,
+          "rpc": {
+            "samples": 2,
+            "medianMs": 105,
+            "p95Ms": 105,
+            "maxMs": 105
+          },
+          "heartbeat20ms": {
+            "samples": 5,
+            "medianMs": 20,
+            "p95Ms": 21,
+            "maxMs": 21
+          },
+          "final": {
+            "cursor": 2403,
+            "count": 2403,
+            "stats": {
+              "bytes": 4208,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 16251,
+              "reservedMachineBytes": 185987,
+              "estimatedBytes": 206446,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 18,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "39b0d49d-6b11-4c3f-be63-e9c06c162dc5",
+              "frontier": 2403,
+              "durable": 2403,
+              "blocks": 36,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 1204015,
+              "revision": 38,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 2403,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 2403,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 30281,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 30429
+            },
+            "frames": 1,
+            "locals": 1201,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "extra": {
+            "cursor": 2403,
+            "count": 2403,
+            "stats": {
+              "bytes": 4208,
+              "limitBytes": 65536,
+              "blocks": 1,
+              "hits": 0,
+              "reads": 1,
+              "evictions": 0,
+              "largeBlocks": 0,
+              "indexBytes": 16251,
+              "reservedMachineBytes": 185987,
+              "estimatedBytes": 206446,
+              "limitTotalBytes": 67108864,
+              "checkpoints": 18,
+              "indexBuilt": false
+            },
+            "ledger": {
+              "id": "39b0d49d-6b11-4c3f-be63-e9c06c162dc5",
+              "frontier": 2403,
+              "durable": 2403,
+              "blocks": 36,
+              "pendingSteps": 0,
+              "pendingBytes": 0,
+              "bufferLimit": 32768,
+              "pauseReason": null,
+              "canRecord": false,
+              "diskBytes": 1204015,
+              "revision": 38,
+              "oversized": false,
+              "validation": {
+                "reusedSteps": 2403,
+                "checkedSteps": 0,
+                "blockReads": 0,
+                "cacheWarning": null
+              },
+              "navigation": {
+                "restoredFrom": 2403,
+                "appliedSteps": 0,
+                "warning": null
+              }
+            },
+            "machinePayload": {
+              "controlBytes": 89,
+              "frameBytes": 30281,
+              "operandBytes": 2,
+              "heapBytes": 2,
+              "outputBytes": 2,
+              "totalBytes": 30429
+            },
+            "frames": 1,
+            "locals": 1201,
+            "outputLines": 0,
+            "heapObjects": 0
+          },
+          "memory": {
+            "supported": true,
+            "intervalMs": 150,
+            "elapsedMs": 127.75,
+            "samples": [
+              {
+                "elapsedMs": 6.29,
+                "scanMs": 6.29,
+                "processes": 1,
+                "rssBytes": 450367488,
+                "pssBytes": 336292864,
+                "privateBytes": 318365696,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              },
+              {
+                "elapsedMs": 127.74,
+                "scanMs": 5.07,
+                "processes": 1,
+                "rssBytes": 450371584,
+                "pssBytes": 336304128,
+                "privateBytes": 318373888,
+                "missingRss": 0,
+                "missingPss": 0,
+                "incompleteTree": false
+              }
+            ]
+          }
+        }
+      ],
+      "name": "1.200 variáveis",
+      "recordingId": "39b0d49d-6b11-4c3f-be63-e9c06c162dc5",
+      "setupMemory": {
+        "supported": true,
+        "intervalMs": 150,
+        "elapsedMs": 98.74,
+        "samples": [
+          {
+            "elapsedMs": 9.15,
+            "scanMs": 9.16,
+            "processes": 1,
+            "rssBytes": 450326528,
+            "pssBytes": 336269312,
+            "privateBytes": 318328832,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          },
+          {
+            "elapsedMs": 98.73,
+            "scanMs": 7.8,
+            "processes": 1,
+            "rssBytes": 450342912,
+            "pssBytes": 336275456,
+            "privateBytes": 318345216,
+            "missingRss": 0,
+            "missingPss": 0,
+            "incompleteTree": false
+          }
+        ]
+      },
+      "validation": {
+        "states": 7,
+        "count": 2403,
+        "fullStateExact": true
+      },
+      "ui": {
+        "samples": [
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 59,
+            "domElements": 379
+          },
+          {
+            "target": 2403,
+            "commitAndTwoFramesMs": 48,
+            "domElements": 478
+          },
+          {
+            "target": 1201,
+            "commitAndTwoFramesMs": 65,
+            "domElements": 550
+          },
+          {
+            "target": 2403,
+            "commitAndTwoFramesMs": 52,
+            "domElements": 550
+          },
+          {
+            "target": 1,
+            "commitAndTwoFramesMs": 42,
+            "domElements": 387
+          },
+          {
+            "target": 0,
+            "commitAndTwoFramesMs": 47,
+            "domElements": 392
+          }
+        ],
+        "memory": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 339.39,
+          "samples": [
+            {
+              "elapsedMs": 5.97,
+              "scanMs": 5.98,
+              "processes": 1,
+              "rssBytes": 450289664,
+              "pssBytes": 336224256,
+              "privateBytes": 318291968,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 161.87,
+              "scanMs": 5.96,
+              "processes": 1,
+              "rssBytes": 450301952,
+              "pssBytes": 336236544,
+              "privateBytes": 318304256,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 323.55,
+              "scanMs": 11.19,
+              "processes": 1,
+              "rssBytes": 450301952,
+              "pssBytes": 336236544,
+              "privateBytes": 318304256,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 339.38,
+              "scanMs": 4.67,
+              "processes": 1,
+              "rssBytes": 450301952,
+              "pssBytes": 336236544,
+              "privateBytes": 318304256,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      },
+      "mobileWidth": 390
+    }
+  ]
+}

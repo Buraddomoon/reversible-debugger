@@ -17,7 +17,7 @@ export type PagedRequest = { id: number } & (
   | { kind: 'ack' } | { kind: 'control'; mode?: RunMode } | { kind: 'breakpoints'; lines: readonly number[]; enabled: boolean } | { kind: 'pause' }
 );
 export type PagedResponse =
-  | { id: number; kind: 'prepared'; snapshot: PagedSnapshot }
+  | { id: number; kind: 'prepared' }
   | { id: number; kind: 'index-progress'; done: number; total: number }
   | { id: number; kind: 'seek-progress'; progress: PagedSeekProgress }
   | { id: number; kind: 'state'; snapshot: PagedSnapshot; header?: PagedHeader }
@@ -29,6 +29,5 @@ export type LiveRequest = Exclude<PagedRequest, { kind: 'open' }> | ({ id: numbe
   | { kind: 'range'; first: number; count: number }
 ));
 export type LiveResponse = PagedResponse
-  | { id: number; kind: 'prepared'; snapshot: PagedSnapshot }
   | { id: number; kind: 'records'; records: readonly DeepReadonly<Step>[] }
   | { id: number; kind: 'state'; snapshot: PagedSnapshot; header?: PagedHeader; events?: readonly HistoryEvent[] };

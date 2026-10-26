@@ -1,6 +1,6 @@
 import { ExecutionLibrary } from '../core/execution-library';
 import { CheckpointCache } from '../core/checkpoint-cache';
-import { PagedHistoryStore, type PagedPreparedState, type PagedSeekJob } from '../core/paged-history';
+import { PagedHistoryStore, type PagedSeekJob } from '../core/paged-history';
 import { PagedExecutionControl } from '../core/paged-execution-control';
 import type { PagedRequest, PagedResponse, PagedSnapshot } from '../core/paged-transfer';
 import { explainStep, type StepExplanation } from '../core/explanations';
@@ -11,8 +11,8 @@ const library = new ExecutionLibrary(), checkpoints = new CheckpointCache();
 interface Task { message: PagedRequest; abort: AbortController; committed: boolean }
 let store: PagedHistoryStore | null = null, control: PagedExecutionControl | null = null;
 let active: Task | null = null, waiting: PagedRequest | null = null, acknowledge: (() => void) | null = null;
-function snapshot(step: DeepReadonly<Step> | null = null, reverse = false, prepared?: PagedPreparedState): PagedSnapshot {
-  const current = store!, state = prepared?.state ?? current.state, cursor = prepared?.cursor ?? current.cursor, lastStep = prepared ? prepared.lastStep : current.lastStep;
+function snapshot(step: DeepReadonly<Step> | null = null, reverse = false): PagedSnapshot {
+  const current = store!, state = current.state, cursor = current.cursor, lastStep = current.lastStep;
   let evidence: StepExplanation | null = null;
   if (step) {
     evidence = explainStep(current.program, [step], 0, reverse ? 'backward' : 'forward');
@@ -27,19 +27,19 @@ function snapshot(step: DeepReadonly<Step> | null = null, reverse = false, prepa
   }
   return { cursor, count: current.count, state, step: lastStep ? { span: lastStep.span, op: lastStep.op, description: lastStep.description } : null, evidence, reverse, changedNames: step?.changes.flatMap(c => c.kind === 'binding' ? [c.name] : []) ?? [], stats: current.stats, debug: control?.snapshot };
 }
-async function confirm(task: Task, prepared?: PagedPreparedState): Promise<void> {
+async function confirm(task: Task): Promise<void> {
   task.abort.signal.throwIfAborted();
   await new Promise<void>((resolve, reject) => {
     const cleanup = () => { acknowledge = null; task.abort.signal.removeEventListener('abort', cancel); };
     const cancel = () => { cleanup(); reject(task.abort.signal.reason); };
     acknowledge = () => { task.committed = true; cleanup(); resolve(); };
     task.abort.signal.addEventListener('abort', cancel, { once: true });
-    scope.postMessage({ id: task.message.id, kind: 'prepared', snapshot: snapshot(null, false, prepared) });
+    scope.postMessage({ id: task.message.id, kind: 'prepared' });
   });
 }
 function start(message: PagedRequest): void {
   const task: Task = { message, abort: new AbortController(), committed: false }; active = task;
-  const job: PagedSeekJob = { signal: task.abort.signal, onProgress: (done, total) => scope.postMessage({ id: message.id, kind: 'index-progress', done, total }), onSeekProgress: progress => scope.postMessage({ id: message.id, kind: 'seek-progress', progress }), beforePublish: prepared => confirm(task, prepared) };
+  const job: PagedSeekJob = { signal: task.abort.signal, onProgress: (done, total) => scope.postMessage({ id: message.id, kind: 'index-progress', done, total }), onSeekProgress: progress => scope.postMessage({ id: message.id, kind: 'seek-progress', progress }), beforePublish: () => confirm(task) };
   void (async () => {
     try {
       let step: DeepReadonly<Step> | null = null, reverse = false;

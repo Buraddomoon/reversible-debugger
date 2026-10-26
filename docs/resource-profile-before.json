@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "kind": "state-message-baseline",
+  "date": "2026-10-26T18:28:33.464Z",
+  "browser": "150.0",
+  "environment": {
+    "platform": "linux",
+    "architecture": "x64",
+    "cpus": 16,
+    "cpuModel": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "totalMemoryBytes": 16398606336,
+    "viewport": {
+      "width": 1440,
+      "height": 1100
+    },
+    "mode": "Vite dev / Firefox headless / isolated project profile"
+  },
+  "limits": {
+    "maxSteps": 20000,
+    "maxFrames": 256,
+    "cacheBytes": 65536,
+    "bufferBytes": 32768,
+    "maxHistoryBytes": 67108864
+  },
+  "note": "Application at 418fdab before removing ACK snapshot payload. Reference for message counts only; timing and process-memory fields omitted because profiling instrumentation evolved during this milestone.",
+  "workloads": [
+    {
+      "id": "numeric",
+      "name": "Loop numérico",
+      "validation": {
+        "states": 7,
+        "count": 18859,
+        "fullStateExact": true
+      },
+      "phases": [
+        {
+          "name": "record",
+          "rpc": {
+            "samples": 1179
+          },
+          "fullStateMessages": 2358,
+          "preparedFullStateMessages": 1179,
+          "messages": {
+            "prepared": 1179,
+            "state": 1179
+          }
+        }
+      ]
+    },
+    {
+      "id": "heap-output",
+      "name": "Lista compartilhada e saída",
+      "validation": {
+        "states": 7,
+        "count": 10816,
+        "fullStateExact": true
+      },
+      "phases": [
+        {
+          "name": "record",
+          "rpc": {
+            "samples": 676
+          },
+          "fullStateMessages": 1352,
+          "preparedFullStateMessages": 676,
+          "messages": {
+            "prepared": 676,
+            "state": 676
+          }
+        }
+      ]
+    },
+    {
+      "id": "recursion",
+      "name": "Pilha recursiva",
+      "validation": {
+        "states": 7,
+        "count": 1452,
+        "fullStateExact": true
+      },
+      "phases": [
+        {
+          "name": "record",
+          "rpc": {
+            "samples": 91
+          },
+          "fullStateMessages": 182,
+          "preparedFullStateMessages": 91,
+          "messages": {
+            "prepared": 91,
+            "state": 91
+          }
+        }
+      ]
+    },
+    {
+      "id": "locals",
+      "name": "1.200 variáveis",
+      "validation": {
+        "states": 7,
+        "count": 2403,
+        "fullStateExact": true
+      },
+      "phases": [
+        {
+          "name": "record",
+          "rpc": {
+            "samples": 151
+          },
+          "fullStateMessages": 302,
+          "preparedFullStateMessages": 151,
+          "messages": {
+            "prepared": 151,
+            "state": 151
+          }
+        }
+      ]
+    }
+  ]
+}
