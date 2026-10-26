@@ -252,6 +252,7 @@ npm run bench:navigation # Lotes, latência total e heartbeat em saltos longos
 npm run bench:segments # Retomadas sem cache/com cache, sufixos e payloads
 npm run bench:streaming # Checkpoints graváveis e comparação em blocos
 npm run bench:resources # Firefox: RSS/PSS, cópias, RPC, DOM e relatório HTML
+npm run bench:stress  # Deltas grandes, checkpoints, quota/corrupção e cinco pares de retomadas
 npm run test:firefox -- --streaming-only # Comparação paginada e controles
 npm run test:firefox -- --controls-only # Comandos/breakpoints em Workers e UI
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
@@ -320,6 +321,7 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Python 3: recursos e limitações](docs/python.md)
 - [Etapas e próximos marcos](docs/roadmap.md)
 - [Perfil de recursos, relatório visual e redução de cópias](docs/resource-profile.md)
+- [Estresse de estados, transações grandes e recuperação](docs/storage-stress.md)
 - [Medidas e política de checkpoints](docs/history-performance.md)
 - [Breakpoints e controles por comando](docs/breakpoints-stepping.md)
 - [Controles nas sessões contínuas e capturas paginadas](docs/paged-controls.md)
@@ -330,4 +332,4 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Orçamento do histórico](docs/storage-budget.md)
 - [Navegação cancelável](docs/cancellable-navigation.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. Os controles de depuração já estão unificados nesses modos. O perfil de recursos já mede memória dos processos, mensagens e resposta da tela em quatro programas; a preparação do ACK envia apenas ID/tipo para evitar cópia redundante de estado. A próxima etapa exercita estados/transações grandes e falhas antes de ampliar sessões.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. Os controles de depuração já estão unificados nesses modos. O perfil de recursos já mede memória dos processos, mensagens e resposta da tela em quatro programas; a preparação do ACK envia apenas ID/tipo para evitar cópia redundante de estado. A matriz de estresse também verifica transações grandes, redução de checkpoints, quota/corrupção e retomadas repetidas. A próxima etapa define limites configuráveis e compatibilidade antes de ampliar sessões.

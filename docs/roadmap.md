@@ -208,10 +208,20 @@ Critério atendido: depurar em ambos os modos sem materializar o histórico, obt
 
 Critério atendido: medir e distinguir memória do navegador de payload lógico, eliminar a cópia redundante identificada e preservar testes de reversibilidade, ACK, quotas e comparação. Os picos são amostrados e não autorizam inferir um teto de RAM ou ampliar limites automaticamente.
 
-## Próxima etapa — estresse de temporários e ampliação controlada
+## Estresse de estados e recuperação — implementado
 
-- Explorar estados/checkpoints e transações individuais grandes, falhas/quota durante esses casos e inicialização fria; repetir distribuições por revisão/ambiente.
-- Investigar cópias temporárias não observáveis na amostragem antes de ampliar os 20.000 passos; manter critérios explícitos de memória, resposta e compatibilidade.
+- Casos compartilhados de lista com delta de 647.361 bytes (aproximadamente 632 KiB), retorno com frame grande e 800.800 caracteres de saída.
+- Cache retido de 1 KiB, blocos indivisíveis isolados, redução de checkpoints dentro de 8 MiB e preservação de início/futuro.
+- Oito testes do núcleo: reversibilidade, ausência de executor no replay, orçamento/ACK, cancelamento, pré-flush, quota/retry, auxiliares e compatibilidade de captura/arquivo.
+- Firefox com IndexedDB real: zero blocos órfãos após aborto, corrupção sem publicação parcial, resposta perdida reconciliada e retomada após falha auxiliar.
+- Cinco pares de Workers novos por programa, com validação integral ou prefixo reaproveitado; referência completa criada após as fases medidas. Layout de 390 px e relatório visual com filtro. [Método, dados e reprodução](storage-stress.md).
+
+Critério atendido: transações maiores que o bloco/cache continuam reversíveis e recuperáveis; as falhas preservam o estado aceito. A medição inclui RPCs acima de 200 ms; limites atuais foram mantidos. Inicialização fria do browser e picos não observáveis nas amostras continuam como validações distintas.
+
+## Próxima etapa — limites configuráveis e compatibilidade
+
+- Definir limites por sessão e contratos de leitura/escrita de journal, capturas e arquivos antes de liberar mais de 20.000 passos.
+- Dimensionar quotas de índices/estado e repetir a matriz de estresse nos novos limites, com critérios explícitos de resposta e memória.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.
 

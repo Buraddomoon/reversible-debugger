@@ -20,6 +20,7 @@
     "bench:segments": "node scripts/segment-benchmark.mjs",
     "bench:streaming": "node scripts/streaming-benchmark.mjs",
     "bench:resources": "node --test scripts/process-resources.test.mjs && node scripts/firefox-smoke.mjs --resources-only",
+    "bench:stress": "vitest run tests/storage-stress.test.ts && node scripts/firefox-smoke.mjs --stress-only",
     "check": "tsc --noEmit && vitest run"
   },
   "dependencies": {
