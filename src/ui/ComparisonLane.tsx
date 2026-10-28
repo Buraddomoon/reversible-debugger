@@ -1,3 +1,4 @@
+import { ProgramOutput } from './ProgramOutput';
 import { useMemo, useState } from 'react';
 import type { ComparisonPhase, ComparisonPoint, ComparisonRunView, DifferenceValue, StateDifference } from '../core/comparison-types';
 import { formatValue, previewValue, type LanguageId } from '../core/runtime';
@@ -58,7 +59,7 @@ export function ComparisonLane({ side, run, point, held, differences }: { side: 
     <details className="comparison-stack"><summary>Pilha de valores <span>{run.state.operands.length}</span></summary><p className="comparison-operands">{run.state.operands.map(value => formatValue(value, run.program.runtime.language)).join(' · ') || 'Vazia'}</p></details>
     <div className="comparison-current-result"><span>Resultado atual <code>result</code></span><strong data-testid={`comparison-result-${side.toLowerCase()}`}>{result}</strong><small>{statusLabels[run.state.control.status]}</small></div>
     {run.state.control.error && <p className="comparison-error" data-testid={`comparison-error-${side.toLowerCase()}`}>{run.state.control.error}</p>}
-    {run.program.runtime.language === 'python' && <div className="comparison-output"><span>SAÍDA</span><pre data-testid={`comparison-output-${side.toLowerCase()}`}>{run.state.output.join('') || 'Nenhuma saída ainda.'}</pre></div>}
+    {run.program.runtime.language === 'python' && <ProgramOutput output={run.state.output} comparison testId={`comparison-output-${side.toLowerCase()}`} />}
   </section>;
 }
 

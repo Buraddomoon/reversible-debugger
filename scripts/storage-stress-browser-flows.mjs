@@ -38,13 +38,13 @@ export async function runStorageStressBrowserFlows({ evaluate, command, context,
         await click('Retomar sessão Estresse · Saída e redução de checkpoints');
         await waitFor("document.querySelector('[data-testid=paged-debugger]') && !document.querySelector('[data-testid=live-open-progress]')");
         const count = Number(await text('[data-testid=step-count]'));
-        result.ui = { outputCharacters: await evaluate("document.querySelector('[data-testid=program-output]').textContent.length") };
-        assert.ok(result.ui.outputCharacters >= 800000);
+        result.ui = { outputCharacters: Number(await evaluate("document.querySelector('.output-panel').dataset.outputTotal")), renderedCharacters: await evaluate("document.querySelector('[data-testid=program-output]').textContent.length") };
+        assert.ok(result.ui.outputCharacters >= 800000); assert.ok(result.ui.renderedCharacters <= 32769);
         await click('Início'); assert.equal(Number(await text('[data-testid=step-count]')), 0);
         assert.equal(await text('[data-testid=program-output]'), 'Nenhuma saída ainda.');
         await input('#timeline-target', String(count)); await click('Ir');
         assert.equal(Number(await text('[data-testid=step-count]')), count);
-        assert.equal(await evaluate("document.querySelector('[data-testid=program-output]').textContent.length"), result.ui.outputCharacters);
+        assert.equal(await evaluate("document.querySelector('[data-testid=program-output]').textContent.length"), result.ui.renderedCharacters);
         await command('browsingContext.setViewport', { context, viewport: { width: 390, height: 844 }, devicePixelRatio: 1 });
         assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true);
         result.ui.mobileWidth = 390; await shot('firefox-storage-stress-mobile.png');

@@ -1,9 +1,9 @@
 import { PagedRecordingClient } from '/src/ui/paged-client.ts';
-import { DebugSession } from '/src/core/debugger.ts';
+import { DebugSession, recordingYield } from '/src/core/debugger.ts';
 import { RecordingJournal } from '/src/core/recording-journal.ts';
 import { ExecutionLibrary } from '/src/core/execution-library.ts';
-import { encode, exportHistory, importHistory } from '/src/core/portable-history.ts';
-export async function createLimitsProbe() {
+import { encode, exportHistory, importHistory, digest } from '/src/core/portable-history.ts';
+export async function createLimitsProbe({ compareCapture = false } = {}) {
   const runtime = { language: 'python', version: '3' }, source = 'i = 0\nwhile True:\n    i += 1', options = { maxSteps: 50000, maxFrames: 64, cacheBytes: 16384 };
   const journal = new RecordingJournal(), library = new ExecutionLibrary(), metadata = { name: 'Limite ampliado', filename: 'limits.py' };
   let client = await PagedRecordingClient.startLive(source, runtime, metadata, options), savedId, captured, released = false;
@@ -32,10 +32,70 @@ export async function createLimitsProbe() {
       return report;
     },
     async capture() {
-      const start = performance.now(); captured = (await client.capture(64 * 1024 * 1024)).session;
+      const measure = async operation => {
+        await client.pause(); const reads = client.snapshot.stats.reads, receiver = client.worker.onmessage;
+        const metrics = { packets: 0, maxPacketSteps: 0, maxPacketBytes: 0 };
+        client.worker.onmessage = event => {
+          if (event.data.kind === 'records' || event.data.kind === 'capture-records') {
+            const records = event.data.records; metrics.packets++; metrics.maxPacketSteps = Math.max(metrics.maxPacketSteps, records.length);
+            metrics.maxPacketBytes = Math.max(metrics.maxPacketBytes, new TextEncoder().encode(JSON.stringify(encode(records))).length);
+          }
+          receiver(event);
+        };
+        const start = performance.now(); let copy;
+        try { copy = await operation(); metrics.ms = performance.now() - start; }
+        finally { client.worker.onmessage = receiver; }
+        await client.pause(); metrics.blockReads = client.snapshot.stats.reads - reads;
+        if (metrics.maxPacketSteps > 16) throw new Error('Unbounded transport');
+        const checksum = await digest(JSON.stringify(encode(copy.history))); return { copy, metrics, checksum };
+      };
+      let baselineHash;
+      if (compareCapture) {
+        const legacy = await measure(async () => {
+          const { header, snapshot } = client, builder = DebugSession.recordingBuilder(source, { ...runtime, ...header.limits, maxHistoryBytes: 64 * 1024 * 1024 }, snapshot.count, snapshot.cursor);
+          for (let first = 0; first < snapshot.count; first += 16) {
+            const response = await client.request({ kind: 'range', first, count: Math.min(16, snapshot.count - first) });
+            builder.append(response.records); await recordingYield({});
+          }
+          return builder.finish();
+        });
+        baselineHash = legacy.checksum; report.captureBaseline = legacy.metrics; legacy.copy = null;
+        const before = state(client.snapshot.state), cursor = client.snapshot.cursor;
+        const unchanged = () => { if (client.snapshot.cursor !== cursor || state(client.snapshot.state) !== before || client.snapshot.count !== 50000) throw new Error('Cancelled capture changed the session'); };
+        let releasePull, packets = 0;
+        const pullAbort = new AbortController();
+        const held = client.capture(64 * 1024 * 1024, { signal: pullAbort.signal, onProgress: () => packets++, yieldControl: () => new Promise(resolve => { releasePull = resolve; }) });
+        // Attach rejection handling before aborting, then hold the UI consumer.
+        const heldResult = held.then(() => false, error => { if (error.name !== 'AbortError') throw error; return true; });
+        while (!releasePull) await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise(resolve => setTimeout(resolve, 30));
+        if (packets !== 1) throw new Error('Worker sent records without consumer pull');
+        pullAbort.abort(); if (!await heldResult) throw new Error('Held transfer ignored cancellation');
+        releasePull(); await client.pause(); unchanged();
+        const abort = new AbortController(); let cancelled = false;
+        try { await client.capture(64 * 1024 * 1024, { signal: abort.signal, onProgress: done => { if (done >= 32) abort.abort(); } }); }
+        catch (error) { if (error.name !== 'AbortError') throw error; cancelled = true; }
+        if (!cancelled) throw new Error('Capture cancellation ignored'); await client.pause(); unchanged();
+        let rejected = false;
+        try { await client.capture(1024); } catch { rejected = true; }
+        if (!rejected) throw new Error('Budget failure ignored'); await client.pause(); unchanged();
+        let replacement;
+        try { await client.capture(64 * 1024 * 1024, { onProgress: () => { replacement ??= client.seek(0); } }); throw new Error('Capture replacement ignored'); }
+        catch (error) { if (error.name !== 'AbortError') throw error; }
+        await replacement; if (client.snapshot.cursor !== 0) throw new Error('Replacement seek lost');
+        await client.seek(cursor); unchanged(); report.captureCancellation = { abort: true, backpressure: true, budgetFailure: true, replacement: true, sourcePreserved: true };
+      }
+      const result = await measure(async () => (await client.capture(64 * 1024 * 1024)).session); captured = result.copy;
       if (captured.maxSteps !== 50000 || captured.maxFrames !== 64 || captured.history.length !== 50000) throw new Error('Capture truncated');
-      report.captureMs = performance.now() - start; await client.closeLive(); client.dispose(); return { count: captured.history.length };
+      report.captureMs = result.metrics.ms; report.captureStream = result.metrics;
+      if (compareCapture) {
+        report.captureExactRecords = baselineHash === result.checksum;
+        const blocks = (await journal.open(id)).head.blocks.length;
+        if (!report.captureExactRecords || result.metrics.blockReads !== blocks || report.captureBaseline.blockReads <= blocks) throw new Error('Stream records/read count differs');
+      }
+      await client.closeLive(); client.dispose(); return { count: captured.history.length };
     },
+
     async portableAndSave() {
       const start = performance.now(), text = await exportHistory(captured, metadata), imported = await importHistory(text);
       report.fileVersion = JSON.parse(text).version; report.fileBytes = new TextEncoder().encode(text).byteLength;

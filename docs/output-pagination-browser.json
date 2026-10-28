@@ -1,0 +1,29 @@
+{
+  "browser": "150.0",
+  "total": 800800,
+  "modes": {
+    "classic": {
+      "pages": 25,
+      "exactText": true,
+      "maxDOMCharacters": 32769
+    },
+    "comparison": {
+      "pages": 25,
+      "exactText": true,
+      "maxDOMCharacters": 32769
+    },
+    "live": {
+      "pages": 25,
+      "exactText": true,
+      "maxDOMCharacters": 32769
+    },
+    "materialized": {
+      "pages": 25,
+      "exactText": true,
+      "maxDOMCharacters": 32769
+    }
+  },
+  "downloadExact": true,
+  "reverseAndReplay": true,
+  "mobileWidth": 390
+}

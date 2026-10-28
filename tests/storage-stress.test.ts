@@ -49,6 +49,12 @@ describe('estresse de estados e transações indivisíveis', () => {
       await live.seek(target, fast); oracle.seek(target); sameState(live.state, oracle);
       expect(live.stats.estimatedBytes).toBeLessThanOrEqual(live.limitBytes);
     }
+    const reads = vi.spyOn(journal, 'readBlock'), builder = DebugSession.recordingBuilder(fixture.source, { ...stressRuntime, maxSteps: stressSteps, maxFrames: 256 }, frontier, 0);
+    for await (const batch of live.streamRecords(frontier, fast)) { expect(batch.length).toBeLessThanOrEqual(16); builder.append(batch); }
+    expect(reads).toHaveBeenCalledTimes(snapshot.head.blocks.length); reads.mockRestore();
+    const streamed = await builder.finish(fast);
+    for (const target of [frontier, 0, Math.floor(frontier / 2), frontier]) { streamed.seek(target); oracle.seek(target); sameState(streamed.state, oracle); }
+    expect(execute).not.toHaveBeenCalled();
     await live.close();
     const resumed = await LiveRecording.resume(journal, live.entry.id, { cacheBytes: 1024, validateAll: true }, fast);
     expect(resumed.cursor).toBe(0); await resumed.seek(frontier, fast); oracle.seek(frontier); sameState(resumed.state, oracle);

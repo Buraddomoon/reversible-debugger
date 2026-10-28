@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-export async function runLimitsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser }) {
+export async function runLimitsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser, compareCapture = false }) {
   const scripts = await evaluate("localStorage.getItem('rewind.script-library.v1')");
   const settings = await evaluate("localStorage.getItem('rewind.execution-limits.v1')") ?? null;
   await evaluate("(()=>{const s=document.querySelector('#example');s.value='python-factorial';s.dispatchEvent(new Event('change',{bubbles:true}));})()");
@@ -54,7 +54,7 @@ export async function runLimitsBrowserFlows({ evaluate, command, context, click,
     const result = await parse('window.limitsJob');
     if (result.error) throw new Error(`${name}: ${result.error}`); return result.value;
   };
-  await evaluate("(async()=>{const {createLimitsProbe}=await import('/scripts/limits-probe.mjs');window.limitsProbe=await createLimitsProbe();})()");
+  await evaluate(`(async()=>{const {createLimitsProbe}=await import('/scripts/limits-probe.mjs');window.limitsProbe=await createLimitsProbe({compareCapture: ${compareCapture}});})()`);
   let report;
   try {
     console.log('Limites: gravando 50.000 passos em lotes de até 16.');

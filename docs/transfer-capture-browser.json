@@ -1,0 +1,93 @@
+{
+  "browser": "150.0",
+  "count": 50000,
+  "maxPayloadBytes": 1004637,
+  "maxCacheBytes": 0,
+  "batches": 3125,
+  "resumes": [
+    {
+      "validateAll": false,
+      "ms": 333,
+      "reusedSteps": 50000,
+      "checkedSteps": 0,
+      "blockReads": 0,
+      "cacheWarning": null
+    },
+    {
+      "validateAll": true,
+      "ms": 9765,
+      "reusedSteps": 0,
+      "checkedSteps": 50000,
+      "blockReads": 391,
+      "cacheWarning": null
+    }
+  ],
+  "seeks": [
+    {
+      "target": 0,
+      "ms": 0
+    },
+    {
+      "target": 19999,
+      "ms": 22
+    },
+    {
+      "target": 20000,
+      "ms": 5
+    },
+    {
+      "target": 20001,
+      "ms": 5
+    },
+    {
+      "target": 32769,
+      "ms": 40
+    },
+    {
+      "target": 49999,
+      "ms": 3
+    },
+    {
+      "target": 50000,
+      "ms": 2
+    }
+  ],
+  "recordMs": 4902,
+  "journalVersion": 2,
+  "captureBaseline": {
+    "packets": 3125,
+    "maxPacketSteps": 16,
+    "maxPacketBytes": 7132,
+    "ms": 8045,
+    "blockReads": 3125
+  },
+  "captureCancellation": {
+    "abort": true,
+    "backpressure": true,
+    "budgetFailure": true,
+    "replacement": true,
+    "sourcePreserved": true
+  },
+  "captureMs": 2512,
+  "captureStream": {
+    "packets": 3125,
+    "maxPacketSteps": 16,
+    "maxPacketBytes": 7132,
+    "ms": 2512,
+    "blockReads": 391
+  },
+  "captureExactRecords": true,
+  "fileVersion": 3,
+  "fileBytes": 21539491,
+  "blockVersion": 2,
+  "portableAndSaveMs": 5974,
+  "exactStates": 3130,
+  "note": "Firefox installed / native IndexedDB / application Workers, Vite dev. Timings include RPC, codec and I/O; logical payload, not browser RAM. Independent oracle created after transport checks.",
+  "ui": {
+    "increasePreservedHistory": true,
+    "reloadPreservedSettings": true,
+    "journalInheritedLimits": true,
+    "materializedLimitsPreserved": true,
+    "mobileWidth": 390
+  }
+}

@@ -18,6 +18,16 @@ async function confirm(task: Task): Promise<void> {
   task.abort.signal.throwIfAborted();
   await new Promise<void>((resolve, reject) => { const cleanup = () => { acknowledge = null; task.abort.signal.removeEventListener('abort', cancel); }, cancel = () => { cleanup(); reject(task.abort.signal.reason); }; acknowledge = () => { task.committed = true; cleanup(); resolve(); }; task.abort.signal.addEventListener('abort', cancel, { once: true }); scope.postMessage({ id: task.message.id, kind: 'prepared' }); });
 }
+async function transfer(task: Task, records: readonly DeepReadonly<Step>[]): Promise<void> {
+  task.abort.signal.throwIfAborted();
+  await new Promise<void>((resolve, reject) => {
+    const cleanup = () => { acknowledge = null; task.abort.signal.removeEventListener('abort', cancel); };
+    const cancel = () => { cleanup(); reject(task.abort.signal.reason); };
+    acknowledge = () => { cleanup(); resolve(); };
+    task.abort.signal.addEventListener('abort', cancel, { once: true });
+    scope.postMessage({ id: task.message.id, kind: 'capture-records', records });
+  });
+}
 function start(message: LiveRequest): void {
   const task: Task = { message, abort: new AbortController(), committed: false }; active = task;
   const job: PagedSeekJob = { signal: task.abort.signal, onProgress: (done, total) => scope.postMessage({ id: message.id, kind: 'index-progress', done, total }), onSeekProgress: progress => scope.postMessage({ id: message.id, kind: 'seek-progress', progress }), beforePublish: () => confirm(task) };
@@ -31,6 +41,10 @@ function start(message: LiveRequest): void {
         scope.postMessage({ id: message.id, kind: 'state', header: { entry: store.entry, program: store.program, events: [...store.events], limits: { maxSteps: store.source.maxSteps, maxFrames: store.source.maxFrames } }, snapshot: snapshot() });
       } else {
         if (!store) throw new Error('Abra uma sessão para gravar');
+        if (message.kind === 'capture') {
+          for await (const records of store.streamRecords(message.count, job)) await transfer(task, records);
+          task.abort.signal.throwIfAborted(); scope.postMessage({ id: message.id, kind: 'capture-done' }); return;
+        }
         if (message.kind === 'range') { const records = await store.readRange(message.first, message.count, job); task.abort.signal.throwIfAborted(); scope.postMessage({ id: message.id, kind: 'records', records }); return; }
         if (message.kind === 'seek') { const from = store.cursor, before = store.lastStep; await store.seek(message.target, job); control!.cancel(); if (message.target === from + 1) step = store.lastStep; else if (message.target === from - 1) { step = before; reverse = true; } }
         else {
@@ -59,6 +73,7 @@ function start(message: LiveRequest): void {
 }
 scope.onmessage = event => {
   const message = event.data;
+  if (message.kind === 'pull') { if (active?.message.id === message.id && active.message.kind === 'capture') acknowledge?.(); return; }
   if (message.kind === 'ack') { if (active?.message.id === message.id) acknowledge?.(); return; }
   if (message.kind === 'cancel') { if (active?.message.id === message.id && !active.committed) { active.abort.abort(); store?.cancel(); } if (waiting?.id === message.id) { scope.postMessage({ id: message.id, kind: 'error', aborted: true, message: 'Pedido cancelado' }); waiting = null; } return; }
   if (active) { if (waiting) scope.postMessage({ id: waiting.id, kind: 'error', aborted: true, message: 'Pedido substituído' }); waiting = message; if (!active.committed) { active.abort.abort(); store?.cancel(); } }

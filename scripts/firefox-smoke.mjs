@@ -11,6 +11,7 @@ import { runStreamingBrowserFlows } from './streaming-browser-flows.mjs';
 import { runPagedControlsBrowserFlows } from './paged-controls-browser-flows.mjs';
 import { runResourceBrowserFlows } from './resource-browser-flows.mjs';
 import { runStorageStressBrowserFlows } from './storage-stress-browser-flows.mjs';
+import { runOutputBrowserFlows } from './output-browser-flows.mjs';
 import { runLimitsBrowserFlows } from './limits-browser-flows.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -144,8 +145,10 @@ try {
   await waitFor("document.querySelector('[data-testid=step-count]')");
   const resourcesOnly = process.argv.includes('--resources-only');
   const stressOnly = process.argv.includes('--stress-only');
+  const outputOnly = process.argv.includes('--output-only');
+  const transfersOnly = process.argv.includes('--transfers-only');
   const limitsOnly = process.argv.includes('--limits-only');
-  if (!process.argv.includes('--live-only') && !process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only') && !resourcesOnly && !stressOnly && !limitsOnly) {
+  if (!process.argv.includes('--live-only') && !process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only') && !resourcesOnly && !stressOnly && !limitsOnly && !transfersOnly && !outputOnly) {
   assert.match(await text('.source-runtime'), /Python 3/);
   const locals = async () => JSON.parse(await evaluate("JSON.stringify(Object.fromEntries(Array.from(document.querySelectorAll('.variable-row')).map(row => [row.querySelector('code').textContent, row.querySelector('strong').textContent])))"));
   assert.equal(await evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Sair da função').disabled"), true);
@@ -894,6 +897,11 @@ try {
   }
   if (resourcesOnly) await runResourceBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion, pid: firefox.pid });
   else if (stressOnly) await runStorageStressBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion, pid: firefox.pid });
+  else if (outputOnly) await runOutputBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+  else if (transfersOnly) {
+    await runLimitsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion, compareCapture: true });
+    await runOutputBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
+  }
   else if (limitsOnly) await runLimitsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
   else {
     if (!process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only')) await runLiveBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });

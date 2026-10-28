@@ -66,6 +66,32 @@ describe('gravação incremental durável', () => {
     const { journal } = setup(), { states } = oracle('result = 40 + 2\nprint(result)'), live = await LiveRecording.start(journal, 'result = 40 + 2\nprint(result)', runtime, details, {}, fast); for (let i = 0; i < 5; i++) await live.seek(live.count + 1, fast); await live.seek(1, fast);
     const records = await live.readRange(0, live.count, fast), session = await DebugSession.restoreRecording(live.source.source, { ...runtime, maxSteps: 20_000, maxFrames: 256 }, records, live.cursor, fast); expect(session.history).toHaveLength(5); expect(session.state).toEqual(states[1]); session.seek(5); expect(session.state).toEqual(states[5]);
   });
+  it('transfere blocos uma vez com cache mínimo e inclui o futuro pendente', async () => {
+    const { journal } = setup(), source = 'i = 0\nwhile True:\n    print(i)\n    i += 1';
+    const live = await LiveRecording.start(journal, source, runtime, details, { maxSteps: 1000, cacheBytes: 1 }, fast);
+    for (let i = 0; i < 301; i++) await live.seek(live.count + 1, fast);
+    await live.seek(7, fast); const before = structuredClone(live.state), disk = await journal.open(live.entry.id), read = vi.spyOn(journal, 'readBlock'), execute = vi.spyOn(machine, 'executeInstruction');
+    const builder = DebugSession.recordingBuilder(source, { ...runtime, maxSteps: 1000, maxFrames: 256 }, live.count, live.cursor);
+    for await (const batch of live.streamRecords(live.count, fast)) { expect(batch.length).toBeLessThanOrEqual(16); builder.append(batch); expect(live.stats.bytes).toBe(0); }
+    expect(read).toHaveBeenCalledTimes(disk.head.blocks.length); expect(live.ledger.pendingSteps).toBeGreaterThan(0);
+    const copy = await builder.finish(fast); expect(copy.state).toEqual(before); expect(copy.history.length).toBe(301);
+    const reference = new DebugSession(source, { ...runtime, maxSteps: 1000 });
+    execute.mockRestore(); for (let i = 0; i < 301; i++) reference.forward();
+    const replay = vi.spyOn(machine, 'executeInstruction');
+    for (const target of [301, 129, 128, 1, 0, 301, 7]) { reference.seek(target); copy.seek(target); expect(copy.state).toEqual(reference.state); }
+    expect(replay).not.toHaveBeenCalled(); expect(live.cursor).toBe(7); expect(live.state).toEqual(before);
+  });
+  it('aborta uma transferência ou descarta seu iterador sem alterar cursor, futuro ou cache', async () => {
+    const { journal } = setup(), live = await LiveRecording.start(journal, 'while True:\n    print(1)', runtime, details, { maxSteps: 300, cacheBytes: 1 }, fast);
+    while (live.ledger.canRecord) await live.seek(live.count + 1, fast);
+    const before = structuredClone(live.state), abort = new AbortController(), read = vi.spyOn(journal, 'readBlock');
+    const stream = live.streamRecords(live.count, { signal: abort.signal }); await stream.next(); abort.abort();
+    await expect(stream.next()).rejects.toThrow(); expect(read).toHaveBeenCalledTimes(1);
+    read.mockClear(); const partial = live.streamRecords(live.count); await partial.next(); await partial.return(undefined); expect(read).toHaveBeenCalledTimes(1);
+    expect(live.cursor).toBe(300); expect(live.count).toBe(300); expect(live.state).toEqual(before); expect(live.stats.bytes).toBe(0);
+    const interrupted = live.streamRecords(live.count); await interrupted.next(); live.cancel(); await expect(interrupted.next()).rejects.toThrow();
+    const retry: unknown[] = []; for await (const batch of live.streamRecords(live.count)) retry.push(...batch); expect(retry).toHaveLength(300);
+  });
   it('orçamento recusa a próxima instrução antes da confirmação, preservando o estado', async () => {
     const { journal } = setup(), source = 'i = 0\nwhile i < 100:\n    print(i)\n    i += 1', live = await LiveRecording.start(journal, source, runtime, details, { maxHistoryBytes: 7000 }, fast);
     let refused = false;

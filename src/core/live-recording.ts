@@ -180,6 +180,20 @@ export class LiveRecording {
     return { records, first: descriptor.first };
   }
   async readRange(first: number, count: number, job: PagedSeekJob = {}): Promise<readonly DeepReadonly<Step>[]> { integer(first, 0, this.frontier); integer(count, 0, 16); integer(first + count, 0, this.frontier); const records: DeepReadonly<Step>[] = []; while (records.length < count) { job.signal?.throwIfAborted(); const batch = await this.recordsAt(first + records.length, job); records.push(...batch.records.slice(first + records.length - batch.first, first + count - batch.first)); } return records; }
+  /** One transient block lives across pulls, even when it exceeds the LRU.
+   * The consumer must serialize this stream with navigation/writes. */
+  async *streamRecords(count: number, job: PagedSeekJob = {}): AsyncGenerator<readonly DeepReadonly<Step>[]> {
+    integer(count, 0, this.frontier); const epoch = this.epoch;
+    for (let first = 0; first < count;) {
+      this.check(epoch, job); const batch = await this.recordsAt(first, job); this.check(epoch, job);
+      const end = Math.min(count, batch.first + batch.records.length);
+      while (first < end) {
+        this.check(epoch, job); const next = Math.min(end, first + 16);
+        yield batch.records.slice(first - batch.first, next - batch.first); first = next;
+      }
+    }
+    this.check(epoch, job);
+  }
   async seek(target: number, job: PagedSeekJob = {}): Promise<void> {
     integer(target, 0, this.frontier + 1); job.signal?.throwIfAborted(); if (target === this.frontier + 1) { await this.advance(job); return; }
     const epoch = ++this.epoch, from = this.position;

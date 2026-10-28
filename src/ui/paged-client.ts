@@ -1,15 +1,15 @@
 import type { RunMode } from '../core/execution-control';
 import type { PagedOptions, PagedSeekProgress } from '../core/paged-history';
 import type { PagedHeader, PagedRequest, PagedSnapshot, LiveRequest, LiveResponse } from '../core/paged-transfer';
-import { DebugSession, recordingYield, type RecordingJob } from '../core/debugger';
+import { DebugSession, type RecordingJob } from '../core/debugger';
 import { digest, type ImportedHistory, type TraceMetadata } from '../core/portable-history';
 import type { RuntimeSelection } from '../core/runtime';
 import type { LiveOptions } from '../core/live-recording';
 
 interface ClientJob extends RecordingJob { onSeekProgress?: (progress: PagedSeekProgress) => void }
-type Result = Extract<LiveResponse, { kind: 'state' | 'records' }>;
-type Input = LiveRequest extends infer R ? R extends { kind: 'ack' | 'cancel' } ? never : R extends { id: number } ? Omit<R, 'id'> : never : never;
-interface Pending { resolve: (message: Result) => void; reject: (cause: unknown) => void; job: ClientJob; cleanup: () => void; acknowledged: boolean }
+type Result = Extract<LiveResponse, { kind: 'state' | 'records' | 'capture-done' }>;
+type Input = LiveRequest extends infer R ? R extends { kind: 'ack' | 'cancel' | 'pull' } ? never : R extends { id: number } ? Omit<R, 'id'> : never : never;
+interface Pending { consume?: (records: Extract<LiveResponse, { kind: 'capture-records' }>['records']) => void; resolve: (message: Result) => void; reject: (cause: unknown) => void; job: ClientJob; cleanup: () => void; acknowledged: boolean }
 export class PagedRecordingClient {
   private worker: Worker;
   private sequence = 0;
@@ -27,6 +27,14 @@ export class PagedRecordingClient {
       const message = event.data, pending = this.pending.get(message.id); if (!pending) return;
       if (message.kind === 'index-progress') pending.job.onProgress?.(message.done, message.total);
       else if (message.kind === 'seek-progress') pending.job.onSeekProgress?.(message.progress);
+      else if (message.kind === 'capture-records') {
+        void (async () => {
+          pending.job.signal?.throwIfAborted(); if (!pending.consume) throw new Error('Transferência inesperada');
+          pending.consume(message.records); if (pending.job.yieldControl) await pending.job.yieldControl();
+          pending.job.signal?.throwIfAborted();
+          this.worker.postMessage({ kind: 'pull', id: message.id } satisfies LiveRequest);
+        })().catch(cause => { this.worker.postMessage({ kind: 'cancel', id: message.id } satisfies LiveRequest); this.pending.delete(message.id); pending.cleanup(); pending.reject(cause); });
+      }
       else if (message.kind === 'prepared') {
         if (message.id !== this.latest || pending.job.signal?.aborted) this.worker.postMessage({ kind: 'cancel', id: message.id } satisfies LiveRequest);
         else { pending.acknowledged = true; this.worker.postMessage({ kind: 'ack', id: message.id } satisfies LiveRequest); }
@@ -34,6 +42,7 @@ export class PagedRecordingClient {
       else {
         this.pending.delete(message.id); pending.cleanup();
         if (message.kind === 'error') pending.reject(message.aborted ? new DOMException(message.message, 'AbortError') : new Error(message.message));
+        else if (message.kind === 'capture-done') { if (pending.job.signal?.aborted) pending.reject(pending.job.signal.reason); else pending.resolve(message); }
         else if (message.kind === 'records') { if (pending.job.signal?.aborted) pending.reject(pending.job.signal.reason); else pending.resolve(message); }
         else if (!pending.acknowledged && (message.id !== this.latest || pending.job.signal?.aborted)) { this.worker.postMessage({ kind: 'cancel', id: message.id } satisfies PagedRequest); pending.reject(new DOMException('Pedido substituído ou cancelado', 'AbortError')); }
         else {
@@ -52,12 +61,12 @@ export class PagedRecordingClient {
   }
   static async startLive(source: string, runtime: RuntimeSelection, metadata: TraceMetadata, options: LiveOptions, job: ClientJob = {}): Promise<PagedRecordingClient> { const client = new PagedRecordingClient(true); try { await client.request({ kind: 'start', source, runtime, metadata, options }, job); return client; } catch (cause) { client.dispose(); throw cause; } }
   static async resumeLive(id: string, options: LiveOptions, job: ClientJob = {}): Promise<PagedRecordingClient> { const client = new PagedRecordingClient(true); try { await client.request({ kind: 'resume', recordingId: id, options }, job); return client; } catch (cause) { client.dispose(); throw cause; } }
-  private request(input: Input | Omit<Extract<PagedRequest, { kind: 'open' }>, 'id'>, job: ClientJob = {}): Promise<Result> {
+  private request(input: Input | Omit<Extract<PagedRequest, { kind: 'open' }>, 'id'>, job: ClientJob = {}, consume?: Pending['consume']): Promise<Result> {
     if (this.disposed) return Promise.reject(new Error('Histórico fechado')); job.signal?.throwIfAborted();
     const id = ++this.sequence; this.latest = id;
     return new Promise((resolve, reject) => {
       const cancel = () => { if (!this.pending.get(id)?.acknowledged) this.worker.postMessage({ kind: 'cancel', id } satisfies PagedRequest); };
-      this.pending.set(id, { resolve, reject, job, acknowledged: false, cleanup: () => job.signal?.removeEventListener('abort', cancel) }); job.signal?.addEventListener('abort', cancel, { once: true });
+      this.pending.set(id, { resolve, reject, job, consume, acknowledged: false, cleanup: () => job.signal?.removeEventListener('abort', cancel) }); job.signal?.addEventListener('abort', cancel, { once: true });
       this.worker.postMessage({ ...input, id });
     });
   }
@@ -71,7 +80,8 @@ export class PagedRecordingClient {
   async closeLive(): Promise<void> { if (!this.isLive) return; const response = await this.stateRequest({ kind: 'close' }); if (response.recording?.pauseReason || response.recording?.pendingSteps) throw new Error(response.recording.pauseReason ?? 'Passos pendentes não foram salvos'); }
   async capture(maxHistoryBytes: number, job: ClientJob = {}): Promise<ImportedHistory> {
     const { header, snapshot } = this; const builder = DebugSession.recordingBuilder(header.program.source, { ...header.program.runtime, maxSteps: header.limits?.maxSteps ?? 20_000, maxFrames: header.limits?.maxFrames ?? 256, maxHistoryBytes }, snapshot.count, snapshot.cursor);
-    for (let first = 0; first < snapshot.count; first += 16) { job.signal?.throwIfAborted(); const response = await this.request({ kind: 'range', first, count: Math.min(16, snapshot.count - first) }, job); if (response.kind !== 'records') throw new Error('Captura incompleta'); builder.append(response.records); job.onProgress?.(builder.count, snapshot.count); await recordingYield(job); }
+    const response = await this.request({ kind: 'capture', count: snapshot.count }, job, records => { builder.append(records); job.onProgress?.(builder.count, snapshot.count); });
+    if (response.kind !== 'capture-done' || builder.count !== snapshot.count) throw new Error('Captura incompleta');
     const session = await builder.finish(job), bytes = (snapshot.recording?.diskBytes ?? header.entry.bytes) + (snapshot.recording?.pendingBytes ?? 0); return { name: header.entry.name, filename: header.entry.filename, bytes, checksum: await digest(JSON.stringify({ id: header.entry.id, cursor: snapshot.cursor, count: snapshot.count, revision: snapshot.recording?.revision })), session };
   }
   async setCacheBudget(bytes: number): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'cache', bytes }); }

@@ -26,8 +26,10 @@ export type LiveRequest = Exclude<PagedRequest, { kind: 'open' }> | ({ id: numbe
   { kind: 'start'; source: string; runtime: RuntimeSelection; metadata: TraceMetadata; options: LiveOptions }
   | { kind: 'resume'; recordingId: string; options: LiveOptions }
   | { kind: 'flush' | 'close' | 'run' }
-  | { kind: 'range'; first: number; count: number }
+  | { kind: 'range'; first: number; count: number } | { kind: 'capture'; count: number } | { kind: 'pull' }
 ));
 export type LiveResponse = PagedResponse
+  | { id: number; kind: 'capture-records'; records: readonly DeepReadonly<Step>[] }
+  | { id: number; kind: 'capture-done' }
   | { id: number; kind: 'records'; records: readonly DeepReadonly<Step>[] }
   | { id: number; kind: 'state'; snapshot: PagedSnapshot; header?: PagedHeader; events?: readonly HistoryEvent[] };

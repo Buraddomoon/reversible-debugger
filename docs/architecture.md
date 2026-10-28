@@ -250,3 +250,9 @@ A admissão do journal reserva leitura do maior bloco durável/buffer, evitando 
 `execution-limits.ts` define o padrão de 20.000 passos e teto de 50.000, mantendo 256 frames. `DebugSession.setExecutionLimits` valida ambos os valores antes de aplicá-los; reduções respeitam a contagem e profundidade máxima de todo o histórico. O controlador transforma a fronteira de passos em parada de gravação; `forward()` conserva seu erro de baixo nível. Preferências por programa ficam separadas dos scripts. Sessões contínuas copiam os valores ao criar a fonte imutável.
 
 Limites ampliados usam envelope de arquivo v3, manifesto v2 e fonte de journal v2, com VM2 e schema IndexedDB v1. Leitores aceitam as variantes anteriores e escritores conservam os formatos legados até 20.000 passos. Exportação/captura congelam os limites antes do primeiro await. [Contrato, limites de compatibilidade e ensaio de 50.000 passos](execution-limits.md).
+
+## Transferência sequencial e saída limitada no DOM
+
+A materialização de um journal usa `LiveRecording.streamRecords` e o protocolo interno `capture` → `capture-records` → `pull` → `capture-done`. Um bloco temporário permanece em uso entre pacotes de até 16 registros, mesmo quando não cabe no LRU. O cliente valida cada pacote no builder privado antes de solicitar o próximo; operações concorrentes são serializadas pelo Worker. Cancelamento/substituição descartam a captura sem alterar a origem. A reserva de leitura e a admissão existentes continuam em vigor.
+
+`ProgramOutput` compartilha paginação nos painéis clássico, paginado e comparativo. Percorre os tamanhos das entradas de saída, concatena apenas a janela visível de até 32.769 unidades UTF-16 e evita separar pares substitutos. A saída completa continua na VM e nos snapshots; o download concatena o texto apenas sob ação explícita. [Contrato, limites e validação nativa](transfers-and-output.md).

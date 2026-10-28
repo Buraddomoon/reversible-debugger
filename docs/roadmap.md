@@ -227,11 +227,21 @@ Critério atendido: transações maiores que o bloco/cache continuam reversívei
 
 Critério atendido: limites declarados acompanham gravação, retomada, arquivos, capturas e comparação, preservando o estado e os deltas. Quotas de memória/disco/índices permanecem; podem pausar antes do teto de passos. Operações integrais com cache pequeno podem levar dezenas de segundos.
 
-## Próxima etapa — reduzir o custo de transferências e grandes saídas
+## Transferências sequenciais e saída paginada — implementado
 
-- Medir e reduzir releituras/cópias na captura integral quando um bloco não cabe no cache retido, mantendo transporte limitado e cancelamento.
-- Limitar o trabalho de renderização de saídas extensas, preservando acesso a todo o texto e reversibilidade.
-- Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
-- Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.
+- Captura contínua com uma leitura por bloco, inclusive acima do cache retido; pacotes de até 16 registros e confirmação do consumidor antes do próximo envio.
+- Builder privado, futuro pendente e cursor preservados; cancelamento, orçamento e substituição sem publicação parcial ou reexecução.
+- Saída com páginas de cerca de 32 Ki caracteres, seleção direta, acompanhamento do fim e download integral nos painéis clássico/paginado/comparação; Unicode e reversibilidade preservados.
+- Testes gerados, matriz de transações grandes e Firefox nativo: 50.000 passos, comparação com captura anterior, estados completos e 800.800 caracteres em 25 páginas. [Contrato, dados e reprodução](transfers-and-output.md).
+
+Critério atendido: eliminar releituras identificadas na captura com cache pequeno e limitar texto no DOM, preservando registros, estado e formatos. Snapshots da VM ainda incluem saída completa; materialização/download continuam ações integrais explícitas.
+
+## Próxima etapa — ampliar o subconjunto Python com strings
+
+- Definir strings como valores da VM: literais, escapes, operações básicas e mensagens de erro compatíveis com o subconjunto documentado.
+- Versionar o codec quando necessário, preservando leitura dos históricos atuais e quotas explícitas para os novos valores.
+- Cobrir variáveis, argumentos/retornos, listas, `print`, comparação e todos os estados nos dois sentidos; acrescentar exemplos curtos de texto.
+
+A ampliação de limites além de 50.000, retenção parcial e adaptador JavaScript continuam marcos separados. Se houver retenção parcial, o primeiro cursor disponível e o checkpoint na fronteira precisam ser explícitos; remover início/futuro exige política visível.
 
 Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.

@@ -48,7 +48,7 @@ Erros de escrita pausam a gravação fora do estado da VM. Todos os passos aceit
 
 O Worker usa **preparação → ACK da UI → commit/escrita → estado publicado**. Cancelar antes do ACK desfaz a instrução especulativa ou abandona o salto privado. Depois do ACK, o pedido foi aceito e termina antes do próximo pedido. **Pausar** conclui o lote aceito de até 16 passos; não desfaz passos já aceitos. A fila conserva apenas um pedido ativo e o destino pendente mais recente.
 
-**Abrir debugger completo** e **Comparar execuções** transferem registros em lotes de até 16 para um builder privado, incluindo o futuro que ainda está no buffer. Só publicam a sessão integral ao concluir. Esse caminho permite exportar mesmo se o journal estiver sem espaço; passa a usar o histórico integral em memória e encerra a gravação contínua. O journal preserva sua última fronteira durável, e a lease expira após a transferência. Exportar/salvar a captura integral é uma ação explícita.
+**Abrir debugger completo** e **Comparar execuções** transferem registros em lotes de até 16 para um builder privado, incluindo o futuro que ainda está no buffer. A captura sequencial mantém o bloco em uso entre lotes e aguarda a confirmação de consumo, evitando releituras quando ele não cabe no LRU. [Contrato e medidas](transfers-and-output.md). Só publicam a sessão integral ao concluir. Esse caminho permite exportar mesmo se o journal estiver sem espaço; passa a usar o histórico integral em memória e encerra a gravação contínua. O journal preserva sua última fronteira durável, e a lease expira após a transferência. Exportar/salvar a captura integral é uma ação explícita.
 
 ## Validação
 
