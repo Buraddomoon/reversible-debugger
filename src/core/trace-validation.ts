@@ -1,3 +1,4 @@
+import { MAX_EXECUTION_STEPS } from './execution-limits';
 import type { Program } from './compiler';
 import { applyChange, applyStep, type Change, type Control, type Frame, type MachineState, type Step, type DeepReadonly } from './machine';
 import { pythonBuiltins, pythonTruth } from './python-values';
@@ -43,14 +44,14 @@ function value(item: unknown, program: Program): asserts item is Value {
 }
 function control(item: unknown, program: Program): asserts item is Control {
   const c = fields(item, ['pc', 'status', 'error', 'nextFrameId', 'nextObjectId', 'heapItems']);
-  integer(c.pc, 0, program.instructions.length); integer(c.nextFrameId, 1, 20_001);
+  integer(c.pc, 0, program.instructions.length); integer(c.nextFrameId, 1, MAX_EXECUTION_STEPS + 1);
   integer(c.nextObjectId, 1, MAX_HEAP_OBJECTS + 1); integer(c.heapItems, 0, MAX_HEAP_ITEMS);
   requireTrace(typeof c.status === 'string' && ['running', 'halted', 'error'].includes(c.status), 'status desconhecido');
   if (c.status === 'error') text(c.error); else requireTrace(c.error === null, 'erro incompatível com status');
 }
 function frame(item: unknown, program: Program): asserts item is Frame {
   const f = fields(item, ['id', 'name', 'locals', 'returnPc', 'operandBase']);
-  integer(f.id, 0, 20_000); text(f.name); integer(f.operandBase, 0, 20_000);
+  integer(f.id, 0, MAX_EXECUTION_STEPS); text(f.name); integer(f.operandBase, 0, 20_000);
   requireTrace(f.id === 0 ? f.name === 'programa' && f.returnPc === null && f.operandBase === 0 : typeof f.name === 'string' && Object.hasOwn(program.functions, f.name), 'frame desconhecido');
   if (f.id !== 0) integer(f.returnPc, 0, program.instructions.length - 1);
   for (const [key, local] of Object.entries(object(f.locals))) { name(key); value(local, program); }
@@ -65,7 +66,7 @@ function change(item: unknown, program: Program): asserts item is Change {
   const c = object(item);
   switch (c.kind) {
     case 'control': fields(c, ['kind', 'before', 'after']); control(c.before, program); control(c.after, program); break;
-    case 'binding': fields(c, ['kind', 'frameId', 'name', 'before', 'after']); integer(c.frameId, 0, 20_000); name(c.name); binding(c.before, program); binding(c.after, program); break;
+    case 'binding': fields(c, ['kind', 'frameId', 'name', 'before', 'after']); integer(c.frameId, 0, MAX_EXECUTION_STEPS); name(c.name); binding(c.before, program); binding(c.after, program); break;
     case 'heap-allocation': {
       requireTrace(program.runtime.language === 'python', 'heap incompatível com runtime');
       fields(c, ['kind', 'id', 'object']); integer(c.id, 1, MAX_HEAP_OBJECTS);

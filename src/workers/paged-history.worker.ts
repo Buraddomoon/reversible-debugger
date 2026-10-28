@@ -46,7 +46,7 @@ function start(message: PagedRequest): void {
       if (message.kind === 'open') {
         const opened = await PagedHistoryStore.open(library, checkpoints, message.recordingId, message.options, { ...job, beforePublish: undefined }); task.abort.signal.throwIfAborted();
         store?.dispose(); store = opened; control = new PagedExecutionControl(store); await confirm(task);
-        scope.postMessage({ id: message.id, kind: 'state', header: { entry: opened.recording.entry, program: opened.program, events: opened.index.events }, snapshot: snapshot() });
+        scope.postMessage({ id: message.id, kind: 'state', header: { entry: opened.recording.entry, program: opened.program, events: opened.index.events, limits: opened.recording.manifest.header.limits }, snapshot: snapshot() });
       } else {
         if (!store) throw new Error('Abra uma execução salva antes de navegar');
         if (message.kind === 'seek') {

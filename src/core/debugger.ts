@@ -5,6 +5,7 @@ import { CheckpointHistory, HistoryBudgetError, type HistoryOptions, type Histor
 import { accountStep, measureMachine } from './storage-accounting';
 export { HistoryBudgetError } from './history';
 import { restoreValidatedStep } from './trace-validation';
+import { DEFAULT_EXECUTION_LIMITS, validateExecutionLimits, type ExecutionLimits } from './execution-limits';
 
 export interface RecordingJob {
   signal?: AbortSignal;
@@ -50,7 +51,7 @@ export class SeekSupersededError extends Error {
 
 export class HistoryLimitError extends Error {
   constructor(limit: number) {
-    super(`Limite de ${limit.toLocaleString('pt-BR')} passos registrados atingido. Reinicie ou reduza o programa.`);
+    super(`Limite de ${limit.toLocaleString('pt-BR')} passos registrados atingido. Aumente o limite da execução para continuar, ou reinicie.`);
     this.name = 'HistoryLimitError';
   }
 }
@@ -61,8 +62,10 @@ export class DebugSession {
   private machine = initialState();
   private storage: HistoryStore;
   private position = 0;
-  readonly maxSteps: number;
-  readonly maxFrames: number;
+  private limits: ExecutionLimits;
+  get maxSteps() { return this.limits.maxSteps; }
+  get maxFrames() { return this.limits.maxFrames; }
+  get stepLimitReached() { return !this.recordingOnly && this.machine.control.status === 'running' && this.history.length >= this.maxSteps && this.cursor === this.history.length; }
   readonly runtime: RuntimeSelection;
   private recordingOnly = false;
   private payload = measureMachine(this.machine);
@@ -73,13 +76,20 @@ export class DebugSession {
   constructor(source: string, options: HistoryOptions & { maxSteps?: number; maxFrames?: number; language?: string; version?: string } = {}) {
     this.runtime = getRuntime(options.language ?? 'rewind', options.version);
     this.compiled = compile(source, this.runtime);
-    this.maxSteps = options.maxSteps ?? 20_000;
-    this.maxFrames = options.maxFrames ?? 256;
-    if (!Number.isInteger(this.maxSteps) || this.maxSteps < 1) throw new Error('maxSteps precisa ser um inteiro positivo');
-    if (!Number.isInteger(this.maxFrames) || this.maxFrames < 2) throw new Error('maxFrames precisa ser um inteiro maior que um');
+    this.limits = { maxSteps: options.maxSteps ?? DEFAULT_EXECUTION_LIMITS.maxSteps, maxFrames: options.maxFrames ?? DEFAULT_EXECUTION_LIMITS.maxFrames };
+    validateExecutionLimits(this.limits);
     this.storage = new CheckpointHistory(this.machine, options);
   }
   get program(): Program { return this.compiled; }
+  setExecutionLimits(limits: ExecutionLimits): void {
+    validateExecutionLimits(limits);
+    if (this.recordingOnly) throw new Error('Os limites pertencem à gravação importada. Execute o código de novo para alterá-los.');
+    if (limits.maxSteps < this.history.length) throw new Error('O limite não pode ser menor que o histórico já gravado.');
+    let depth = 1, peak = 1;
+    for (const step of this.history) for (const c of step.changes) if (c.kind === 'frames') { depth += c.added.length - c.removed.length; peak = Math.max(peak, depth); }
+    if (limits.maxFrames < peak) throw new Error('O limite da pilha não pode ser menor que a profundidade já registrada, incluindo o futuro.');
+    this.cancelSeek(); this.limits = { ...limits };
+  }
   get state(): DeepReadonly<MachineState> { return this.machine; }
   get history(): readonly DeepReadonly<Step>[] { return this.storage.steps; }
   get historyStats() { return this.storage.stats; }
@@ -229,7 +239,8 @@ export class DebugSession {
   }
   /** Stream into a private VM. Failed/incomplete builders can never publish. */
   static recordingBuilder(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number }, count: number, cursor: number): RecordingBuilder {
-    if (!Number.isSafeInteger(count) || count < 0 || count > options.maxSteps || !Number.isSafeInteger(cursor) || cursor < 0 || cursor > count || options.maxSteps > 20_000 || options.maxFrames > 256) throw new Error('Histórico inválido: limites/cursor incompatíveis');
+    validateExecutionLimits(options);
+    if (!Number.isSafeInteger(count) || count < 0 || count > options.maxSteps || !Number.isSafeInteger(cursor) || cursor < 0 || cursor > count) throw new Error('Histórico inválido: limites/cursor incompatíveis');
     const session = new DebugSession(source, options); session.recordingOnly = true;
     let closed = false;
     return {

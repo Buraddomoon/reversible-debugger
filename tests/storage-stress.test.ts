@@ -12,6 +12,7 @@ import { encode, exportHistory, importHistory } from '../src/core/portable-histo
 import { encodedBytes } from '../src/core/storage-accounting';
 import * as machine from '../src/core/machine';
 
+const stressSteps = Number(process.env.REWIND_STRESS_STEPS ?? 20000);
 const fast = { yieldControl: async () => {} }, details = { name: 'Estresse', filename: 'stress.py' };
 const resources: Array<{ close(): Promise<void> }> = [];
 function setup() {
@@ -23,8 +24,8 @@ afterEach(async () => { vi.restoreAllMocks(); await Promise.all(resources.splice
 
 describe('estresse de estados e transações indivisíveis', () => {
   for (const fixture of stressFixtures) it(`preserva journal, checkpoint, captura e arquivo: ${fixture.id}`, async () => {
-    const { journal, factory } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { cacheBytes: 1024, bufferBytes: 32768 }, fast);
-    const oracle = new DebugSession(fixture.source, { ...stressRuntime, maxHistoryBytes: 64 * 1024 * 1024 });
+    const { journal, factory } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxSteps: stressSteps, cacheBytes: 1024, bufferBytes: 32768 }, fast);
+    const oracle = new DebugSession(fixture.source, { ...stressRuntime, maxSteps: stressSteps, maxHistoryBytes: 64 * 1024 * 1024 });
     while (live.ledger.canRecord) await live.seek(live.count + 1, fast);
     while (oracle.canForward) oracle.forward();
     expect(live.count).toBe(oracle.cursor); sameState(live.state, oracle);
@@ -53,7 +54,7 @@ describe('estresse de estados e transações indivisíveis', () => {
     expect(resumed.cursor).toBe(0); await resumed.seek(frontier, fast); oracle.seek(frontier); sameState(resumed.state, oracle);
     expect(execute).not.toHaveBeenCalled(); await resumed.close(); execute.mockRestore();
 
-    // Saved captures retain v2/VM2 compatibility and also isolate oversize blocks.
+    // Captures preserve VM2 semantics and select the envelope by declared limits.
     oracle.seek(0);
     const library = new ExecutionLibrary({ factory, name: 'saved-stress' }), cache = new CheckpointCache(factory, 'derived-stress');
     resources.push(library, cache);
@@ -65,7 +66,7 @@ describe('estresse de estados e transações indivisíveis', () => {
   }, 30_000);
 
   it('recusa delta grande pelo orçamento antes do ACK e restaura a VM especulativa', async () => {
-    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxHistoryBytes: 2 * 1024 * 1024, cacheBytes: 1024, bufferBytes: 32768 }, fast);
+    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxSteps: stressSteps, maxHistoryBytes: 2 * 1024 * 1024, cacheBytes: 1024, bufferBytes: 32768 }, fast);
     while (live.program.instructions[live.state.control.pc]?.op !== 'BUILD_LIST') await live.seek(live.count + 1, fast);
     const before = structuredClone(live.state), count = live.count, accept = vi.fn(async () => {});
     await expect(live.seek(count + 1, { ...fast, beforePublish: accept })).rejects.toBeInstanceOf(HistoryBudgetError);
@@ -76,7 +77,7 @@ describe('estresse de estados e transações indivisíveis', () => {
   });
 
   it('cancelar a confirmação do delta grande restaura operandos, heap e IDs', async () => {
-    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, {}, fast);
+    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxSteps: stressSteps,}, fast);
     while (live.program.instructions[live.state.control.pc]?.op !== 'BUILD_LIST') await live.seek(live.count + 1, fast);
     const before = structuredClone(live.state), count = live.count, abort = new AbortController();
     await expect(live.seek(count + 1, { ...fast, signal: abort.signal, beforePublish: async prepared => {
@@ -88,7 +89,7 @@ describe('estresse de estados e transações indivisíveis', () => {
   });
 
   it('quota no head do bloco grande aborta dados e permite retry sem duplicar o delta', async () => {
-    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { bufferBytes: 32768 }, fast);
+    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxSteps: stressSteps, bufferBytes: 32768 }, fast);
     while (live.program.instructions[live.state.control.pc]?.op !== 'BUILD_LIST') await live.seek(live.count + 1, fast);
     await live.flush(); const durable = live.count, previous = await journal.open(live.entry.id), put = IDBObjectStore.prototype.put;
     const fault = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function(this: IDBObjectStore, ...args: Parameters<typeof put>) {
@@ -104,7 +105,7 @@ describe('estresse de estados e transações indivisíveis', () => {
   });
 
   it('falha no pré-flush abandona o delta grande especulativo antes do ACK', async () => {
-    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { bufferBytes: 32768 }, fast);
+    const fixture = stressFixtures[0], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxSteps: stressSteps, bufferBytes: 32768 }, fast);
     while (live.program.instructions[live.state.control.pc]?.op !== 'BUILD_LIST') await live.seek(live.count + 1, fast);
     const before = structuredClone(live.state), count = live.count, pending = live.ledger.pendingSteps, disk = await journal.open(live.entry.id), accept = vi.fn(async () => {});
     expect(pending).toBeGreaterThan(0);
@@ -119,7 +120,7 @@ describe('estresse de estados e transações indivisíveis', () => {
   });
 
   it('falhas auxiliares em checkpoint/prefixo grandes não desfazem o journal', async () => {
-    const fixture = stressFixtures[1], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { bufferBytes: 32768 }, fast);
+    const fixture = stressFixtures[1], { journal } = setup(), live = await LiveRecording.start(journal, fixture.source, stressRuntime, details, { maxSteps: stressSteps, bufferBytes: 32768 }, fast);
     vi.spyOn(journal.checkpoints, 'put').mockRejectedValue(new DOMException('Quota auxiliar', 'QuotaExceededError'));
     vi.spyOn(journal.validation, 'publish').mockRejectedValue(new DOMException('Quota auxiliar', 'QuotaExceededError'));
     while (live.ledger.canRecord) await live.seek(live.count + 1, fast);

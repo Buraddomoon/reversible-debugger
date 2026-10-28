@@ -1,5 +1,7 @@
 # Históricos portáveis
 
+Atualização: [limites configuráveis e versões ampliadas](execution-limits.md) permitem até 50.000 passos: envelope v3 / manifesto v2 / fonte de journal v2 quando o limite excede 20.000. A versão atual mantém leitura e escrita legadas dentro dos tetos anteriores, com a mesma VM2 e quotas. As medidas históricas abaixo conservam as condições em que foram coletadas.
+
 **Exportar histórico** baixa um arquivo `.rewind.json` com fonte, linguagem/versão, deltas, limites e cursor atual. O arquivo inclui todos os passos registrados, mesmo os posteriores ao cursor escolhido. Importá-lo reabre exatamente aquela posição, sem executar o programa novamente.
 
 ![Firefox: soma com bug reaberta no passo 64, com locais e pilha preservados](portable-history.png)

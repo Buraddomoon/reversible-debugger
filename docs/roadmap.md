@@ -218,10 +218,19 @@ Critério atendido: medir e distinguir memória do navegador de payload lógico,
 
 Critério atendido: transações maiores que o bloco/cache continuam reversíveis e recuperáveis; as falhas preservam o estado aceito. A medição inclui RPCs acima de 200 ms; limites atuais foram mantidos. Inicialização fria do browser e picos não observáveis nas amostras continuam como validações distintas.
 
-## Próxima etapa — limites configuráveis e compatibilidade
+## Limites configuráveis e compatibilidade — implementado
 
-- Definir limites por sessão e contratos de leitura/escrita de journal, capturas e arquivos antes de liberar mais de 20.000 passos.
-- Dimensionar quotas de índices/estado e repetir a matriz de estresse nos novos limites, com critérios explícitos de resposta e memória.
+- Padrão de 20.000 passos e escolha de até 50.000, com 2 a 256 níveis da pilha; preferências por programa preservadas no reinício/recarga.
+- Aumento na sessão clássica sem perder registros; redução validada contra todo o histórico/futuro. Gravação contínua copia limites na criação e mantém sua fonte imutável.
+- Formatos explícitos para limites ampliados: arquivo v3, manifesto de captura v2 e fonte de journal v2, mantendo VM2 e leitura dos formatos anteriores. Escrita legada preservada dentro dos tetos antigos; bancos schema v1 sem migração destrutiva.
+- Testes de 50.000 passos, coexistência com legado, exportação/captura atômicas, persistência e sete fronteiras de referência; Firefox verifica os clientes/Workers, continuação, materialização, reinício/recarga e 390 px. [Contrato e reprodução](execution-limits.md).
+
+Critério atendido: limites declarados acompanham gravação, retomada, arquivos, capturas e comparação, preservando o estado e os deltas. Quotas de memória/disco/índices permanecem; podem pausar antes do teto de passos. Operações integrais com cache pequeno podem levar dezenas de segundos.
+
+## Próxima etapa — reduzir o custo de transferências e grandes saídas
+
+- Medir e reduzir releituras/cópias na captura integral quando um bloco não cabe no cache retido, mantendo transporte limitado e cancelamento.
+- Limitar o trabalho de renderização de saídas extensas, preservando acesso a todo o texto e reversibilidade.
 - Se houver retenção parcial, checkpoint na fronteira e primeiro cursor disponível explícito; remover início/futuro exige política visível.
 - Preservar compatibilidade de banco/arquivos e todos os testes de reversibilidade ao liberar sessões maiores.
 

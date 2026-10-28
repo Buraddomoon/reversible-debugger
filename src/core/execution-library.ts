@@ -1,3 +1,4 @@
+import { MAX_EXECUTION_STEPS } from './execution-limits';
 import { DebugSession, recordingYield, type RecordingJob } from './debugger';
 import { captureRecording, decodeBlock, encodeBlocks, utf8Bytes, validateManifest, type BlockDescriptor, type ExecutionHeader, type ExecutionManifest } from './history-blocks';
 import { digest, MAX_TRACE_BYTES, type ImportedHistory, type TraceMetadata } from './portable-history';
@@ -31,7 +32,7 @@ function message(cause: unknown): Error {
 function row(input: unknown): CatalogRow {
   const r = fields(input, ['id', 'name', 'filename', 'language', 'version', 'createdAt', 'cursor', 'count', 'bytes', 'blocks', 'status', 'lease', 'written']);
   text(r.id, 100); text(r.name, 160); text(r.filename, 240); text(r.language, 20); text(r.version, 20);
-  integer(r.createdAt, 0, Number.MAX_SAFE_INTEGER); integer(r.count, 0, 20_000); integer(r.cursor, 0, r.count); integer(r.bytes, 0, MAX_TRACE_BYTES); integer(r.blocks, 0, r.count); integer(r.written, 0, r.count); integer(r.lease, 0, Number.MAX_SAFE_INTEGER);
+  integer(r.createdAt, 0, Number.MAX_SAFE_INTEGER); integer(r.count, 0, MAX_EXECUTION_STEPS); integer(r.cursor, 0, r.count); integer(r.bytes, 0, MAX_TRACE_BYTES); integer(r.blocks, 0, r.count); integer(r.written, 0, r.count); integer(r.lease, 0, Number.MAX_SAFE_INTEGER);
   requireTrace(r.status === 'writing' || r.status === 'ready', 'status do catálogo inválido');
   requireTrace(r.status !== 'ready' || r.written === r.count, 'execução publicada incompleta');
   return r as unknown as CatalogRow;

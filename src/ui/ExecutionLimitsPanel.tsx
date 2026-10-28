@@ -1,0 +1,10 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { MAX_EXECUTION_STEPS, MAX_EXECUTION_FRAMES, type ExecutionLimits } from '../core/execution-limits';
+export function ExecutionLimitsPanel({ limits, count, disabled, readOnly = false, onApply }: { limits: ExecutionLimits; count: number; disabled: boolean; readOnly?: boolean; onApply: (limits: ExecutionLimits) => void }) {
+  const [steps, setSteps] = useState(String(limits.maxSteps)), [frames, setFrames] = useState(String(limits.maxFrames));
+  useEffect(() => { setSteps(String(limits.maxSteps)); setFrames(String(limits.maxFrames)); }, [limits.maxSteps, limits.maxFrames]);
+  const submit = (event: FormEvent) => { event.preventDefault(); onApply({ maxSteps: Number(steps), maxFrames: Number(frames) }); };
+  return <section className="storage-panel execution-limits" aria-label="Limites da execução" data-testid="execution-limits"><details><summary>Limites da execução · {limits.maxSteps.toLocaleString('pt-BR')} passos · {limits.maxFrames} níveis da pilha</summary>
+    {readOnly ? <p>Estes limites pertencem à gravação. Use Executar código de novo para iniciar uma execução com outros limites.</p> : <form onSubmit={submit}><div className="execution-limit-fields"><label htmlFor="execution-max-steps">Máximo de passos<input id="execution-max-steps" type="number" min={Math.max(1, count)} max={MAX_EXECUTION_STEPS} step="1" required disabled={disabled} value={steps} onChange={event => setSteps(event.target.value)} /></label><label htmlFor="execution-max-frames">Níveis da pilha<input id="execution-max-frames" type="number" min="2" max={MAX_EXECUTION_FRAMES} step="1" required disabled={disabled} value={frames} onChange={event => setFrames(event.target.value)} /></label><button type="submit" disabled={disabled}>Aplicar limites</button></div><p>Até 50.000 passos e 256 níveis, incluindo o programa. Alterar os limites mantém os passos já gravados. O orçamento de armazenamento também pode pausar a gravação.</p></form>}
+  </details></section>;
+}

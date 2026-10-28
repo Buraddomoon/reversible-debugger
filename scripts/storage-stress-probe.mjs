@@ -5,11 +5,11 @@ import { RecordingJournal } from '/src/core/recording-journal.ts';
 import { encodedBytes } from '/src/core/storage-accounting.ts';
 import { encode } from '/src/core/portable-history.ts';
 
-export async function createStressProbe(id) {
-  const fixture = stressFixtures.find(f => f.id === id), options = { cacheBytes: 1024, bufferBytes: 32768 };
+export async function createStressProbe(id, maxSteps = 20000) {
+  const fixture = stressFixtures.find(f => f.id === id), options = { maxSteps, cacheBytes: 1024, bufferBytes: 32768 };
   let client = await PagedRecordingClient.startLive(fixture.source, stressRuntime, { name: `Estresse · ${fixture.name}`, filename: `${id}.py` }, options);
   const recordingId = client.header.entry.id, journal = new RecordingJournal(), states = new Map();
-  const report = { id, name: fixture.name, recordingId, record: { batches: 0, maxRpcMs: 0, maxPayloadBytes: 0, maxPendingBytes: 0, maxFrames: 0 }, seeks: [], resumes: [] };
+  const report = { id, maxSteps, name: fixture.name, recordingId, record: { batches: 0, maxRpcMs: 0, maxPayloadBytes: 0, maxPendingBytes: 0, maxFrames: 0 }, seeks: [], resumes: [] };
   const state = () => JSON.stringify(encode(client.snapshot.state));
   const remember = () => states.set(client.snapshot.cursor, state());
   const healthy = () => {

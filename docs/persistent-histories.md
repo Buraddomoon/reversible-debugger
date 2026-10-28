@@ -1,5 +1,7 @@
 # Execuções salvas em blocos
 
+Atualização: [limites configuráveis e versões ampliadas](execution-limits.md) permitem até 50.000 passos: envelope v3 / manifesto v2 / fonte de journal v2 quando o limite excede 20.000. A versão atual mantém leitura e escrita legadas dentro dos tetos anteriores, com a mesma VM2 e quotas. As medidas históricas abaixo conservam as condições em que foram coletadas.
+
 **Salvar execução** guarda fonte, runtime, deltas e cursor no IndexedDB do navegador. A biblioteca mostra seis entradas por página; execuções fechadas mantêm somente metadados na interface. **Abrir** valida os blocos e restaura o cursor salvo, incluindo o futuro já registrado. Os passos continuam sendo transações reversíveis, sem snapshots de toda a memória a cada instrução.
 
 ![Biblioteca e execução reaberta no Firefox](execution-library.png)
@@ -63,7 +65,7 @@ Usar o mesmo navegador e endereço (origem, incluindo porta) é necessário para
 
 Um Worker local lê **um bloco por vez**, valida checksum/cadeia e transfere lotes de até **16 transações**, aguardando confirmação da UI. A UI valida diretamente em outro builder privado, sem acumular uma segunda lista completa de transações decodificadas. A sessão só aparece depois de todos os blocos e da restauração cancelável do cursor. Cancelar encerra o Worker; pedidos numerados e troca de sessão invalidam callbacks antigos.
 
-O marco original separou biblioteca em disco de execuções carregadas, com restauração integral. O marco seguinte acrescentou [paginação sob demanda](paged-history.md): **Abrir** usa cache/VM no Worker e checkpoints auxiliares; **Completo** mantém a restauração integral para edição/exportação/comparação. O limite atual segue em 20.000 passos. Compilação, hash/JSON de um bloco, uma transação individual, cópia de checkpoint e renderização podem ser indivisíveis. Gravação rende entre blocos e por alvo de 6 ms durante a codificação; os tempos não são garantia de tempo real.
+O marco original separou biblioteca em disco de execuções carregadas, com restauração integral. O marco seguinte acrescentou [paginação sob demanda](paged-history.md): **Abrir** usa cache/VM no Worker e checkpoints auxiliares; **Completo** mantém a restauração integral para edição/exportação/comparação. O padrão segue em 20.000 passos; limites ampliados usam o contrato versionado acima. Compilação, hash/JSON de um bloco, uma transação individual, cópia de checkpoint e renderização podem ser indivisíveis. Gravação rende entre blocos e por alvo de 6 ms durante a codificação; os tempos não são garantia de tempo real.
 
 Não há retenção parcial automática nem descarte silencioso do início. O viewer paginado mantém cache limitado e cancelamento ao trocar blocos. Gravação paginada/validação de segmentos e medidas de picos temporários vêm antes de ampliar o teto de passos.
 

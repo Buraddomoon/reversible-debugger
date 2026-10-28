@@ -25,6 +25,7 @@ export interface ExecutionView {
   readonly canForward: boolean;
   readonly canBackward: boolean;
   readonly recordingStop: unknown;
+  readonly stepLimitReached?: boolean;
 }
 
 /** Debug policy lives outside the VM: it only chooses when to stop applying deltas. */
@@ -84,6 +85,7 @@ export class ExecutionPolicy {
       try {
         while (moved < size && this.plan) {
           if (direction === 'forward') {
+            if (this.session.stepLimitReached) { this.finish('budget', plan); break; }
             if (!this.session.canForward) { this.finish(this.session.recordingStop ? 'budget' : this.session.state.control.status === 'running' ? 'recorded-end' : this.session.state.control.status, plan); break; }
             const point = this.breakpointLine();
             if (point !== null && !(plan.skipOrigin && this.session.cursor === plan.origin)) { this.finish('breakpoint', plan, point); break; }

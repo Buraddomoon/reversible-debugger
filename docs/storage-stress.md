@@ -16,6 +16,8 @@ npm run bench:stress
 
 O comando executa oito testes do núcleo e os ensaios no Firefox instalado. Gera `.artifacts/storage-stress-browser.json`, `.artifacts/storage-stress.html` e capturas. Usa perfil isolado dentro do projeto e as [portas/configurações do harness existente](../README.md#verificações); não instala componentes, não baixa navegadores e não usa o perfil pessoal. O ensaio é optativo, separado do smoke test comum. Os oito testes também fazem parte de `npm run check`.
 
+`REWIND_STRESS_STEPS=50000 npm run bench:stress` repete a mesma matriz declarando o limite ampliado e exercitando as versões novas. [Contrato de limites e resultado dessa rodada](execution-limits.md). As medidas datadas abaixo continuam sendo a coleta original de 20.000.
+
 ## Casos e invariantes
 
 | Caso | Pressão exercitada | Verificação |

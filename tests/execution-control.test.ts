@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import fc from 'fast-check';
-import { DebugSession, HistoryLimitError } from '../src/core/debugger';
+import { DebugSession } from '../src/core/debugger';
 import { ExecutionControl, type RunMode } from '../src/core/execution-control';
 import * as machine from '../src/core/machine';
 
@@ -231,10 +231,10 @@ describe('limites, erros, lotes e replay', () => {
   it('atingir o limite do histórico encerra o plano e mantém navegação reversível', () => {
     const session = new DebugSession('while True:\n    pass', { language: 'python', maxSteps: 17 });
     const control = new ExecutionControl(session); control.start('continue');
-    expect(() => control.runBatch(100)).toThrow(HistoryLimitError);
+    expect(control.runBatch(100).stop?.reason).toBe('budget');
     expect(control.running).toBe(false); expect(session.cursor).toBe(17);
     expect(run(control, 'reverse-continue').reason).toBe('start'); expect(session.cursor).toBe(0);
-    control.start('continue'); expect(() => control.runBatch(100)).toThrow(HistoryLimitError);
+    control.start('continue'); expect(control.runBatch(100).stop?.reason).toBe('budget');
     expect(session.history).toHaveLength(17);
   });
   it('finalização não vira breakpoint na função cujas instruções vêm depois de HALT', () => {

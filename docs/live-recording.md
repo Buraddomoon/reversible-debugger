@@ -1,5 +1,7 @@
 # Gravação persistida durante a execução
 
+Atualização: [limites configuráveis e versões ampliadas](execution-limits.md) permitem até 50.000 passos: envelope v3 / manifesto v2 / fonte de journal v2 quando o limite excede 20.000. A versão atual mantém leitura e escrita legadas dentro dos tetos anteriores, com a mesma VM2 e quotas. As medidas históricas abaixo conservam as condições em que foram coletadas.
+
 **Gravar sessão** inicia uma execução do código atual, a partir do passo zero. O modal pede um nome; a nova sessão aparece numa biblioteca própria, separada dos scripts e das capturas feitas com **Salvar execução**. É possível gravar os dois runtimes já suportados, sem efeitos externos.
 
 Avançar além do fim registrado executa uma instrução nova. Voltar, saltar e reaplicar passos existentes usam os deltas, sem chamar o executor. A VM na fronteira gravada e a VM do cursor observado são independentes; navegar para trás preserva o futuro.
@@ -23,7 +25,7 @@ A tela mostra **Salvo até o passo N** e quantos passos estão **somente nesta a
 | Cache de replay | LRU de 2 MiB por padrão, ajustável até 8 MiB. Bloco maior que o cache é lido isoladamente. |
 | Índice de eventos | Incremental e compacto, até 4 MiB, sem snapshots por evento. |
 | Estado | Fronteira e cursor observado, com staging privado para saltos. Último checkpoint durável substituído por bloco, não por instrução. |
-| Limites de execução | 20.000 passos e 256 frames. Nenhuma retenção parcial nem descarte automático do início/futuro. |
+| Limites de execução | 20.000 passos por padrão, até 50.000 configurados na criação, e até 256 frames. Nenhuma retenção parcial nem descarte automático do início/futuro. |
 | Disco | Até oito sessões / 64 MiB no journal; cada sessão até 32 MiB de payload. |
 
 O orçamento lógico admite uma instrução antes da confirmação, contando buffer, índices, cache e reserva de cinco vezes o maior estado e duas vezes o maior delta. A UI reserva novamente o orçamento do ator/espelho no teto agregado de 256 MiB da página. Essas estimativas não medem RAM nem a ocupação física do IndexedDB: fonte, compilador, overhead de objetos/React/DOM e cópias transitórias do codec têm custos adicionais.
@@ -38,7 +40,7 @@ Uma lease de escritor de cinco segundos, renovada a cada 1,5 segundo, impede dua
 
 Retomar verifica fonte/programa/runtime e encadeamento, reutiliza um prefixo previamente validado quando disponível e confere o sufixo lendo um bloco por vez. Compara o estado final com o checkpoint durável antes de assumir o escritor e restaurar o cursor. Sem cache, ou com **Verificar todo o histórico ao retomar**, percorre todos os passos sem reter o histórico inteiro decodificado. [Contrato da validação reutilizável, falhas e medidas](segment-validation.md).
 
-Os bancos anteriores de scripts, capturas e checkpoints auxiliares permanecem compatíveis. Arquivos exportados continuam **v2 / rewind-vm/2**. Um banco de versão futura é recusado, sem apagar dados.
+Os bancos anteriores de scripts, capturas e checkpoints auxiliares permanecem compatíveis. Arquivos exportados usam **v2/v3 conforme o limite declarado, com rewind-vm/2**. Um banco de versão futura é recusado, sem apagar dados.
 
 ## Falhas, confirmação e resgate
 

@@ -185,7 +185,7 @@ As [medidas e decisões de escala](visual-explanations.md) mantêm a execução 
 
 ## Históricos portáveis
 
-`portable-history.ts` define envelope v2 / `rewind-vm/2`, codec de valores, identidade SHA-256 de programa/arquivo e quotas. Referências de lista usam tags por ID; alocações/mutações e contadores são validados. Arquivos v1 recebem diagnóstico explícito para abrir na branch anterior; não são migrados. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
+`portable-history.ts` define envelopes v2/v3 conforme o limite declarado, com `rewind-vm/2`, codec de valores, identidade SHA-256 de programa/arquivo e quotas. Referências de lista usam tags por ID; alocações/mutações e contadores são validados. Arquivos v1 recebem diagnóstico explícito para abrir na branch anterior; não são migrados. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
 
 `DebugSession.replayOnly` impede gravar além de uma importação parcial. `restart()` cria uma execução gravável nova. `forkRecording()` compartilha programa e payloads congelados, copia os índices de armazenamento e mantém VM/cursor próprios, sem reprocessar a execução inteira. A comparação usa esse fork para consumir arquivos sem executar código de novo.
 
@@ -244,3 +244,9 @@ Ambos os Workers serializam o pedido ativo e o destino pendente mais recente. Na
 Nos três atores paginados, incluindo comparação, `prepared` contém somente ID/tipo. O cliente usa identidade/cancelamento para decidir o ACK e recebe os estados apenas na publicação final, evitando uma cópia integral sem consumidor. O [perfil optativo de recursos](resource-profile.md) mede mensagens, payload, memória dos processos, RPCs e resposta da tela; a instrumentação fica nos scripts de benchmark, fora do bundle da aplicação.
 
 A admissão do journal reserva leitura do maior bloco durável/buffer, evitando que uma pausa por orçamento impeça desfazer o prefixo já aceito. Essa reserva consta nas estatísticas de payload. Bancos e codec permanecem compatíveis. [Contrato, demonstração e validação](paged-controls.md).
+
+## Limites e versões de armazenamento
+
+`execution-limits.ts` define o padrão de 20.000 passos e teto de 50.000, mantendo 256 frames. `DebugSession.setExecutionLimits` valida ambos os valores antes de aplicá-los; reduções respeitam a contagem e profundidade máxima de todo o histórico. O controlador transforma a fronteira de passos em parada de gravação; `forward()` conserva seu erro de baixo nível. Preferências por programa ficam separadas dos scripts. Sessões contínuas copiam os valores ao criar a fonte imutável.
+
+Limites ampliados usam envelope de arquivo v3, manifesto v2 e fonte de journal v2, com VM2 e schema IndexedDB v1. Leitores aceitam as variantes anteriores e escritores conservam os formatos legados até 20.000 passos. Exportação/captura congelam os limites antes do primeiro await. [Contrato, limites de compatibilidade e ensaio de 50.000 passos](execution-limits.md).

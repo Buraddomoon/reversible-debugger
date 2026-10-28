@@ -72,7 +72,9 @@ describe('política compartilhada em gravação contínua e replay paginado', ()
     await run(control, 'continue'); expect(store.state).toEqual(states.at(-1)); expect(execute).not.toHaveBeenCalled();
     expect('history' in store).toBe(false);
     if (store instanceof LiveRecording) { await store.close(); } else store.dispose();
-  });
+  // Generated paths deliberately reread blocks larger than the 1 KiB cache.
+  // This is a correctness property, not a five-second storage latency target.
+  }, 15_000);
 
   it('passar sobre e sair mantêm o frame original através de vários lotes', async () => {
     const { journal } = setup(), { session, states } = reference(factorial);

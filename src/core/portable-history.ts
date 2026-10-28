@@ -1,3 +1,4 @@
+import { LEGACY_MAX_STEPS, MAX_EXECUTION_STEPS, extendedLimits, validateExecutionLimits } from './execution-limits';
 import { DebugSession, recordingYield, type RecordingJob } from './debugger';
 import { initialState } from './machine';
 import { compile } from './compiler';
@@ -65,8 +66,8 @@ export function metadata(input: unknown): TraceMetadata {
 /** Captures the current cursor and all recorded steps, including its recorded future.
  * Full states/checkpoints are omitted; the importer rebuilds sparse checkpoints. */
 export async function exportHistory(session: DebugSession, details: TraceMetadata, job: RecordingJob = {}): Promise<string> {
-  metadata(details); integer(session.maxSteps, 1, 20_000); integer(session.maxFrames, 2, 256);
-  const records = [...session.history], cursor = session.cursor;
+  metadata(details); validateExecutionLimits(session);
+  const records = [...session.history], cursor = session.cursor, program = session.program, runtime = session.runtime, limits = { maxSteps: session.maxSteps, maxFrames: session.maxFrames }, capturedDetails = { ...details };
   const steps: string[] = [];
   let stepBytes = 0;
   let batchStart = performance.now();
@@ -77,12 +78,12 @@ export async function exportHistory(session: DebugSession, details: TraceMetadat
     if ((i + 1) % 256 === 0 || performance.now() - batchStart >= 8) { job.onProgress?.(i + 1, records.length); await recordingYield(job); batchStart = performance.now(); }
   }
   job.signal?.throwIfAborted();
-  const header = { vm: TRACE_VM, metadata: details, source: session.program.source, runtime: session.runtime, programHash: await digest(JSON.stringify(encode(session.program))), limits: { maxSteps: session.maxSteps, maxFrames: session.maxFrames }, initial: encode(initialState()), cursor };
+  const header = { vm: TRACE_VM, metadata: capturedDetails, source: program.source, runtime, programHash: await digest(JSON.stringify(encode(program))), limits, initial: encode(initialState()), cursor };
   await recordingYield(job);
   // Each record was already encoded in a bounded batch. Join its JSON without
   // traversing/encoding the whole trace a second time in a single task.
   const content = `${JSON.stringify(header).slice(0, -1)},"steps":[${steps.join(',')}]}`, checksum = await digest(content);
-  const result = `{"format":"${TRACE_FORMAT}","version":${TRACE_VERSION},"checksum":"${checksum}","payload":${content}}`;
+  const result = `{"format":"${TRACE_FORMAT}","version":${extendedLimits(limits) ? 3 : TRACE_VERSION},"checksum":"${checksum}","payload":${content}}`;
   byteLength(result); job.signal?.throwIfAborted(); job.onProgress?.(records.length, records.length);
   return result;
 }
@@ -92,7 +93,7 @@ export async function importHistory(content: string, job: RecordingJob & { maxHi
   try { parsed = JSON.parse(content); } catch { throw new Error('Histórico inválido: arquivo JSON corrompido'); }
   const envelope = fields(parsed, ['format', 'version', 'checksum', 'payload']);
   requireTrace(envelope.format === TRACE_FORMAT, 'formato desconhecido');
-  requireTrace(envelope.version === TRACE_VERSION, envelope.version === 1 ? 'arquivo v1 usa a VM anterior, sem heap; reabra na versão anterior (branch feat/portable-histories). O arquivo foi preservado.' : 'versão de arquivo incompatível');
+  requireTrace((envelope.version === TRACE_VERSION || envelope.version === 3), envelope.version === 1 ? 'arquivo v1 usa a VM anterior, sem heap; reabra na versão anterior (branch feat/portable-histories). O arquivo foi preservado.' : 'versão de arquivo incompatível');
   text(envelope.checksum, 64); requireTrace(/^[a-f0-9]{64}$/.test(envelope.checksum), 'checksum inválido');
   const expectedFields = ['vm', 'metadata', 'source', 'runtime', 'programHash', 'limits', 'initial', 'cursor', 'steps'];
   const encoded = fields(envelope.payload, expectedFields);
@@ -103,7 +104,7 @@ export async function importHistory(content: string, job: RecordingJob & { maxHi
   const details = metadata(payload.metadata); text(payload.source, MAX_SOURCE_CHARS);
   const runtimeFields = fields(payload.runtime, ['language', 'version']); text(runtimeFields.language, 20); text(runtimeFields.version, 20);
   const runtime = getRuntime(runtimeFields.language, runtimeFields.version);
-  const limits = fields(payload.limits, ['maxSteps', 'maxFrames']); integer(limits.maxSteps, 1, 20_000); integer(limits.maxFrames, 2, 256);
+  const limits = fields(payload.limits, ['maxSteps', 'maxFrames']); integer(limits.maxSteps, 1, envelope.version === 3 ? MAX_EXECUTION_STEPS : LEGACY_MAX_STEPS); integer(limits.maxFrames, 2, 256);
   requireTrace(Array.isArray(encoded.steps) && encoded.steps.length <= limits.maxSteps, 'passos excedem o limite');
   integer(payload.cursor, 0, encoded.steps.length);
   requireTrace(same(payload.initial, initialState()), 'estado inicial incompatível');

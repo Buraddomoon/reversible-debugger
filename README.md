@@ -14,6 +14,8 @@ Breakpoints por linha e os controles **Entrar**, **Passar sobre**, **Sair da fun
 
 **Listas Python** têm identidade estável no painel **Listas e referências**. Literais, índices, `append` e `len` preservam compartilhamento entre variáveis, parâmetros e retornos, inclusive ao desfazer mutações e ciclos.
 
+**Limites da execução** permite escolher até 50.000 passos e 256 níveis da pilha. Aumentar preserva os passos já gravados; a preferência fica salva por programa. [Regras e compatibilidade](docs/execution-limits.md).
+
 **Armazenamento desta execução** acompanha o payload reservado e permite ajustar o orçamento. A gravação pausa se a próxima instrução não couber, mantendo todos os passos para navegação e exportação.
 
 **Salvar execução** guarda o histórico em blocos no navegador. A biblioteca preserva execuções após recarregar; **Abrir** recupera o cursor e o futuro gravado, com validação e cancelamento. Scripts continuam separados.
@@ -132,7 +134,7 @@ Compare com **Python · Cópia independente**, cujo resultado é `2`. **Primeira
 
 ![Firefox: mutação da lista compartilhada observada por variáveis e parâmetro](docs/heap.png)
 
-Cada mutação guarda somente os itens removidos/adicionados. Checkpoints completos continuam esparsos. O formato de históricos agora é **v2 / rewind-vm/2**; arquivos v1 são recusados explicitamente e podem ser abertos na branch anterior `feat/portable-histories`. Scripts salvos continuam usando o mesmo formato. [Semântica, armazenamento, limites e benchmark](docs/reversible-lists.md).
+Cada mutação guarda somente os itens removidos/adicionados. Checkpoints completos continuam esparsos. O formato de históricos usa **rewind-vm/2**, com envelope v2 até 20.000 passos e v3 para limites ampliados; arquivos v1 são recusados explicitamente e podem ser abertos na branch anterior `feat/portable-histories`. Scripts salvos continuam usando o mesmo formato. [Semântica, armazenamento, limites e benchmark](docs/reversible-lists.md).
 
 ## Controlar o crescimento do histórico
 
@@ -255,6 +257,7 @@ npm run bench:resources # Firefox: RSS/PSS, cópias, RPC, DOM e relatório HTML
 npm run bench:stress  # Deltas grandes, checkpoints, quota/corrupção e cinco pares de retomadas
 npm run test:firefox -- --streaming-only # Comparação paginada e controles
 npm run test:firefox -- --controls-only # Comandos/breakpoints em Workers e UI
+npm run test:firefox -- --limits-only # Configuração e 50 mil passos em journal/arquivo/captura
 npm run test:firefox -- --reduced-motion # Perfil isolado com animações desativadas
 ```
 
@@ -322,6 +325,7 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Etapas e próximos marcos](docs/roadmap.md)
 - [Perfil de recursos, relatório visual e redução de cópias](docs/resource-profile.md)
 - [Estresse de estados, transações grandes e recuperação](docs/storage-stress.md)
+- [Limites configuráveis e compatibilidade dos formatos](docs/execution-limits.md)
 - [Medidas e política de checkpoints](docs/history-performance.md)
 - [Breakpoints e controles por comando](docs/breakpoints-stepping.md)
 - [Controles nas sessões contínuas e capturas paginadas](docs/paged-controls.md)
@@ -332,4 +336,4 @@ Snapshots **por passo** existem apenas como referência nos testes e no benchmar
 - [Orçamento do histórico](docs/storage-budget.md)
 - [Navegação cancelável](docs/cancellable-navigation.md)
 
-Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos registrados por sessão e 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. Os controles de depuração já estão unificados nesses modos. O perfil de recursos já mede memória dos processos, mensagens e resposta da tela em quatro programas; a preparação do ACK envia apenas ID/tipo para evitar cópia redundante de estado. A matriz de estresse também verifica transações grandes, redução de checkpoints, quota/corrupção e retomadas repetidas. A próxima etapa define limites configuráveis e compatibilidade antes de ampliar sessões.
+Limites atuais: 1.000.000 de caracteres, 128 níveis de aninhamento sintático, 20.000 passos por padrão, configuráveis até 50.000, e de 2 a 256 frames incluindo o global. Python limita literais inteiros a 4.300 dígitos, cálculos a 100.000 bits, heap a 4.096 listas/20.000 itens totais e cada `print` a 100.000 caracteres. A interface usa lotes limitados para devolver o controle ao navegador, inclusive nos saltos. Sessões integrais usam checkpoints a cada 128 passos, com teto de 128 cópias/espaçamento adaptativo, respeitando o orçamento de payload (até 64 MiB por padrão). Viewer paginado usa cache de deltas de até 8 MiB, checkpoints auxiliares em disco e reserva de estado/índice. Capturas/arquivos têm teto de 32 MiB, biblioteca de até 16 execuções/128 MiB e até 8 históricos completos/64 MiB abertos; o cache auxiliar em disco tem 64 MiB separados. Essas medidas não são RAM real. Gravação contínua, validação de prefixos, checkpoints graváveis e comparação de gravações já usam bancos/caches próprios. Os controles de depuração já estão unificados nesses modos. O perfil de recursos já mede memória dos processos, mensagens e resposta da tela em quatro programas; a preparação do ACK envia apenas ID/tipo para evitar cópia redundante de estado. A matriz de estresse também verifica transações grandes, redução de checkpoints, quota/corrupção e retomadas repetidas. Os limites configuráveis já acompanham gravação, retomada, arquivos e capturas, preservando leitura legada. A próxima etapa reduz o custo de transferências integrais e grandes saídas.

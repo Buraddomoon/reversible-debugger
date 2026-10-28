@@ -180,7 +180,7 @@ describe('biblioteca IndexedDB em blocos', () => {
     let manifest: unknown; await rawDB(factory, name, tx => { const req = tx.objectStore('manifests').get(saved.id); req.onsuccess = () => { manifest = req.result; }; }); expect(manifest).toBeDefined();
   });
   for (const [label, change] of [
-    ['versão', (m: any) => { m.header.version = 2; }],
+    ['versão', (m: any) => { m.header.version = 99; }],
     ['VM', (m: any) => { m.header.vm = 'outra'; }],
     ['programa', (m: any) => { m.header.source = 'result = 999'; }],
     ['cursor', (m: any) => { m.header.cursor = 20001; }],

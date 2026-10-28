@@ -11,6 +11,7 @@ import { runStreamingBrowserFlows } from './streaming-browser-flows.mjs';
 import { runPagedControlsBrowserFlows } from './paged-controls-browser-flows.mjs';
 import { runResourceBrowserFlows } from './resource-browser-flows.mjs';
 import { runStorageStressBrowserFlows } from './storage-stress-browser-flows.mjs';
+import { runLimitsBrowserFlows } from './limits-browser-flows.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = join(root, '.artifacts');
@@ -96,6 +97,9 @@ try {
   const activate = name => evaluate(`(() => { const button = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === ${JSON.stringify(name)} || b.getAttribute('aria-label') === ${JSON.stringify(name)}); if (!button || button.disabled) throw new Error('Botão indisponível: ' + ${JSON.stringify(name)}); button.click(); return true; })()`);
   const click = async name => {
     await activate(name);
+    // Command stepping is asynchronous even for a single DEFINE. Wait for its
+    // stop before another command; a fast BiDi roundtrip can beat the UI timer.
+    if (['Entrar', 'Passar sobre', 'Sair da função', 'Voltar comando'].includes(name)) await waitFor("!['Executando','Retrocedendo','Restaurando histórico'].includes(document.querySelector('[role=status]')?.textContent)");
     if (['Início', 'Último', 'Ir', 'Evento anterior', 'Próximo evento', 'Primeira diferença', 'Próxima diferença', 'Diferença anterior', 'Final da comparação', 'Início da comparação', 'Próximo ponto', 'Ponto anterior'].includes(name)) await waitFor("!document.querySelector('[data-testid=seek-progress]')");
     if (name === 'Comparar execuções') await waitFor("document.querySelector('[aria-label=\"Programa da execução B\"]')");
   };
@@ -140,7 +144,8 @@ try {
   await waitFor("document.querySelector('[data-testid=step-count]')");
   const resourcesOnly = process.argv.includes('--resources-only');
   const stressOnly = process.argv.includes('--stress-only');
-  if (!process.argv.includes('--live-only') && !process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only') && !resourcesOnly && !stressOnly) {
+  const limitsOnly = process.argv.includes('--limits-only');
+  if (!process.argv.includes('--live-only') && !process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only') && !resourcesOnly && !stressOnly && !limitsOnly) {
   assert.match(await text('.source-runtime'), /Python 3/);
   const locals = async () => JSON.parse(await evaluate("JSON.stringify(Object.fromEntries(Array.from(document.querySelectorAll('.variable-row')).map(row => [row.querySelector('code').textContent, row.querySelector('strong').textContent])))"));
   assert.equal(await evaluate("Array.from(document.querySelectorAll('button')).find(button => button.textContent === 'Sair da função').disabled"), true);
@@ -889,6 +894,7 @@ try {
   }
   if (resourcesOnly) await runResourceBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion, pid: firefox.pid });
   else if (stressOnly) await runStorageStressBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion, pid: firefox.pid });
+  else if (limitsOnly) await runLimitsBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
   else {
     if (!process.argv.includes('--streaming-only') && !process.argv.includes('--controls-only')) await runLiveBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });
     if (!process.argv.includes('--controls-only')) await runStreamingBrowserFlows({ evaluate, command, context, click, input, text, waitFor, shot, artifacts, browser: session.capabilities.browserVersion });

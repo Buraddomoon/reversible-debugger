@@ -1,0 +1,71 @@
+{
+  "browser": "150.0",
+  "count": 50000,
+  "maxPayloadBytes": 1004637,
+  "maxCacheBytes": 0,
+  "batches": 3125,
+  "resumes": [
+    {
+      "validateAll": false,
+      "ms": 626,
+      "reusedSteps": 50000,
+      "checkedSteps": 0,
+      "blockReads": 0,
+      "cacheWarning": null
+    },
+    {
+      "validateAll": true,
+      "ms": 9838,
+      "reusedSteps": 0,
+      "checkedSteps": 50000,
+      "blockReads": 391,
+      "cacheWarning": null
+    }
+  ],
+  "seeks": [
+    {
+      "target": 0,
+      "ms": 1
+    },
+    {
+      "target": 19999,
+      "ms": 23
+    },
+    {
+      "target": 20000,
+      "ms": 6
+    },
+    {
+      "target": 20001,
+      "ms": 3
+    },
+    {
+      "target": 32769,
+      "ms": 22
+    },
+    {
+      "target": 49999,
+      "ms": 5
+    },
+    {
+      "target": 50000,
+      "ms": 3
+    }
+  ],
+  "recordMs": 8956,
+  "journalVersion": 2,
+  "captureMs": 16960,
+  "fileVersion": 3,
+  "fileBytes": 21539491,
+  "blockVersion": 2,
+  "portableAndSaveMs": 9165,
+  "exactStates": 3130,
+  "note": "Firefox installed / native IndexedDB / application Workers, Vite dev. Timings include RPC, codec and I/O; logical payload, not browser RAM. Independent oracle created after transport checks.",
+  "ui": {
+    "increasePreservedHistory": true,
+    "reloadPreservedSettings": true,
+    "journalInheritedLimits": true,
+    "materializedLimitsPreserved": true,
+    "mobileWidth": 390
+  }
+}

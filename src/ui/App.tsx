@@ -1,3 +1,6 @@
+import { ExecutionLimitsPanel } from './ExecutionLimitsPanel';
+import { readExecutionSettings, writeExecutionSettings, removeExecutionSettings } from './execution-settings';
+import type { ExecutionLimits } from '../core/execution-limits';
 import { useRef, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 import { DebugSession, HistoryBudgetError } from '../core/debugger';
 import { describeInstruction } from '../core/compiler';
@@ -32,8 +35,8 @@ import { RecordingSessionsPanel } from './RecordingSessionsPanel';
 const initialExample = examples.find(example => example.id === 'python-sum-bug')!;
 
 function openSavedScript(script: SavedScript, maxHistoryBytes?: number) {
-  try { return { session: new DebugSession(script.source, { ...script, maxHistoryBytes }), editing: script.source.length === 0, notice: null as string | null }; }
-  catch (error) { return { session: new DebugSession('', { ...script, maxHistoryBytes }), editing: true, notice: error instanceof Error ? error.message : String(error) }; }
+  try { return { session: new DebugSession(script.source, { ...script, ...readExecutionSettings(script.id), maxHistoryBytes }), editing: script.source.length === 0, notice: null as string | null }; }
+  catch (error) { return { session: new DebugSession('', { ...script, ...readExecutionSettings(script.id), maxHistoryBytes }), editing: true, notice: error instanceof Error ? error.message : String(error) }; }
 }
 
 type IconName = 'rewind' | 'back' | 'next' | 'play' | 'pause' | 'reset' | 'code' | 'layers';
@@ -57,7 +60,7 @@ export function App() {
     const script = stored.library.scripts.find(item => item.id === stored.library.selection);
     const example = examples.find(item => item.id === stored.library.selection) ?? initialExample;
     const runtime = runtimes.find(item => item.id === (example.language ?? 'rewind'))!;
-    const view = script ? openSavedScript(script) : { session: new DebugSession(example.source, { language: runtime.id }), editing: false, notice: null };
+    const view = script ? openSavedScript(script) : { session: new DebugSession(example.source, { language: runtime.id, ...readExecutionSettings(example.id) }), editing: false, notice: null };
     return { stored, ...view, selection: script?.id ?? example.id, source: script?.source ?? example.source, filename: script?.filename ?? `${example.id}${runtime.extension}` };
   });
   const store = useScriptLibrary(initial.stored);
@@ -114,7 +117,7 @@ export function App() {
   for (const [name, value] of Object.entries(frame.locals)) if (isList(value) && changedObjects.has(value.id)) changedNames.add(name);
   const breakpoints = controller.breakpoints;
   const breakpointLine = controller.stop?.reason === 'breakpoint' ? controller.stop.line : null;
-  const status = seeker.progress ? 'Restaurando histórico' : rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.recordingStop && session.cursor === session.history.length ? 'Orçamento atingido' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
+  const status = seeker.progress ? 'Restaurando histórico' : rewinding ? 'Retrocedendo' : playing ? controller.mode === 'reverse-continue' || controller.mode === 'back-statement' ? 'Retrocedendo' : 'Executando' : breakpointLine !== null ? `Breakpoint · L${breakpointLine}` : session.stepLimitReached ? 'Limite de passos' : state.control.status === 'error' ? 'Erro na execução' : state.control.status === 'halted' ? 'Concluído' : session.recordingStop && session.cursor === session.history.length ? 'Orçamento atingido' : session.replayOnly && !session.canForward ? 'Fim do histórico parcial' : 'Pausado';
   const format = (value: Parameters<typeof formatValue>[0]) => previewValue(value, session.runtime.language, state.heap);
 
   const move = (direction: 'forward' | 'backward') => {
@@ -199,7 +202,7 @@ export function App() {
     setEditing(false); setNotice(null);
     const language = item.language ?? 'rewind';
     const runtime = runtimes.find(entry => entry.id === language)!;
-    setSession(new DebugSession(item.source, { language, maxHistoryBytes: defaultActiveBudget(histories) })); setExampleId(id); setDraft(item.source);
+    setSession(new DebugSession(item.source, { language, ...readExecutionSettings(id), maxHistoryBytes: defaultActiveBudget(histories) })); setExampleId(id); setDraft(item.source);
     setFilename(`${id}${runtime.extension}`);
     setDraftFilename(`${id}${runtime.extension}`); setDraftLanguage(language); setDraftVersion(runtime.versions[0]);
   };
@@ -234,11 +237,11 @@ export function App() {
   const changeSource = (source: string) => { setDraft(source); if (selectedScript) patchSelectedScript({ source }); };
   const applyDraft = () => {
     try {
-      const replacement = new DebugSession(draft, { language: draftLanguage, version: draftVersion, maxHistoryBytes: defaultActiveBudget(histories) });
+      const replacement = new DebugSession(draft, { language: draftLanguage, version: draftVersion, maxSteps: session.maxSteps, maxFrames: session.maxFrames, maxHistoryBytes: defaultActiveBudget(histories) });
       const script = selectedScript ? { ...selectedScript, filename: draftFilename, source: draft, language: draftLanguage, version: draftVersion } : newSavedScript({ name: uniqueScriptName(draftFilename.replace(/\.(py|rw|txt)$/i, ''), store.library.scripts), filename: draftFilename, source: draft, language: draftLanguage, version: draftVersion });
-      store.update(library => ({ ...library, selection: script.id, scripts: selectedScript ? library.scripts.map(item => item.id === script.id ? script : item) : [...library.scripts, script] })); store.flush();
+      store.update(library => ({ ...library, selection: script.id, scripts: selectedScript ? library.scripts.map(item => item.id === script.id ? script : item) : [...library.scripts, script] })); store.flush(); const limitsNotice = writeExecutionSettings(script.id, replacement);
       setPlaying(false); setRewinding(false); setSession(replacement); setExampleId(script.id); setEditing(false); setFilename(draftFilename);
-      setNotice(null); setNavigation(null); setSelectedFrame(null);
+      setNotice(limitsNotice); setNavigation(null); setSelectedFrame(null);
     } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); }
   };
   const newScript = () => {
@@ -262,13 +265,18 @@ export function App() {
     const remaining = store.library.scripts.filter(script => script.id !== deleting.id);
     const nextId = remaining.at(-1)?.id ?? initialExample.id;
     store.update(library => ({ ...library, scripts: remaining, selection: nextId }));
-    load(nextId); store.flush(); setDeleting(null);
+    removeExecutionSettings(deleting.id); load(nextId); store.flush(); setDeleting(null);
   };
   const restartProgram = () => {
     seeker.cancel();
     controller.cancel();
     setPlaying(false); setRewinding(false); setNavigation(null); setNotice(null); setSelectedFrame(null);
     session.restart(); refresh();
+  };
+  const applyExecutionLimits = (limits: ExecutionLimits) => {
+    pause();
+    try { session.setExecutionLimits(limits); setNotice(selectedHistory ? null : writeExecutionSettings(exampleId, limits)); refresh(); }
+    catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); }
   };
   const comparisonCandidates: ComparisonCandidate[] = [
     ...histories.map(history => ({ id: history.id, name: history.displayName, source: history.session.program.source, ...history.session.runtime, recording: history.session, group: 'history' as const })),
@@ -298,11 +306,11 @@ export function App() {
       <ExecutionLibraryPanel session={session} metadata={{ name: selectedHistory?.name ?? comparisonPrimary.name, filename }} histories={histories} pagedId={paged?.header.entry.id} pagedReservation={paged ? paged.snapshot.stats.limitTotalBytes * 2 : 0} disabled={editing || rewinding || comparing || transferBusy || recordingBusy || Boolean(paged?.isLive)} onBusyChange={setLibraryBusy} onPause={pause} onOpenPaged={client => { setComparing(false); setPaged(client); }} onOpenFull={(history, id) => { importRecording(history, id); setPaged(null); }} onDeletePaged={id => { if (paged?.header.entry.id === id) setPaged(null); }} onSelect={load} />
       {paged && notice && <div className="error-banner" role="alert">{notice}</div>}
       {!paged && session.replayOnly && <div className="recording-banner" data-testid="recording-banner"><strong>Histórico importado · {session.history.length} passos</strong><span>Navegue pelos estados gravados. Salve esta execução na biblioteca ou exporte um arquivo para reabrir depois.</span></div>}
-      {paged ? pagedComparison ? <PagedComparisonPanel primary={{ kind: paged.isLive ? 'journal' : 'saved', id: paged.header.entry.id, name: paged.header.entry.name }} runtime={paged.header.program.runtime} budget={comparisonBudget} onClose={() => setPagedComparison(false)} /> : <PagedDebugger key={paged.header.entry.id} client={paged} histories={histories} pauseEpoch={pagedPauseEpoch} materializeBudget={() => stagingHistoryBudget(histories, session, 2, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)} onCompare={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)); setPagedComparison(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }} onFull={materializedRecording} /> : comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
+      {paged ? pagedComparison ? <PagedComparisonPanel primary={{ kind: paged.isLive ? 'journal' : 'saved', id: paged.header.entry.id, name: paged.header.entry.name }} runtime={paged.header.program.runtime} budget={comparisonBudget} onClose={() => setPagedComparison(false)} /> : <PagedDebugger key={paged.header.entry.id} client={paged} histories={histories} pauseEpoch={pagedPauseEpoch} materializeBudget={() => stagingHistoryBudget(histories, session, 2, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)} onCompare={() => { pause(); try { setComparisonBudget(stagingHistoryBudget(histories, session, 4, session.storageStats.limitBytes, paged.snapshot.stats.limitTotalBytes * 2)); setPagedComparison(true); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); } }} onFull={materializedRecording} /> : comparing ? <ComparisonPanel primary={comparisonPrimary} candidates={comparisonCandidates} limits={session} maxHistoryBytes={comparisonBudget} onClose={() => setComparing(false)} /> : <section className="debugger" aria-label="Debugger visual">
         <div className="control-bar">
           <div className="navigation-controls">
             <button onClick={() => move('backward')} disabled={!session.canBackward || editing || rewinding} title="Voltar uma instrução (tecla esquerda)"><Icon name="back" /><span>Voltar</span></button>
-            <button className="primary" onClick={() => move('forward')} disabled={!session.canForward || editing || rewinding} title="Avançar uma instrução (tecla direita)"><Icon name="next" /><span>Avançar</span></button>
+            <button className="primary" onClick={() => move('forward')} disabled={!session.canForward || session.stepLimitReached || editing || rewinding} title="Avançar uma instrução (tecla direita)"><Icon name="next" /><span>Avançar</span></button>
             <span className="control-divider" />
             <button className="play-button" onClick={() => playing ? pause() : begin('continue')} disabled={(!session.canForward && !playing) || editing || rewinding}><Icon name={playing ? 'pause' : 'play'} /><span>{playing ? 'Pausar' : 'Executar'}</span></button>
             <label className="speed-label"><span className="sr-only">Velocidade de execução</span><select value={speed} onChange={event => setSpeed(Number(event.target.value))}><option value={1}>1×</option><option value={4}>4×</option></select></label>
@@ -311,10 +319,10 @@ export function App() {
           </div>
           <div className="execution-meta"><span className={`status ${state.control.status}`} role="status">{status}</span><span className="step-number">Passo <strong data-testid="step-count">{session.cursor.toString().padStart(3, '0')}</strong></span></div>
         </div>
-        <StepControls disabled={editing || rewinding} canForward={session.canForward} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
+        <StepControls disabled={editing || rewinding} canForward={session.canForward && !session.stepLimitReached} canBackward={session.canBackward} canStepOut={controller.canStepOut} running={playing} onStart={begin} />
         {seeker.progress && <SeekStatus current={seeker.progress.cursor} target={seeker.progress.to} completed={seeker.progress.appliedSteps} total={seeker.progress.totalSteps} onCancel={() => { seeker.cancel(true); refresh(); }} />}
         {seeker.message && <p className="seek-message" aria-live="polite" data-testid="seek-message">{seeker.message}</p>}
-        <StoragePanel key={exampleId} session={session} maxAvailableBytes={activeHistoryBudget(histories)} disabled={editing || rewinding || transferBusy || libraryBusy || recordingBusy} onBudget={bytes => { pause(); setNotice(null); try { if (bytes > activeHistoryBudget(histories)) throw new Error('Limite excede o orçamento agregado da página. Feche um histórico antes de aumentar.'); session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
+        <ExecutionLimitsPanel key={`limits:${exampleId}`} limits={session} count={session.history.length} readOnly={session.replayOnly} disabled={editing || playing || rewinding || transferBusy || libraryBusy || recordingBusy || leavingRecording} onApply={applyExecutionLimits} /><StoragePanel key={exampleId} session={session} maxAvailableBytes={activeHistoryBudget(histories)} disabled={editing || rewinding || transferBusy || libraryBusy || recordingBusy} onBudget={bytes => { pause(); setNotice(null); try { if (bytes > activeHistoryBudget(histories)) throw new Error('Limite excede o orçamento agregado da página. Feche um histórico antes de aumentar.'); session.setHistoryBudget(bytes); } catch (error) { setNotice(error instanceof Error ? error.message : String(error)); } refresh(); }} />
         {breakpointLine !== null && <div className="breakpoint-pause" data-testid="debug-pause"><strong>Breakpoint na linha {breakpointLine}</strong><span>Parado antes do comando. Executar retoma esta passagem; o breakpoint continua ativo nas próximas.</span></div>}
         {(notice || store.error || (!editing && state.control.error)) && <div className="error-banner" role="alert">{store.error ?? notice ?? state.control.error}</div>}
         <div className="workspace">

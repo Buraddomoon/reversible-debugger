@@ -1,3 +1,4 @@
+import { MAX_EXECUTION_STEPS } from './execution-limits';
 import { digest, decode } from './portable-history';
 import { utf8Bytes } from './history-blocks';
 import type { JournalSnapshot } from './recording-journal';
@@ -69,7 +70,7 @@ export class JournalValidationCache {
     await this.transaction('readwrite', async (store, tx) => {
       // Only lightweight metadata is scanned; other sessions' checkpoints are never loaded.
       const catalog = tx.objectStore('catalog'), rows = (await request<unknown[]>(catalog.getAll())).map(raw => {
-        const e = fields(raw, ['id', 'bytes', 'touched', 'frontier', 'sourceHash']); text(e.id, 100); text(e.sourceHash, 64); integer(e.bytes, 1, VALIDATION_ENTRY_BYTES); integer(e.touched, 0, Number.MAX_SAFE_INTEGER); integer(e.frontier, 0, 20_000); return e as unknown as CacheEntry;
+        const e = fields(raw, ['id', 'bytes', 'touched', 'frontier', 'sourceHash']); text(e.id, 100); text(e.sourceHash, 64); integer(e.bytes, 1, VALIDATION_ENTRY_BYTES); integer(e.touched, 0, Number.MAX_SAFE_INTEGER); integer(e.frontier, 0, MAX_EXECUTION_STEPS); return e as unknown as CacheEntry;
       });
       let count = rows.length + Number(!rows.some(r => r.id === row.id)), total = rows.reduce((n, r) => n + (r.id === row.id ? 0 : r.bytes), bytes);
       // Concurrent stale publications must not replace a more advanced prefix.

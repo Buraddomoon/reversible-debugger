@@ -1,3 +1,4 @@
+import { MAX_EXECUTION_STEPS } from './execution-limits';
 import { decode, digest } from './portable-history';
 import { utf8Bytes } from './history-blocks';
 import { JOURNAL_VALIDATOR } from './journal-validation-cache';
@@ -20,7 +21,7 @@ export class JournalCheckpoints {
   constructor(private readonly factory: IDBFactory, private readonly name: string, options: JournalCheckpointOptions = {}) {
     this.diskLimit = options.maxDiskBytes ?? 64 * 1024 * 1024; this.runLimit = options.maxRunBytes ?? 8 * 1024 * 1024;
     this.maxPoints = options.maxPoints ?? 128; this.interval = options.interval ?? 128;
-    integer(this.diskLimit, 1, 64 * 1024 * 1024); integer(this.runLimit, 1, Math.min(this.diskLimit, 8 * 1024 * 1024)); integer(this.maxPoints, 1, 128); integer(this.interval, 1, 20_000);
+    integer(this.diskLimit, 1, 64 * 1024 * 1024); integer(this.runLimit, 1, Math.min(this.diskLimit, 8 * 1024 * 1024)); integer(this.maxPoints, 1, 128); integer(this.interval, 1, MAX_EXECUTION_STEPS);
   }
   private open(): Promise<IDBDatabase> {
     if (this.database) return this.database;
@@ -48,7 +49,7 @@ export class JournalCheckpoints {
     requireTrace(points.length <= this.maxPoints, 'índice de checkpoints excede o limite');
     return points.map(raw => {
       const p = fields(raw, ['runId', 'cursor', 'sourceHash', 'seal', 'validator', 'bytes', 'checksum']);
-      integer(p.cursor, 1, 20_000); integer(p.bytes, 1, this.runLimit); text(p.checksum, 64);
+      integer(p.cursor, 1, recording.source.maxSteps); integer(p.bytes, 1, this.runLimit); text(p.checksum, 64);
       requireTrace(p.runId === recording.entry.id && p.sourceHash === recording.entry.sourceHash && p.validator === JOURNAL_VALIDATOR && /^[a-f0-9]{64}$/.test(p.checksum), 'identidade de checkpoint incompatível');
       return p as unknown as JournalPoint;
     }).filter(p => p.cursor <= recording.head.frontier && recording.head.blocks.some(b => b.first + b.count === p.cursor && b.seal === p.seal)).sort((a, b) => a.cursor - b.cursor);

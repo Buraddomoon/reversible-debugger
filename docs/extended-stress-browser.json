@@ -1,0 +1,2730 @@
+{
+  "version": 1,
+  "maxSteps": 50000,
+  "date": "2026-10-28T12:49:03.348Z",
+  "browser": "150.0",
+  "node": "v24.18.0",
+  "environment": {
+    "platform": "linux",
+    "cpuModel": "13th Gen Intel(R) Core(TM) i7-13620H",
+    "cpus": 16,
+    "totalMemoryBytes": 16398610432
+  },
+  "note": "Firefox installed, isolated profile, Vite dev. Five full-validation/new-Worker vs prefix-reuse/new-Worker rounds in one browser; not five cold browser boots. Timings include RPC, validation, storage and cloning. Reference history created after measured phases. /proc RSS/PSS samples cover the entire isolated browser tree; sampled peaks are lower bounds, not JS heap or allocation peaks.",
+  "workloads": [
+    {
+      "id": "large-list",
+      "maxSteps": 50000,
+      "name": "Lista com delta indivisível",
+      "recordingId": "4dc34f9c-0dc2-46be-bbc6-53292126b44b",
+      "record": {
+        "batches": 7,
+        "maxRpcMs": 281,
+        "maxPayloadBytes": 3584376,
+        "maxPendingBytes": 30773,
+        "maxFrames": 1
+      },
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 1,
+          "cacheBytes": 0,
+          "isolatedReads": 0
+        },
+        {
+          "target": 106,
+          "ms": 7,
+          "cacheBytes": 0,
+          "isolatedReads": 1
+        },
+        {
+          "target": 53,
+          "ms": 64,
+          "cacheBytes": 0,
+          "isolatedReads": 10
+        },
+        {
+          "target": 1,
+          "ms": 7,
+          "cacheBytes": 0,
+          "isolatedReads": 12
+        },
+        {
+          "target": 105,
+          "ms": 6,
+          "cacheBytes": 0,
+          "isolatedReads": 14
+        },
+        {
+          "target": 84,
+          "ms": 56,
+          "cacheBytes": 0,
+          "isolatedReads": 17
+        },
+        {
+          "target": 85,
+          "ms": 86,
+          "cacheBytes": 0,
+          "isolatedReads": 19
+        },
+        {
+          "target": 84,
+          "ms": 42,
+          "cacheBytes": 0,
+          "isolatedReads": 21
+        },
+        {
+          "target": 85,
+          "ms": 101,
+          "cacheBytes": 0,
+          "isolatedReads": 23
+        },
+        {
+          "target": 0,
+          "ms": 1,
+          "cacheBytes": 0,
+          "isolatedReads": 23
+        },
+        {
+          "target": 106,
+          "ms": 5,
+          "cacheBytes": 0,
+          "isolatedReads": 24
+        }
+      ],
+      "resumes": [
+        {
+          "round": 1,
+          "fullValidationNewWorker": {
+            "ms": 397,
+            "reusedSteps": 0,
+            "checkedSteps": 106,
+            "blockReads": 15,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 228,
+            "reusedSteps": 106,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 2,
+          "fullValidationNewWorker": {
+            "ms": 443,
+            "reusedSteps": 0,
+            "checkedSteps": 106,
+            "blockReads": 15,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 243,
+            "reusedSteps": 106,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 3,
+          "fullValidationNewWorker": {
+            "ms": 478,
+            "reusedSteps": 0,
+            "checkedSteps": 106,
+            "blockReads": 15,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 226,
+            "reusedSteps": 106,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 4,
+          "fullValidationNewWorker": {
+            "ms": 453,
+            "reusedSteps": 0,
+            "checkedSteps": 106,
+            "blockReads": 15,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 255,
+            "reusedSteps": 106,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 5,
+          "fullValidationNewWorker": {
+            "ms": 479,
+            "reusedSteps": 0,
+            "checkedSteps": 106,
+            "blockReads": 15,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 254,
+            "reusedSteps": 106,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        }
+      ],
+      "steps": 106,
+      "diskBytes": 1361934,
+      "blocks": 15,
+      "maxBlockBytes": 647363,
+      "oversizedBlocks": [
+        {
+          "first": 84,
+          "count": 1,
+          "bytes": 647363
+        }
+      ],
+      "checkpoints": {
+        "count": 0,
+        "bytes": 0,
+        "maxBytes": 0
+      },
+      "preAckPreserved": true,
+      "postAckCompleted": true,
+      "validation": {
+        "states": 7,
+        "maxStepBytes": 647361,
+        "fullStateExact": true
+      },
+      "measured": {
+        "record": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 939.9,
+          "samples": [
+            {
+              "elapsedMs": 7.92,
+              "scanMs": 7.88,
+              "processes": 1,
+              "rssBytes": 543801344,
+              "pssBytes": 405284864,
+              "privateBytes": 390471680,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 167.52,
+              "scanMs": 9.92,
+              "processes": 1,
+              "rssBytes": 559353856,
+              "pssBytes": 420691968,
+              "privateBytes": 405602304,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 324.67,
+              "scanMs": 6.57,
+              "processes": 1,
+              "rssBytes": 569323520,
+              "pssBytes": 430527488,
+              "privateBytes": 414916608,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 486.18,
+              "scanMs": 11.11,
+              "processes": 1,
+              "rssBytes": 568913920,
+              "pssBytes": 429740032,
+              "privateBytes": 414507008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 641.97,
+              "scanMs": 6.37,
+              "processes": 1,
+              "rssBytes": 580882432,
+              "pssBytes": 441656320,
+              "privateBytes": 426409984,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 800.19,
+              "scanMs": 7.77,
+              "processes": 1,
+              "rssBytes": 577687552,
+              "pssBytes": 438460416,
+              "privateBytes": 423215104,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 939.87,
+              "scanMs": 6,
+              "processes": 1,
+              "rssBytes": 577695744,
+              "pssBytes": 438467584,
+              "privateBytes": 423223296,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "replay": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 923.13,
+          "samples": [
+            {
+              "elapsedMs": 9.04,
+              "scanMs": 9.04,
+              "processes": 1,
+              "rssBytes": 577695744,
+              "pssBytes": 438467584,
+              "privateBytes": 423223296,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 167.46,
+              "scanMs": 8.75,
+              "processes": 1,
+              "rssBytes": 577810432,
+              "pssBytes": 438492160,
+              "privateBytes": 423161856,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 326.74,
+              "scanMs": 8.82,
+              "processes": 1,
+              "rssBytes": 577810432,
+              "pssBytes": 438492160,
+              "privateBytes": 423161856,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 484.97,
+              "scanMs": 7.85,
+              "processes": 1,
+              "rssBytes": 577810432,
+              "pssBytes": 438492160,
+              "privateBytes": 423161856,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 642.86,
+              "scanMs": 7.54,
+              "processes": 1,
+              "rssBytes": 577806336,
+              "pssBytes": 438484992,
+              "privateBytes": 423157760,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 802.94,
+              "scanMs": 9.67,
+              "processes": 1,
+              "rssBytes": 577585152,
+              "pssBytes": 438263808,
+              "privateBytes": 422936576,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 923.11,
+              "scanMs": 5.76,
+              "processes": 1,
+              "rssBytes": 577740800,
+              "pssBytes": 438288384,
+              "privateBytes": 422961152,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume1": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 842.68,
+          "samples": [
+            {
+              "elapsedMs": 5.49,
+              "scanMs": 5.49,
+              "processes": 1,
+              "rssBytes": 577740800,
+              "pssBytes": 438288384,
+              "privateBytes": 422961152,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 163.69,
+              "scanMs": 7.9,
+              "processes": 1,
+              "rssBytes": 577773568,
+              "pssBytes": 438320128,
+              "privateBytes": 422993920,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 319.44,
+              "scanMs": 5.66,
+              "processes": 1,
+              "rssBytes": 548380672,
+              "pssBytes": 408895488,
+              "privateBytes": 393539584,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 476.4,
+              "scanMs": 6.21,
+              "processes": 1,
+              "rssBytes": 548380672,
+              "pssBytes": 408861696,
+              "privateBytes": 393474048,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 636.59,
+              "scanMs": 9.73,
+              "processes": 1,
+              "rssBytes": 548401152,
+              "pssBytes": 408880128,
+              "privateBytes": 393494528,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 797.83,
+              "scanMs": 10.82,
+              "processes": 1,
+              "rssBytes": 548401152,
+              "pssBytes": 408881152,
+              "privateBytes": 393494528,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 842.65,
+              "scanMs": 8.41,
+              "processes": 1,
+              "rssBytes": 548401152,
+              "pssBytes": 408881152,
+              "privateBytes": 393494528,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume2": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 908.19,
+          "samples": [
+            {
+              "elapsedMs": 6.75,
+              "scanMs": 6.76,
+              "processes": 1,
+              "rssBytes": 548401152,
+              "pssBytes": 408881152,
+              "privateBytes": 393494528,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 166.86,
+              "scanMs": 9.25,
+              "processes": 1,
+              "rssBytes": 548364288,
+              "pssBytes": 408844288,
+              "privateBytes": 393457664,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 327.02,
+              "scanMs": 9.77,
+              "processes": 1,
+              "rssBytes": 548368384,
+              "pssBytes": 408848384,
+              "privateBytes": 393461760,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 487.99,
+              "scanMs": 10.51,
+              "processes": 1,
+              "rssBytes": 548368384,
+              "pssBytes": 408848384,
+              "privateBytes": 393461760,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 648.6,
+              "scanMs": 10.08,
+              "processes": 1,
+              "rssBytes": 548376576,
+              "pssBytes": 408856576,
+              "privateBytes": 393469952,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 805.61,
+              "scanMs": 6.31,
+              "processes": 1,
+              "rssBytes": 548413440,
+              "pssBytes": 408893440,
+              "privateBytes": 393506816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 908.14,
+              "scanMs": 6.4,
+              "processes": 1,
+              "rssBytes": 548413440,
+              "pssBytes": 408893440,
+              "privateBytes": 393506816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume3": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 942.32,
+          "samples": [
+            {
+              "elapsedMs": 6.22,
+              "scanMs": 6.23,
+              "processes": 1,
+              "rssBytes": 548413440,
+              "pssBytes": 408893440,
+              "privateBytes": 393506816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 167.68,
+              "scanMs": 10.67,
+              "processes": 1,
+              "rssBytes": 548417536,
+              "pssBytes": 408896512,
+              "privateBytes": 393510912,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 329.15,
+              "scanMs": 11.16,
+              "processes": 1,
+              "rssBytes": 548417536,
+              "pssBytes": 408895488,
+              "privateBytes": 393510912,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 484.44,
+              "scanMs": 5.96,
+              "processes": 1,
+              "rssBytes": 548417536,
+              "pssBytes": 408895488,
+              "privateBytes": 393510912,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 643.74,
+              "scanMs": 8.95,
+              "processes": 1,
+              "rssBytes": 548417536,
+              "pssBytes": 408895488,
+              "privateBytes": 393510912,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 800.39,
+              "scanMs": 6.9,
+              "processes": 1,
+              "rssBytes": 548417536,
+              "pssBytes": 408895488,
+              "privateBytes": 393510912,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 942.28,
+              "scanMs": 8.33,
+              "processes": 1,
+              "rssBytes": 548421632,
+              "pssBytes": 408899584,
+              "privateBytes": 393515008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume4": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 959.83,
+          "samples": [
+            {
+              "elapsedMs": 5.7,
+              "scanMs": 5.71,
+              "processes": 1,
+              "rssBytes": 548421632,
+              "pssBytes": 408899584,
+              "privateBytes": 393515008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 162.44,
+              "scanMs": 6.98,
+              "processes": 1,
+              "rssBytes": 459649024,
+              "pssBytes": 320126976,
+              "privateBytes": 304742400,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 318.85,
+              "scanMs": 6.07,
+              "processes": 1,
+              "rssBytes": 459657216,
+              "pssBytes": 320135168,
+              "privateBytes": 304750592,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 477.67,
+              "scanMs": 8.32,
+              "processes": 1,
+              "rssBytes": 459657216,
+              "pssBytes": 320135168,
+              "privateBytes": 304750592,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 634.16,
+              "scanMs": 6.11,
+              "processes": 1,
+              "rssBytes": 459657216,
+              "pssBytes": 320135168,
+              "privateBytes": 304750592,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 790.67,
+              "scanMs": 6.18,
+              "processes": 1,
+              "rssBytes": 459677696,
+              "pssBytes": 320155648,
+              "privateBytes": 304771072,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 949.61,
+              "scanMs": 8.67,
+              "processes": 1,
+              "rssBytes": 459677696,
+              "pssBytes": 320147456,
+              "privateBytes": 304771072,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 959.78,
+              "scanMs": 5.45,
+              "processes": 1,
+              "rssBytes": 459677696,
+              "pssBytes": 320147456,
+              "privateBytes": 304771072,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume5": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 963.61,
+          "samples": [
+            {
+              "elapsedMs": 5.35,
+              "scanMs": 5.35,
+              "processes": 1,
+              "rssBytes": 459677696,
+              "pssBytes": 320147456,
+              "privateBytes": 304771072,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 164.78,
+              "scanMs": 9.47,
+              "processes": 1,
+              "rssBytes": 459694080,
+              "pssBytes": 320163840,
+              "privateBytes": 304787456,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 322.31,
+              "scanMs": 7.14,
+              "processes": 1,
+              "rssBytes": 459698176,
+              "pssBytes": 320167936,
+              "privateBytes": 304791552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 479.79,
+              "scanMs": 7.07,
+              "processes": 1,
+              "rssBytes": 459698176,
+              "pssBytes": 320167936,
+              "privateBytes": 304791552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 637.22,
+              "scanMs": 7.06,
+              "processes": 1,
+              "rssBytes": 459698176,
+              "pssBytes": 320167936,
+              "privateBytes": 304791552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 795.49,
+              "scanMs": 7.32,
+              "processes": 1,
+              "rssBytes": 459706368,
+              "pssBytes": 320176128,
+              "privateBytes": 304799744,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 952.09,
+              "scanMs": 6.17,
+              "processes": 1,
+              "rssBytes": 459706368,
+              "pssBytes": 320174080,
+              "privateBytes": 304799744,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 963.58,
+              "scanMs": 5.63,
+              "processes": 1,
+              "rssBytes": 459706368,
+              "pssBytes": 320174080,
+              "privateBytes": 304799744,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "large-return",
+      "maxSteps": 50000,
+      "name": "Retorno com frame grande",
+      "recordingId": "4cc4119e-8562-4c24-b62c-0fdaea855d94",
+      "record": {
+        "batches": 13,
+        "maxRpcMs": 341,
+        "maxPayloadBytes": 2974863,
+        "maxPendingBytes": 29471,
+        "maxFrames": 2
+      },
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 1,
+          "cacheBytes": 0,
+          "isolatedReads": 0
+        },
+        {
+          "target": 196,
+          "ms": 2,
+          "cacheBytes": 0,
+          "isolatedReads": 1
+        },
+        {
+          "target": 98,
+          "ms": 75,
+          "cacheBytes": 0,
+          "isolatedReads": 13
+        },
+        {
+          "target": 1,
+          "ms": 5,
+          "cacheBytes": 0,
+          "isolatedReads": 15
+        },
+        {
+          "target": 195,
+          "ms": 3,
+          "cacheBytes": 0,
+          "isolatedReads": 17
+        },
+        {
+          "target": 189,
+          "ms": 23,
+          "cacheBytes": 0,
+          "isolatedReads": 20
+        },
+        {
+          "target": 190,
+          "ms": 39,
+          "cacheBytes": 0,
+          "isolatedReads": 22
+        },
+        {
+          "target": 189,
+          "ms": 20,
+          "cacheBytes": 0,
+          "isolatedReads": 24
+        },
+        {
+          "target": 190,
+          "ms": 57,
+          "cacheBytes": 0,
+          "isolatedReads": 26
+        },
+        {
+          "target": 0,
+          "ms": 0,
+          "cacheBytes": 0,
+          "isolatedReads": 26
+        },
+        {
+          "target": 196,
+          "ms": 2,
+          "cacheBytes": 0,
+          "isolatedReads": 27
+        }
+      ],
+      "resumes": [
+        {
+          "round": 1,
+          "fullValidationNewWorker": {
+            "ms": 578,
+            "reusedSteps": 0,
+            "checkedSteps": 196,
+            "blockReads": 64,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 71,
+            "reusedSteps": 196,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 2,
+          "fullValidationNewWorker": {
+            "ms": 588,
+            "reusedSteps": 0,
+            "checkedSteps": 196,
+            "blockReads": 64,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 68,
+            "reusedSteps": 196,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 3,
+          "fullValidationNewWorker": {
+            "ms": 526,
+            "reusedSteps": 0,
+            "checkedSteps": 196,
+            "blockReads": 64,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 76,
+            "reusedSteps": 196,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 4,
+          "fullValidationNewWorker": {
+            "ms": 615,
+            "reusedSteps": 0,
+            "checkedSteps": 196,
+            "blockReads": 64,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 114,
+            "reusedSteps": 196,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 5,
+          "fullValidationNewWorker": {
+            "ms": 575,
+            "reusedSteps": 0,
+            "checkedSteps": 196,
+            "blockReads": 64,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 80,
+            "reusedSteps": 196,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        }
+      ],
+      "steps": 196,
+      "diskBytes": 1958480,
+      "blocks": 64,
+      "maxBlockBytes": 366951,
+      "oversizedBlocks": [
+        {
+          "first": 189,
+          "count": 1,
+          "bytes": 366951
+        }
+      ],
+      "checkpoints": {
+        "count": 1,
+        "bytes": 253947,
+        "maxBytes": 253947
+      },
+      "preAckPreserved": true,
+      "postAckCompleted": true,
+      "validation": {
+        "states": 7,
+        "maxStepBytes": 366949,
+        "fullStateExact": true
+      },
+      "measured": {
+        "record": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 2426.27,
+          "samples": [
+            {
+              "elapsedMs": 7.16,
+              "scanMs": 7.17,
+              "processes": 1,
+              "rssBytes": 459751424,
+              "pssBytes": 320134144,
+              "privateBytes": 304779264,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 164.41,
+              "scanMs": 6.74,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317717504,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 323.69,
+              "scanMs": 8.95,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317715456,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 480.79,
+              "scanMs": 6.77,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317715456,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 638.79,
+              "scanMs": 7.59,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317715456,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 795.04,
+              "scanMs": 5.94,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317715456,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 952.21,
+              "scanMs": 6.76,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317715456,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1108.45,
+              "scanMs": 5.77,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317714432,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1266.44,
+              "scanMs": 7.73,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317714432,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1422.49,
+              "scanMs": 5.65,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317714432,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1578.31,
+              "scanMs": 5.55,
+              "processes": 1,
+              "rssBytes": 457334784,
+              "pssBytes": 317714432,
+              "privateBytes": 302362624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1736.92,
+              "scanMs": 8.21,
+              "processes": 1,
+              "rssBytes": 452595712,
+              "pssBytes": 312975360,
+              "privateBytes": 297623552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1892.56,
+              "scanMs": 5.25,
+              "processes": 1,
+              "rssBytes": 452595712,
+              "pssBytes": 312975360,
+              "privateBytes": 297623552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2048.17,
+              "scanMs": 5.27,
+              "processes": 1,
+              "rssBytes": 452595712,
+              "pssBytes": 312975360,
+              "privateBytes": 297623552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2207.83,
+              "scanMs": 9.32,
+              "processes": 1,
+              "rssBytes": 452595712,
+              "pssBytes": 312975360,
+              "privateBytes": 297623552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2366.44,
+              "scanMs": 8.15,
+              "processes": 1,
+              "rssBytes": 452595712,
+              "pssBytes": 312975360,
+              "privateBytes": 297623552,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2426.24,
+              "scanMs": 6.1,
+              "processes": 1,
+              "rssBytes": 452608000,
+              "pssBytes": 312986624,
+              "privateBytes": 297635840,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "replay": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 410.06,
+          "samples": [
+            {
+              "elapsedMs": 5.63,
+              "scanMs": 5.64,
+              "processes": 1,
+              "rssBytes": 452608000,
+              "pssBytes": 312986624,
+              "privateBytes": 297635840,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 161.27,
+              "scanMs": 5.07,
+              "processes": 1,
+              "rssBytes": 452612096,
+              "pssBytes": 312990720,
+              "privateBytes": 297639936,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 324.77,
+              "scanMs": 12.88,
+              "processes": 1,
+              "rssBytes": 452624384,
+              "pssBytes": 313003008,
+              "privateBytes": 297652224,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 410.03,
+              "scanMs": 5.47,
+              "processes": 1,
+              "rssBytes": 452341760,
+              "pssBytes": 312720384,
+              "privateBytes": 297369600,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume1": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 707.34,
+          "samples": [
+            {
+              "elapsedMs": 12.54,
+              "scanMs": 12.56,
+              "processes": 1,
+              "rssBytes": 452341760,
+              "pssBytes": 312720384,
+              "privateBytes": 297369600,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 168.47,
+              "scanMs": 5.59,
+              "processes": 1,
+              "rssBytes": 452382720,
+              "pssBytes": 312761344,
+              "privateBytes": 297410560,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 327.64,
+              "scanMs": 8.55,
+              "processes": 1,
+              "rssBytes": 452644864,
+              "pssBytes": 312800256,
+              "privateBytes": 297410560,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 483.7,
+              "scanMs": 5.71,
+              "processes": 1,
+              "rssBytes": 452644864,
+              "pssBytes": 312800256,
+              "privateBytes": 297410560,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 640.71,
+              "scanMs": 6.47,
+              "processes": 1,
+              "rssBytes": 452653056,
+              "pssBytes": 312808448,
+              "privateBytes": 297418752,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 707.31,
+              "scanMs": 7.71,
+              "processes": 1,
+              "rssBytes": 452653056,
+              "pssBytes": 312808448,
+              "privateBytes": 297418752,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume2": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 688.91,
+          "samples": [
+            {
+              "elapsedMs": 9.11,
+              "scanMs": 9.11,
+              "processes": 1,
+              "rssBytes": 452653056,
+              "pssBytes": 312808448,
+              "privateBytes": 297418752,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 165.38,
+              "scanMs": 5.78,
+              "processes": 1,
+              "rssBytes": 452661248,
+              "pssBytes": 312816640,
+              "privateBytes": 297426944,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 323.87,
+              "scanMs": 8.14,
+              "processes": 1,
+              "rssBytes": 452661248,
+              "pssBytes": 312816640,
+              "privateBytes": 297426944,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 481.33,
+              "scanMs": 6.99,
+              "processes": 1,
+              "rssBytes": 452661248,
+              "pssBytes": 312815616,
+              "privateBytes": 297426944,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 639.77,
+              "scanMs": 7.98,
+              "processes": 1,
+              "rssBytes": 452661248,
+              "pssBytes": 312815616,
+              "privateBytes": 297426944,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 688.89,
+              "scanMs": 4.87,
+              "processes": 1,
+              "rssBytes": 452665344,
+              "pssBytes": 312818688,
+              "privateBytes": 297431040,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume3": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 627.23,
+          "samples": [
+            {
+              "elapsedMs": 4.85,
+              "scanMs": 4.85,
+              "processes": 1,
+              "rssBytes": 452665344,
+              "pssBytes": 312818688,
+              "privateBytes": 297431040,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 160.11,
+              "scanMs": 5.29,
+              "processes": 1,
+              "rssBytes": 452628480,
+              "pssBytes": 312781824,
+              "privateBytes": 297394176,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 316.13,
+              "scanMs": 5.45,
+              "processes": 1,
+              "rssBytes": 452628480,
+              "pssBytes": 312781824,
+              "privateBytes": 297394176,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 471.48,
+              "scanMs": 5.03,
+              "processes": 1,
+              "rssBytes": 452628480,
+              "pssBytes": 312781824,
+              "privateBytes": 297394176,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 627.22,
+              "scanMs": 5.51,
+              "processes": 1,
+              "rssBytes": 452632576,
+              "pssBytes": 312785920,
+              "privateBytes": 297398272,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume4": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 765.05,
+          "samples": [
+            {
+              "elapsedMs": 5.08,
+              "scanMs": 5.08,
+              "processes": 1,
+              "rssBytes": 452632576,
+              "pssBytes": 312785920,
+              "privateBytes": 297398272,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 165.13,
+              "scanMs": 9.93,
+              "processes": 1,
+              "rssBytes": 452636672,
+              "pssBytes": 312790016,
+              "privateBytes": 297402368,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 328.4,
+              "scanMs": 13.48,
+              "processes": 1,
+              "rssBytes": 452640768,
+              "pssBytes": 312785920,
+              "privateBytes": 297402368,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 485.13,
+              "scanMs": 7.16,
+              "processes": 1,
+              "rssBytes": 452640768,
+              "pssBytes": 312785920,
+              "privateBytes": 297402368,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 644.85,
+              "scanMs": 9.36,
+              "processes": 1,
+              "rssBytes": 452640768,
+              "pssBytes": 312787968,
+              "privateBytes": 297406464,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 765.03,
+              "scanMs": 9.19,
+              "processes": 1,
+              "rssBytes": 452648960,
+              "pssBytes": 312795136,
+              "privateBytes": 297410560,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume5": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 692.77,
+          "samples": [
+            {
+              "elapsedMs": 9.07,
+              "scanMs": 9.08,
+              "processes": 1,
+              "rssBytes": 452648960,
+              "pssBytes": 312792064,
+              "privateBytes": 297410560,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 165.4,
+              "scanMs": 6.56,
+              "processes": 1,
+              "rssBytes": 452657152,
+              "pssBytes": 312800256,
+              "privateBytes": 297418752,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 324.56,
+              "scanMs": 8.92,
+              "processes": 1,
+              "rssBytes": 452657152,
+              "pssBytes": 312800256,
+              "privateBytes": 297418752,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 481.49,
+              "scanMs": 6.58,
+              "processes": 1,
+              "rssBytes": 452657152,
+              "pssBytes": 312808448,
+              "privateBytes": 297422848,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 638.05,
+              "scanMs": 7.35,
+              "processes": 1,
+              "rssBytes": 452861952,
+              "pssBytes": 312843264,
+              "privateBytes": 297431040,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 692.75,
+              "scanMs": 8.1,
+              "processes": 1,
+              "rssBytes": 452861952,
+              "pssBytes": 312843264,
+              "privateBytes": 297431040,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "checkpoint-pressure",
+      "maxSteps": 50000,
+      "name": "Saída e redução de checkpoints",
+      "recordingId": "fcc32451-f27d-4c92-98e4-35f481238df5",
+      "record": {
+        "batches": 326,
+        "maxRpcMs": 99,
+        "maxPayloadBytes": 4305373,
+        "maxPendingBytes": 25149,
+        "maxFrames": 1
+      },
+      "seeks": [
+        {
+          "target": 0,
+          "ms": 0,
+          "cacheBytes": 0,
+          "isolatedReads": 0
+        },
+        {
+          "target": 5213,
+          "ms": 4,
+          "cacheBytes": 0,
+          "isolatedReads": 1
+        },
+        {
+          "target": 2606,
+          "ms": 27,
+          "cacheBytes": 0,
+          "isolatedReads": 7
+        },
+        {
+          "target": 1,
+          "ms": 4,
+          "cacheBytes": 0,
+          "isolatedReads": 9
+        },
+        {
+          "target": 5212,
+          "ms": 3,
+          "cacheBytes": 0,
+          "isolatedReads": 11
+        },
+        {
+          "target": 0,
+          "ms": 0,
+          "cacheBytes": 0,
+          "isolatedReads": 11
+        },
+        {
+          "target": 5213,
+          "ms": 1,
+          "cacheBytes": 0,
+          "isolatedReads": 12
+        }
+      ],
+      "resumes": [
+        {
+          "round": 1,
+          "fullValidationNewWorker": {
+            "ms": 849,
+            "reusedSteps": 0,
+            "checkedSteps": 5213,
+            "blockReads": 201,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 141,
+            "reusedSteps": 5213,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 2,
+          "fullValidationNewWorker": {
+            "ms": 862,
+            "reusedSteps": 0,
+            "checkedSteps": 5213,
+            "blockReads": 201,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 138,
+            "reusedSteps": 5213,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 3,
+          "fullValidationNewWorker": {
+            "ms": 694,
+            "reusedSteps": 0,
+            "checkedSteps": 5213,
+            "blockReads": 201,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 152,
+            "reusedSteps": 5213,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 4,
+          "fullValidationNewWorker": {
+            "ms": 884,
+            "reusedSteps": 0,
+            "checkedSteps": 5213,
+            "blockReads": 201,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 146,
+            "reusedSteps": 5213,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        },
+        {
+          "round": 5,
+          "fullValidationNewWorker": {
+            "ms": 835,
+            "reusedSteps": 0,
+            "checkedSteps": 5213,
+            "blockReads": 201,
+            "cacheWarning": null
+          },
+          "prefixReuseNewWorker": {
+            "ms": 168,
+            "reusedSteps": 5213,
+            "checkedSteps": 0,
+            "blockReads": 0,
+            "cacheWarning": null
+          }
+        }
+      ],
+      "steps": 5213,
+      "diskBytes": 6386700,
+      "blocks": 201,
+      "maxBlockBytes": 31035,
+      "oversizedBlocks": [],
+      "checkpoints": {
+        "count": 20,
+        "bytes": 8070014,
+        "maxBytes": 784641
+      },
+      "preAckPreserved": true,
+      "postAckCompleted": true,
+      "validation": {
+        "states": 5,
+        "maxStepBytes": 6598,
+        "fullStateExact": true
+      },
+      "ui": {
+        "outputCharacters": 800800,
+        "mobileWidth": 390
+      },
+      "measured": {
+        "record": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 5448.4,
+          "samples": [
+            {
+              "elapsedMs": 7.85,
+              "scanMs": 7.85,
+              "processes": 1,
+              "rssBytes": 450887680,
+              "pssBytes": 310809600,
+              "privateBytes": 295391232,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 166.52,
+              "scanMs": 8.09,
+              "processes": 1,
+              "rssBytes": 450887680,
+              "pssBytes": 310809600,
+              "privateBytes": 295391232,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 325.59,
+              "scanMs": 9.19,
+              "processes": 1,
+              "rssBytes": 450887680,
+              "pssBytes": 310809600,
+              "privateBytes": 295391232,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 485.25,
+              "scanMs": 8.65,
+              "processes": 1,
+              "rssBytes": 450891776,
+              "pssBytes": 310981632,
+              "privateBytes": 295563264,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 643.66,
+              "scanMs": 8.54,
+              "processes": 1,
+              "rssBytes": 450891776,
+              "pssBytes": 310813696,
+              "privateBytes": 295395328,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 803.82,
+              "scanMs": 9.1,
+              "processes": 1,
+              "rssBytes": 450891776,
+              "pssBytes": 310813696,
+              "privateBytes": 295395328,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 963.89,
+              "scanMs": 9.44,
+              "processes": 1,
+              "rssBytes": 450891776,
+              "pssBytes": 310813696,
+              "privateBytes": 295395328,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1122.83,
+              "scanMs": 8.49,
+              "processes": 1,
+              "rssBytes": 450895872,
+              "pssBytes": 310817792,
+              "privateBytes": 295399424,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1280.39,
+              "scanMs": 7.2,
+              "processes": 1,
+              "rssBytes": 450895872,
+              "pssBytes": 310817792,
+              "privateBytes": 295399424,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1440.13,
+              "scanMs": 9.36,
+              "processes": 1,
+              "rssBytes": 450895872,
+              "pssBytes": 310817792,
+              "privateBytes": 295399424,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1597.19,
+              "scanMs": 6.51,
+              "processes": 1,
+              "rssBytes": 450908160,
+              "pssBytes": 310830080,
+              "privateBytes": 295411712,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1755.77,
+              "scanMs": 8.26,
+              "processes": 1,
+              "rssBytes": 450908160,
+              "pssBytes": 310830080,
+              "privateBytes": 295411712,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1914.46,
+              "scanMs": 7.69,
+              "processes": 1,
+              "rssBytes": 450908160,
+              "pssBytes": 310830080,
+              "privateBytes": 295411712,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2070.58,
+              "scanMs": 6.43,
+              "processes": 1,
+              "rssBytes": 450908160,
+              "pssBytes": 310830080,
+              "privateBytes": 295411712,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2227.01,
+              "scanMs": 6.13,
+              "processes": 1,
+              "rssBytes": 450908160,
+              "pssBytes": 310830080,
+              "privateBytes": 295411712,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2385.03,
+              "scanMs": 7.17,
+              "processes": 1,
+              "rssBytes": 450916352,
+              "pssBytes": 310838272,
+              "privateBytes": 295419904,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2542.03,
+              "scanMs": 6.57,
+              "processes": 1,
+              "rssBytes": 450916352,
+              "pssBytes": 310838272,
+              "privateBytes": 295419904,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2699.43,
+              "scanMs": 6.97,
+              "processes": 1,
+              "rssBytes": 450916352,
+              "pssBytes": 310838272,
+              "privateBytes": 295419904,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 2855.92,
+              "scanMs": 6.22,
+              "processes": 1,
+              "rssBytes": 450940928,
+              "pssBytes": 310854656,
+              "privateBytes": 295428096,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3016.12,
+              "scanMs": 9.56,
+              "processes": 1,
+              "rssBytes": 451125248,
+              "pssBytes": 310994944,
+              "privateBytes": 295546880,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3174.13,
+              "scanMs": 7.53,
+              "processes": 1,
+              "rssBytes": 451125248,
+              "pssBytes": 310994944,
+              "privateBytes": 295546880,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3334.23,
+              "scanMs": 9.83,
+              "processes": 1,
+              "rssBytes": 451129344,
+              "pssBytes": 310999040,
+              "privateBytes": 295550976,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3492.17,
+              "scanMs": 7.44,
+              "processes": 1,
+              "rssBytes": 451129344,
+              "pssBytes": 311674880,
+              "privateBytes": 296226816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3649.23,
+              "scanMs": 7.2,
+              "processes": 1,
+              "rssBytes": 451129344,
+              "pssBytes": 310999040,
+              "privateBytes": 295550976,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3806.36,
+              "scanMs": 6.86,
+              "processes": 1,
+              "rssBytes": 451129344,
+              "pssBytes": 310999040,
+              "privateBytes": 295550976,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 3965.96,
+              "scanMs": 9.27,
+              "processes": 1,
+              "rssBytes": 451874816,
+              "pssBytes": 310999040,
+              "privateBytes": 295550976,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 4124.59,
+              "scanMs": 8.26,
+              "processes": 1,
+              "rssBytes": 451174400,
+              "pssBytes": 311044096,
+              "privateBytes": 295596032,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 4282.48,
+              "scanMs": 6.8,
+              "processes": 1,
+              "rssBytes": 451174400,
+              "pssBytes": 311044096,
+              "privateBytes": 295596032,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 4439.09,
+              "scanMs": 6.37,
+              "processes": 1,
+              "rssBytes": 451231744,
+              "pssBytes": 311101440,
+              "privateBytes": 295653376,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 4596.08,
+              "scanMs": 6.62,
+              "processes": 1,
+              "rssBytes": 451256320,
+              "pssBytes": 311126016,
+              "privateBytes": 295677952,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 4753.5,
+              "scanMs": 6.71,
+              "processes": 1,
+              "rssBytes": 451284992,
+              "pssBytes": 312070144,
+              "privateBytes": 296624128,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 4911.52,
+              "scanMs": 7.76,
+              "processes": 1,
+              "rssBytes": 451284992,
+              "pssBytes": 311152640,
+              "privateBytes": 295706624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 5069.46,
+              "scanMs": 8.31,
+              "processes": 1,
+              "rssBytes": 451497984,
+              "pssBytes": 311206912,
+              "privateBytes": 295723008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 5227.4,
+              "scanMs": 7.63,
+              "processes": 1,
+              "rssBytes": 451489792,
+              "pssBytes": 311198720,
+              "privateBytes": 295714816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 5384.83,
+              "scanMs": 7.82,
+              "processes": 1,
+              "rssBytes": 451489792,
+              "pssBytes": 311198720,
+              "privateBytes": 295714816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 5448.38,
+              "scanMs": 10.85,
+              "processes": 1,
+              "rssBytes": 451497984,
+              "pssBytes": 311206912,
+              "privateBytes": 295723008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "replay": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 105.13,
+          "samples": [
+            {
+              "elapsedMs": 7.03,
+              "scanMs": 7.04,
+              "processes": 1,
+              "rssBytes": 451497984,
+              "pssBytes": 311206912,
+              "privateBytes": 295723008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 105.11,
+              "scanMs": 7.06,
+              "processes": 1,
+              "rssBytes": 451497984,
+              "pssBytes": 311206912,
+              "privateBytes": 295723008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume1": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 1104.05,
+          "samples": [
+            {
+              "elapsedMs": 6.72,
+              "scanMs": 6.72,
+              "processes": 1,
+              "rssBytes": 451497984,
+              "pssBytes": 311206912,
+              "privateBytes": 295723008,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 163.94,
+              "scanMs": 7.11,
+              "processes": 1,
+              "rssBytes": 451457024,
+              "pssBytes": 311165952,
+              "privateBytes": 295682048,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 322.1,
+              "scanMs": 7.8,
+              "processes": 1,
+              "rssBytes": 451457024,
+              "pssBytes": 311165952,
+              "privateBytes": 295682048,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 481,
+              "scanMs": 8.31,
+              "processes": 1,
+              "rssBytes": 451457024,
+              "pssBytes": 311165952,
+              "privateBytes": 295682048,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 637.57,
+              "scanMs": 7.05,
+              "processes": 1,
+              "rssBytes": 451457024,
+              "pssBytes": 311165952,
+              "privateBytes": 295682048,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 795.2,
+              "scanMs": 7.29,
+              "processes": 1,
+              "rssBytes": 451457024,
+              "pssBytes": 311165952,
+              "privateBytes": 295682048,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 953.14,
+              "scanMs": 7.37,
+              "processes": 1,
+              "rssBytes": 451481600,
+              "pssBytes": 311190528,
+              "privateBytes": 295706624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1104.04,
+              "scanMs": 8.18,
+              "processes": 1,
+              "rssBytes": 451555328,
+              "pssBytes": 311215104,
+              "privateBytes": 295714816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume2": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 1118.07,
+          "samples": [
+            {
+              "elapsedMs": 7.76,
+              "scanMs": 7.76,
+              "processes": 1,
+              "rssBytes": 451555328,
+              "pssBytes": 311215104,
+              "privateBytes": 295714816,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 164.94,
+              "scanMs": 7.2,
+              "processes": 1,
+              "rssBytes": 451637248,
+              "pssBytes": 311234560,
+              "privateBytes": 295731200,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 322.75,
+              "scanMs": 7.46,
+              "processes": 1,
+              "rssBytes": 451637248,
+              "pssBytes": 311234560,
+              "privateBytes": 295731200,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 480.53,
+              "scanMs": 7.48,
+              "processes": 1,
+              "rssBytes": 451637248,
+              "pssBytes": 311233536,
+              "privateBytes": 295731200,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 636.23,
+              "scanMs": 5.24,
+              "processes": 1,
+              "rssBytes": 451637248,
+              "pssBytes": 311233536,
+              "privateBytes": 295731200,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 791.78,
+              "scanMs": 5.17,
+              "processes": 1,
+              "rssBytes": 451637248,
+              "pssBytes": 311233536,
+              "privateBytes": 295731200,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 949.05,
+              "scanMs": 7,
+              "processes": 1,
+              "rssBytes": 451612672,
+              "pssBytes": 311208960,
+              "privateBytes": 295706624,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1106.95,
+              "scanMs": 7.44,
+              "processes": 1,
+              "rssBytes": 451649536,
+              "pssBytes": 311245824,
+              "privateBytes": 295743488,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1118.06,
+              "scanMs": 8.05,
+              "processes": 1,
+              "rssBytes": 451649536,
+              "pssBytes": 311244800,
+              "privateBytes": 295743488,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume3": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 966.18,
+          "samples": [
+            {
+              "elapsedMs": 6.26,
+              "scanMs": 6.26,
+              "processes": 1,
+              "rssBytes": 451649536,
+              "pssBytes": 311244800,
+              "privateBytes": 295743488,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 163.1,
+              "scanMs": 6.92,
+              "processes": 1,
+              "rssBytes": 451682304,
+              "pssBytes": 311278592,
+              "privateBytes": 295776256,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 323.17,
+              "scanMs": 9.72,
+              "processes": 1,
+              "rssBytes": 451682304,
+              "pssBytes": 311277568,
+              "privateBytes": 295776256,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 480.84,
+              "scanMs": 7.33,
+              "processes": 1,
+              "rssBytes": 451690496,
+              "pssBytes": 311285760,
+              "privateBytes": 295784448,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 639.75,
+              "scanMs": 8.58,
+              "processes": 1,
+              "rssBytes": 451694592,
+              "pssBytes": 311289856,
+              "privateBytes": 295788544,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 799.39,
+              "scanMs": 9.39,
+              "processes": 1,
+              "rssBytes": 451698688,
+              "pssBytes": 311289856,
+              "privateBytes": 295788544,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 958.05,
+              "scanMs": 8.62,
+              "processes": 1,
+              "rssBytes": 451710976,
+              "pssBytes": 311306240,
+              "privateBytes": 295804928,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 966.17,
+              "scanMs": 8.11,
+              "processes": 1,
+              "rssBytes": 451710976,
+              "pssBytes": 311306240,
+              "privateBytes": 295804928,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume4": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 1151.54,
+          "samples": [
+            {
+              "elapsedMs": 6.59,
+              "scanMs": 6.6,
+              "processes": 1,
+              "rssBytes": 451710976,
+              "pssBytes": 311306240,
+              "privateBytes": 295804928,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 163.99,
+              "scanMs": 7.19,
+              "processes": 1,
+              "rssBytes": 451723264,
+              "pssBytes": 311318528,
+              "privateBytes": 295817216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 320.57,
+              "scanMs": 6.25,
+              "processes": 1,
+              "rssBytes": 451723264,
+              "pssBytes": 311318528,
+              "privateBytes": 295817216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 476.24,
+              "scanMs": 6.32,
+              "processes": 1,
+              "rssBytes": 451723264,
+              "pssBytes": 311318528,
+              "privateBytes": 295817216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 632.87,
+              "scanMs": 6.31,
+              "processes": 1,
+              "rssBytes": 451723264,
+              "pssBytes": 311318528,
+              "privateBytes": 295817216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 790.78,
+              "scanMs": 7.57,
+              "processes": 1,
+              "rssBytes": 451723264,
+              "pssBytes": 311318528,
+              "privateBytes": 295817216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 950.5,
+              "scanMs": 9.28,
+              "processes": 1,
+              "rssBytes": 451784704,
+              "pssBytes": 311320576,
+              "privateBytes": 295813120,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1107.79,
+              "scanMs": 7.26,
+              "processes": 1,
+              "rssBytes": 450764800,
+              "pssBytes": 310300672,
+              "privateBytes": 294793216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1151.53,
+              "scanMs": 7.42,
+              "processes": 1,
+              "rssBytes": 450764800,
+              "pssBytes": 310300672,
+              "privateBytes": 294793216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        },
+        "resume5": {
+          "supported": true,
+          "intervalMs": 150,
+          "elapsedMs": 1117.02,
+          "samples": [
+            {
+              "elapsedMs": 7.02,
+              "scanMs": 7.03,
+              "processes": 1,
+              "rssBytes": 450764800,
+              "pssBytes": 310300672,
+              "privateBytes": 294793216,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 164.16,
+              "scanMs": 7.29,
+              "processes": 1,
+              "rssBytes": 450797568,
+              "pssBytes": 310333440,
+              "privateBytes": 294825984,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 322.67,
+              "scanMs": 7.77,
+              "processes": 1,
+              "rssBytes": 450797568,
+              "pssBytes": 310332416,
+              "privateBytes": 294825984,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 479.46,
+              "scanMs": 6.28,
+              "processes": 1,
+              "rssBytes": 450797568,
+              "pssBytes": 310332416,
+              "privateBytes": 294825984,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 636.87,
+              "scanMs": 6.93,
+              "processes": 1,
+              "rssBytes": 450772992,
+              "pssBytes": 310307840,
+              "privateBytes": 294801408,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 793.97,
+              "scanMs": 7.12,
+              "processes": 1,
+              "rssBytes": 450772992,
+              "pssBytes": 310307840,
+              "privateBytes": 294801408,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 951.73,
+              "scanMs": 7.51,
+              "processes": 1,
+              "rssBytes": 450772992,
+              "pssBytes": 310307840,
+              "privateBytes": 294801408,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1110.31,
+              "scanMs": 7.98,
+              "processes": 1,
+              "rssBytes": 450904064,
+              "pssBytes": 310379520,
+              "privateBytes": 294866944,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            },
+            {
+              "elapsedMs": 1117,
+              "scanMs": 6.68,
+              "processes": 1,
+              "rssBytes": 450904064,
+              "pssBytes": 310379520,
+              "privateBytes": 294866944,
+              "missingRss": 0,
+              "missingPss": 0,
+              "incompleteTree": false
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "faults": {
+    "maxSteps": 50000,
+    "atomicNativeQuotaRollback": true,
+    "orphanBlocks": 0,
+    "largeBlockBytes": 647363,
+    "retryWithoutDuplicate": true,
+    "largeCorruptionPreservedState": true,
+    "repairedReplayExact": true,
+    "lostResponseReconciled": true,
+    "preflushPreservedUnacceptedState": true,
+    "derivedQuotaPreservedPrimary": true
+  }
+}
