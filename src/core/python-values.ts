@@ -1,13 +1,15 @@
+import { MAX_STRING_UNITS, checkedString, repeatString, compareStrings } from './python-strings';
 import type { Value } from './language';
 import { getList, isList, type ReadonlyHeap } from './heap';
 
 // Bound expensive arithmetic independently of source size and instruction count.
 const MAX_INTEGER_BITS = 100_000;
 export function pythonTruth(value: Value, heap: ReadonlyHeap = {}): boolean {
+  if (typeof value === 'string') return value.length > 0;
   if (isList(value)) return getList(value, heap).items.length > 0;
   return value !== null && value !== false && value !== 0 && value !== 0n;
 }
-export const pythonBuiltins: ReadonlySet<string> = new Set(['abs', 'int', 'float', 'bool', 'print', 'len']);
+export const pythonBuiltins: ReadonlySet<string> = new Set(['abs', 'int', 'float', 'bool', 'print', 'len', 'str']);
 function number(value: Value): number | bigint {
   if (typeof value === 'boolean') return value ? 1n : 0n;
   if (typeof value === 'number' || typeof value === 'bigint') return value;
@@ -60,10 +62,19 @@ export function pythonBinary(operator: string, left: Value, right: Value, heap: 
   if (operator === '==' || operator === '!=') {
     let equal: boolean;
     if (isList(left) || isList(right)) equal = isList(left) && isList(right) && listEqual(left, right, heap);
+    else if (typeof left === 'string' || typeof right === 'string') equal = left === right;
     else if (left === null || right === null) equal = left === right;
     else if (typeof left === 'object' || typeof right === 'object') equal = typeof left === 'object' && typeof right === 'object' && left.kind === right.kind && left.name === right.name;
     else equal = number(left) == number(right); // Python bool/int/float equality, including exact bigint/float comparisons.
     return operator === '==' ? equal : !equal;
+  }
+  if (typeof left === 'string' || typeof right === 'string') {
+    if (operator === '*' && !(typeof left === 'string' && typeof right === 'string')) return typeof left === 'string' ? repeatString(left, right) : repeatString(right as string, left);
+    if (typeof left !== 'string' || typeof right !== 'string') throw new Error('Esta operação exige duas strings');
+    if (operator === '+') { if (left.length + right.length > MAX_STRING_UNITS) throw new Error('String excede 100.000 unidades UTF-16'); return checkedString(left + right); }
+    const order = compareStrings(left, right);
+    switch (operator) { case '<': return order < 0; case '<=': return order <= 0; case '>': return order > 0; case '>=': return order >= 0; }
+    throw new Error(`Operação ainda não suportada entre strings: ${operator}`);
   }
   const a = number(left), b = number(right);
   switch (operator) {

@@ -1,3 +1,4 @@
+import { programVM } from '../core/vm-version';
 import type { RunMode } from '../core/execution-control';
 import type { PagedOptions, PagedSeekProgress } from '../core/paged-history';
 import type { PagedHeader, PagedRequest, PagedSnapshot, LiveRequest, LiveResponse } from '../core/paged-transfer';
@@ -79,7 +80,7 @@ export class PagedRecordingClient {
   async flush(job: ClientJob = {}): Promise<PagedSnapshot> { return this.stateRequest({ kind: 'flush' }, job); }
   async closeLive(): Promise<void> { if (!this.isLive) return; const response = await this.stateRequest({ kind: 'close' }); if (response.recording?.pauseReason || response.recording?.pendingSteps) throw new Error(response.recording.pauseReason ?? 'Passos pendentes não foram salvos'); }
   async capture(maxHistoryBytes: number, job: ClientJob = {}): Promise<ImportedHistory> {
-    const { header, snapshot } = this; const builder = DebugSession.recordingBuilder(header.program.source, { ...header.program.runtime, maxSteps: header.limits?.maxSteps ?? 20_000, maxFrames: header.limits?.maxFrames ?? 256, maxHistoryBytes }, snapshot.count, snapshot.cursor);
+    const { header, snapshot } = this; const builder = DebugSession.recordingBuilder(header.program.source, { ...header.program.runtime, vm: programVM(header.program), maxSteps: header.limits?.maxSteps ?? 20_000, maxFrames: header.limits?.maxFrames ?? 256, maxHistoryBytes }, snapshot.count, snapshot.cursor);
     const response = await this.request({ kind: 'capture', count: snapshot.count }, job, records => { builder.append(records); job.onProgress?.(builder.count, snapshot.count); });
     if (response.kind !== 'capture-done' || builder.count !== snapshot.count) throw new Error('Captura incompleta');
     const session = await builder.finish(job), bytes = (snapshot.recording?.diskBytes ?? header.entry.bytes) + (snapshot.recording?.pendingBytes ?? 0); return { name: header.entry.name, filename: header.entry.filename, bytes, checksum: await digest(JSON.stringify({ id: header.entry.id, cursor: snapshot.cursor, count: snapshot.count, revision: snapshot.recording?.revision })), session };

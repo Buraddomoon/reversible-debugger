@@ -1,7 +1,7 @@
 import { MAX_EXECUTION_STEPS } from './execution-limits';
 import { decode, digest } from './portable-history';
 import { utf8Bytes } from './history-blocks';
-import { JOURNAL_VALIDATOR } from './journal-validation-cache';
+import { journalValidator } from './journal-validation-cache';
 import type { JournalSnapshot } from './recording-journal';
 import { fields, integer, requireTrace, text, validateMachineState } from './trace-validation';
 
@@ -50,7 +50,7 @@ export class JournalCheckpoints {
     return points.map(raw => {
       const p = fields(raw, ['runId', 'cursor', 'sourceHash', 'seal', 'validator', 'bytes', 'checksum']);
       integer(p.cursor, 1, recording.source.maxSteps); integer(p.bytes, 1, this.runLimit); text(p.checksum, 64);
-      requireTrace(p.runId === recording.entry.id && p.sourceHash === recording.entry.sourceHash && p.validator === JOURNAL_VALIDATOR && /^[a-f0-9]{64}$/.test(p.checksum), 'identidade de checkpoint incompatível');
+      requireTrace(p.runId === recording.entry.id && p.sourceHash === recording.entry.sourceHash && p.validator === journalValidator(recording.program) && /^[a-f0-9]{64}$/.test(p.checksum), 'identidade de checkpoint incompatível');
       return p as unknown as JournalPoint;
     }).filter(p => p.cursor <= recording.head.frontier && recording.head.blocks.some(b => b.first + b.count === p.cursor && b.seal === p.seal)).sort((a, b) => a.cursor - b.cursor);
   }
@@ -58,7 +58,7 @@ export class JournalCheckpoints {
     const raw = await this.tx('readonly', tx => request(tx.objectStore('states').get([point.runId, point.cursor])));
     if (raw === undefined) return null;
     const row = fields(raw, ['runId', 'cursor', 'content']); text(row.content, this.runLimit);
-    requireTrace(row.runId === recording.entry.id && row.cursor === point.cursor && point.sourceHash === recording.entry.sourceHash && point.validator === JOURNAL_VALIDATOR && recording.head.blocks.some(b => b.first + b.count === point.cursor && b.seal === point.seal), 'checkpoint fora da cadeia atual');
+    requireTrace(row.runId === recording.entry.id && row.cursor === point.cursor && point.sourceHash === recording.entry.sourceHash && point.validator === journalValidator(recording.program) && recording.head.blocks.some(b => b.first + b.count === point.cursor && b.seal === point.seal), 'checkpoint fora da cadeia atual');
     requireTrace(utf8Bytes(row.content) === point.bytes && await digest(row.content) === point.checksum, 'checkpoint de navegação corrompido');
     const state = decode(JSON.parse(row.content)); validateMachineState(state, recording.program, recording.source.maxFrames); return state;
   }
@@ -66,7 +66,7 @@ export class JournalCheckpoints {
     const block = recording.head.blocks.find(b => b.first + b.count === cursor);
     if (!block || cursor < this.interval) return;
     const bytes = utf8Bytes(content); if (bytes > this.runLimit) throw new Error('Estado excede a quota de checkpoints; a navegação continua pelos deltas.');
-    const checksum = await digest(content), point: JournalPoint = { runId: recording.entry.id, cursor, sourceHash: recording.entry.sourceHash, seal: block.seal, validator: JOURNAL_VALIDATOR, bytes, checksum };
+    const checksum = await digest(content), point: JournalPoint = { runId: recording.entry.id, cursor, sourceHash: recording.entry.sourceHash, seal: block.seal, validator: journalValidator(recording.program), bytes, checksum };
     await this.tx('readwrite', async tx => {
       const runs = await request<Run[]>(tx.objectStore('runs').getAll()), previous = runs.find(r => r.id === point.runId);
       if (previous && previous.sourceHash !== point.sourceHash) await this.removeRun(tx, point.runId);

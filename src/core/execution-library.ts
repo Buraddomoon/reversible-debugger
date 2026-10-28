@@ -164,7 +164,7 @@ export class ExecutionLibrary {
   }
   async load(id: string, job: LibraryReadJob = {}): Promise<ImportedHistory> {
     const saved = await this.openRecording(id, job.signal), { manifest } = saved, h = manifest.header, r = saved.entry;
-    const builder = DebugSession.recordingBuilder(h.source, { ...h.runtime, ...h.limits, maxHistoryBytes: job.maxHistoryBytes }, h.count, h.cursor);
+    const builder = DebugSession.recordingBuilder(h.source, { ...h.runtime, ...h.limits, vm: h.vm, maxHistoryBytes: job.maxHistoryBytes }, h.count, h.cursor);
     job.onHeader?.(h, r.bytes, saved.checksum);
     for (const descriptor of manifest.blocks) {
       const records = await this.readBlock(saved, descriptor, job.signal);

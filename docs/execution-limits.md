@@ -1,5 +1,7 @@
 # Limites configuráveis e formatos compatíveis
 
+Atualização de tipos: [strings Python e perfil VM3](python-strings.md) acrescentam valores de texto, mantendo leitura/escrita VM2 por perfil e as versões de envelopes/bancos. As medidas e contratos históricos abaixo identificam o estágio em que foram registrados.
+
 O debugger mantém **20.000 passos / 256 níveis de pilha** como padrão. O painel **Limites da execução**, próximo ao orçamento de armazenamento, permite escolher **1 a 50.000 passos** e **2 a 256 níveis**, incluindo o frame do programa. As preferências são salvas por script/exemplo; reiniciar conserva a escolha e recarregar a recupera.
 
 ![Configuração dos limites no Firefox](execution-limits.png)

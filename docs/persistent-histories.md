@@ -1,5 +1,7 @@
 # Execuções salvas em blocos
 
+Atualização de tipos: [strings Python e perfil VM3](python-strings.md) acrescentam valores de texto, mantendo leitura/escrita VM2 por perfil e as versões de envelopes/bancos. As medidas e contratos históricos abaixo identificam o estágio em que foram registrados.
+
 Atualização: [limites configuráveis e versões ampliadas](execution-limits.md) permitem até 50.000 passos: envelope v3 / manifesto v2 / fonte de journal v2 quando o limite excede 20.000. A versão atual mantém leitura e escrita legadas dentro dos tetos anteriores, com a mesma VM2 e quotas. As medidas históricas abaixo conservam as condições em que foram coletadas.
 
 **Salvar execução** guarda fonte, runtime, deltas e cursor no IndexedDB do navegador. A biblioteca mostra seis entradas por página; execuções fechadas mantêm somente metadados na interface. **Abrir** valida os blocos e restaura o cursor salvo, incluindo o futuro já registrado. Os passos continuam sendo transações reversíveis, sem snapshots de toda a memória a cada instrução.

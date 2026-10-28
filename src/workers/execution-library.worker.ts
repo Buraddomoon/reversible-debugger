@@ -14,7 +14,7 @@ scope.onmessage = event => {
       library = new ExecutionLibrary();
       await library.load(id, {
         maxHistoryBytes,
-        onHeader: (h, bytes, checksum) => scope.postMessage({ kind: 'header', header: { ...h.metadata, bytes, checksum, source: h.source, runtime: h.runtime as import('../core/runtime').RuntimeSelection, maxSteps: h.limits.maxSteps, maxFrames: h.limits.maxFrames, maxHistoryBytes, cursor: h.cursor, count: h.count } }),
+        onHeader: (h, bytes, checksum) => scope.postMessage({ kind: 'header', header: { ...h.metadata, bytes, checksum, vm: h.vm, source: h.source, runtime: h.runtime as import('../core/runtime').RuntimeSelection, maxSteps: h.limits.maxSteps, maxFrames: h.limits.maxFrames, maxHistoryBytes, cursor: h.cursor, count: h.count } }),
         onChunk: records => new Promise<void>(resolve => { acknowledge = resolve; scope.postMessage({ kind: 'chunk', records }); }),
         onProgress: (done, total) => scope.postMessage({ kind: 'progress', done, total }),
       });

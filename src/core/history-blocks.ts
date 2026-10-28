@@ -1,9 +1,10 @@
+import { programVM, knownVM } from './vm-version';
 import { LEGACY_MAX_STEPS, MAX_EXECUTION_STEPS, extendedLimits, validateExecutionLimits } from './execution-limits';
 import { compile } from './compiler';
 import { DebugSession, recordingYield, type RecordingJob } from './debugger';
 import { MAX_SOURCE_CHARS } from './language';
 import { initialState, type DeepReadonly, type Step } from './machine';
-import { decode, digest, encode, metadata, MAX_TRACE_BYTES, TRACE_VM, type TraceMetadata } from './portable-history';
+import { decode, digest, encode, metadata, MAX_TRACE_BYTES, type TraceMetadata } from './portable-history';
 import { getRuntime } from './runtime';
 import { fields, integer, requireTrace, same, text } from './trace-validation';
 
@@ -25,7 +26,7 @@ export interface RecordingSnapshot { header: ExecutionHeader; records: readonly 
 export async function captureRecording(session: DebugSession, details: TraceMetadata, id: string, createdAt: number): Promise<RecordingSnapshot> {
   metadata(details); validateExecutionLimits(session);
   const records = [...session.history], cursor = session.cursor, program = session.program, limits = { maxSteps: session.maxSteps, maxFrames: session.maxFrames };
-  const header: ExecutionHeader = { format: 'rewind-blocks', version: extendedLimits(limits) ? 2 : BLOCK_VERSION, vm: TRACE_VM, id, createdAt, metadata: { ...details }, source: program.source, runtime: session.runtime, programHash: await digest(JSON.stringify(encode(program))), limits, initial: encode(initialState()), cursor, count: records.length };
+  const header: ExecutionHeader = { format: 'rewind-blocks', version: extendedLimits(limits) ? 2 : BLOCK_VERSION, vm: programVM(program), id, createdAt, metadata: { ...details }, source: program.source, runtime: session.runtime, programHash: await digest(JSON.stringify(encode(program))), limits, initial: encode(initialState()), cursor, count: records.length };
   return { header, records };
 }
 /** A transaction is indivisible. A single large delta occupies its own block. */
@@ -55,14 +56,14 @@ export async function validateManifest(content: string, hash: string, id: string
   requireTrace(await digest(content) === hash, 'checksum do manifesto não confere');
   const envelope = fields(JSON.parse(content), ['header', 'blocks']);
   const h = fields(envelope.header, ['format', 'version', 'vm', 'id', 'createdAt', 'metadata', 'source', 'runtime', 'programHash', 'limits', 'initial', 'cursor', 'count']);
-  requireTrace(h.format === 'rewind-blocks' && (h.version === BLOCK_VERSION || h.version === 2) && h.vm === TRACE_VM, 'versão de blocos/VM incompatível; os dados foram preservados');
+  requireTrace(h.format === 'rewind-blocks' && (h.version === BLOCK_VERSION || h.version === 2) && knownVM(h.vm), 'versão de blocos/VM incompatível; os dados foram preservados');
   requireTrace(h.id === id, 'identidade da execução não confere'); text(h.id, 100); integer(h.createdAt, 0, Number.MAX_SAFE_INTEGER);
   const details = metadata(h.metadata); text(h.source, MAX_SOURCE_CHARS);
   const rt = fields(h.runtime, ['language', 'version']); text(rt.language, 20); text(rt.version, 20); const runtime = getRuntime(rt.language, rt.version);
   const limits = fields(h.limits, ['maxSteps', 'maxFrames']); integer(limits.maxSteps, 1, h.version === 2 ? MAX_EXECUTION_STEPS : LEGACY_MAX_STEPS); integer(limits.maxFrames, 2, 256);
   integer(h.count, 0, limits.maxSteps); integer(h.cursor, 0, h.count);
   requireTrace(same(decode(h.initial), initialState()), 'estado inicial incompatível'); checksum(h.programHash);
-  requireTrace(await digest(JSON.stringify(encode(compile(h.source, runtime)))) === h.programHash, 'identidade do programa compilado não confere');
+  requireTrace(await digest(JSON.stringify(encode(compile(h.source, runtime, h.vm)))) === h.programHash, 'identidade do programa compilado não confere');
   requireTrace(Array.isArray(envelope.blocks) && envelope.blocks.length <= h.count, 'índice de blocos inválido');
   let next = 0, bytes = utf8Bytes(content);
   const blocks = envelope.blocks.map((raw, index) => {

@@ -2,7 +2,7 @@
 export interface Span { start: number; end: number; line: number; column: number }
 export interface FunctionValue { readonly kind: 'function' | 'builtin'; readonly name: string }
 export interface ListReference { readonly kind: 'list'; readonly id: number }
-export type Value = number | bigint | boolean | null | FunctionValue | ListReference;
+export type Value = number | bigint | boolean | string | null | FunctionValue | ListReference;
 export const MAX_SOURCE_CHARS = 1_000_000;
 export function validateSourceSize(source: string): void {
   if (source.length > MAX_SOURCE_CHARS) throw new LanguageError(`O programa excede o limite de ${MAX_SOURCE_CHARS.toLocaleString('pt-BR')} caracteres`, { start: 0, end: 0, line: 1, column: 1 });

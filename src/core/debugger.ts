@@ -73,9 +73,9 @@ export class DebugSession {
   private seekEpoch = 0;
   private seeking: SeekProgress | null = null;
 
-  constructor(source: string, options: HistoryOptions & { maxSteps?: number; maxFrames?: number; language?: string; version?: string } = {}) {
+  constructor(source: string, options: HistoryOptions & { maxSteps?: number; maxFrames?: number; language?: string; version?: string; vm?: string } = {}) {
     this.runtime = getRuntime(options.language ?? 'rewind', options.version);
-    this.compiled = compile(source, this.runtime);
+    this.compiled = compile(source, this.runtime, options.vm);
     this.limits = { maxSteps: options.maxSteps ?? DEFAULT_EXECUTION_LIMITS.maxSteps, maxFrames: options.maxFrames ?? DEFAULT_EXECUTION_LIMITS.maxFrames };
     validateExecutionLimits(this.limits);
     this.storage = new CheckpointHistory(this.machine, options);
@@ -225,7 +225,7 @@ export class DebugSession {
 
   /** Private staging session; every imported transaction is checked before publication.
    * Partial recordings stop at their last record instead of executing new code. */
-  static async restoreRecording(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number }, records: readonly unknown[], cursor: number, job: RecordingJob = {}): Promise<DebugSession> {
+  static async restoreRecording(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number; vm?: string }, records: readonly unknown[], cursor: number, job: RecordingJob = {}): Promise<DebugSession> {
     job.signal?.throwIfAborted();
     const builder = DebugSession.recordingBuilder(source, options, records.length, cursor);
     let batchStart = performance.now();
@@ -238,7 +238,7 @@ export class DebugSession {
     return session;
   }
   /** Stream into a private VM. Failed/incomplete builders can never publish. */
-  static recordingBuilder(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number }, count: number, cursor: number): RecordingBuilder {
+  static recordingBuilder(source: string, options: { language: string; version: string; maxSteps: number; maxFrames: number; maxHistoryBytes?: number; vm?: string }, count: number, cursor: number): RecordingBuilder {
     validateExecutionLimits(options);
     if (!Number.isSafeInteger(count) || count < 0 || count > options.maxSteps || !Number.isSafeInteger(cursor) || cursor < 0 || cursor > count) throw new Error('Histórico inválido: limites/cursor incompatíveis');
     const session = new DebugSession(source, options); session.recordingOnly = true;

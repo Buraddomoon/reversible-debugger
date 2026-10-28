@@ -1,3 +1,5 @@
+import { STRING_VM } from './vm-version';
+import type { Program } from './compiler';
 import { MAX_EXECUTION_STEPS } from './execution-limits';
 import { digest, decode } from './portable-history';
 import { utf8Bytes } from './history-blocks';
@@ -9,6 +11,7 @@ import { fields, integer, requireTrace, text, validateMachineState } from './tra
 
 // Change this identity whenever the trace validator's semantics change.
 export const JOURNAL_VALIDATOR = 'rewind-journal-validator/1';
+export const journalValidator = (program: Program) => program.vm === STRING_VM ? 'rewind-journal-validator/2' : JOURNAL_VALIDATOR;
 export const VALIDATION_ENTRY_BYTES = 8 * 1024 * 1024;
 export const VALIDATION_DISK_BYTES = 64 * 1024 * 1024;
 export interface ValidatedPrefix {
@@ -50,7 +53,7 @@ export class JournalValidationCache {
     requireTrace(row.id === recording.entry.id && utf8Bytes(row.content) === row.bytes && await digest(row.content) === row.checksum, 'cache de validação corrompido');
     const p = fields(JSON.parse(row.content), ['validator', 'runId', 'sourceHash', 'frontier', 'seal', 'state', 'maxMachineBytes', 'maxStepBytes', 'events']);
     // Incompatible identities are cache misses, never an excuse to trust a new format.
-    if (p.validator !== JOURNAL_VALIDATOR || p.runId !== recording.entry.id || p.sourceHash !== recording.entry.sourceHash) return null;
+    if (p.validator !== journalValidator(recording.program) || p.runId !== recording.entry.id || p.sourceHash !== recording.entry.sourceHash) return null;
     integer(p.frontier, 0, recording.head.frontier);
     const boundary = recording.head.blocks.find(b => b.first + b.count === p.frontier);
     requireTrace(p.seal === (p.frontier === 0 ? recording.entry.sourceHash : boundary?.seal), 'prefixo validado não pertence à cadeia atual');

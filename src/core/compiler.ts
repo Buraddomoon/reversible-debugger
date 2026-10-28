@@ -1,3 +1,4 @@
+import { LEGACY_VM, STRING_VM, knownVM } from './vm-version';
 import { LanguageError, parse, type Expression, type Span, type Statement, type Value } from './language';
 import { parsePython } from './python';
 import { formatValue, getRuntime, type LanguageId, type RuntimeSelection } from './runtime';
@@ -23,6 +24,7 @@ export interface DebugLocation {
 }
 export interface FunctionInfo { entry: number; params: readonly string[] }
 export interface Program {
+  readonly vm?: string;
   readonly source: string;
   readonly runtime: RuntimeSelection;
   readonly instructions: readonly Instruction[];
@@ -31,7 +33,7 @@ export interface Program {
   readonly breakableLines: readonly number[];
 }
 
-export function compile(source: string, runtime: RuntimeSelection = getRuntime('rewind')): Program {
+export function compile(source: string, runtime: RuntimeSelection = getRuntime('rewind'), vm?: string): Program {
   const tree = runtime.language === 'python' ? parsePython(source) : parse(source);
   const instructions: Instruction[] = [];
   const locations: Array<DebugLocation | null> = [];
@@ -179,12 +181,15 @@ export function compile(source: string, runtime: RuntimeSelection = getRuntime('
     emit({ op: 'RETURN' }, fn.span);
     currentSite = null;
   }
+  const stringLiteral = instructions.some(i => i.op === 'PUSH' && typeof i.value === 'string');
+  const strings = vm === STRING_VM || vm === undefined && (stringLiteral || instructions.some(i => i.op === 'LOAD' && i.name === 'str'));
+  if (vm !== undefined && !knownVM(vm) || strings && runtime.language !== 'python' || vm === LEGACY_VM && stringLiteral) throw new LanguageError('Versão de VM incompatível com strings', tree.span);
   // Program and debug metadata are immutable throughout a run.
   for (const instruction of instructions) { Object.freeze(instruction.span); Object.freeze(instruction); }
   for (const fn of Object.values(functions)) { Object.freeze(fn.params); Object.freeze(fn); }
   for (const location of locations) if (location) { Object.freeze(location.span); Object.freeze(location); }
   const breakableLines = [...new Set(locations.filter(location => location?.entry && location.kind === 'statement').map(location => location!.span.line))].sort((a, b) => a - b);
-  return Object.freeze({ source, runtime, instructions: Object.freeze(instructions), functions: Object.freeze(functions), locations: Object.freeze(locations), breakableLines: Object.freeze(breakableLines) });
+  return Object.freeze({ source, runtime, instructions: Object.freeze(instructions), functions: Object.freeze(functions), locations: Object.freeze(locations), breakableLines: Object.freeze(breakableLines), ...(strings ? { vm: STRING_VM } : {}) });
 }
 
 export function describeInstruction(instruction: Instruction, language: LanguageId = 'rewind'): string {

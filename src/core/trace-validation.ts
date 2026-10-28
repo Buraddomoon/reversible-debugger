@@ -1,3 +1,5 @@
+import { STRING_VM } from './vm-version';
+import { checkedString, stringIndex } from './python-strings';
 import { MAX_EXECUTION_STEPS } from './execution-limits';
 import type { Program } from './compiler';
 import { applyChange, applyStep, type Change, type Control, type Frame, type MachineState, type Step, type DeepReadonly } from './machine';
@@ -35,12 +37,13 @@ export function same(left: unknown, right: unknown): boolean {
 function value(item: unknown, program: Program): asserts item is Value {
   if (typeof item === 'boolean' || typeof item === 'number') return;
   requireTrace(program.runtime.language === 'python', 'tipo incompatível com o runtime');
+  if (typeof item === 'string') { requireTrace(program.vm === STRING_VM, 'strings exigem rewind-vm/3'); checkedString(item); return; }
   if (item === null) return;
   if (typeof item === 'bigint') { requireTrace((item < 0n ? -item : item).toString(2).length <= 100_000, 'inteiro excede 100.000 bits'); return; }
   const ref = object(item);
   if (ref.kind === 'list') { fields(ref, ['kind', 'id']); integer(ref.id, 1, MAX_HEAP_OBJECTS); return; }
   fields(ref, ['kind', 'name']); name(ref.name);
-  requireTrace(ref.kind === 'function' ? Object.hasOwn(program.functions, ref.name) : ref.kind === 'builtin' && pythonBuiltins.has(ref.name), 'referência de função desconhecida');
+  requireTrace(ref.kind === 'function' ? Object.hasOwn(program.functions, ref.name) : ref.kind === 'builtin' && pythonBuiltins.has(ref.name) && (ref.name !== 'str' || program.vm === STRING_VM), 'referência de função desconhecida');
 }
 function control(item: unknown, program: Program): asserts item is Control {
   const c = fields(item, ['pc', 'status', 'error', 'nextFrameId', 'nextObjectId', 'heapItems']);
@@ -156,7 +159,7 @@ export function restoreValidatedStep(state: MachineState, program: Program, inpu
     case 'LOAD': {
       pattern(['operands']);
       const local = instruction.scope !== 'global' && Object.hasOwn(caller.locals, instruction.name) ? caller : instruction.scope !== 'local' && Object.hasOwn(state.frames[0]!.locals, instruction.name) ? state.frames[0]! : null;
-      const expected = local ? local.locals[instruction.name] : program.runtime.language === 'python' && instruction.scope !== 'local' && pythonBuiltins.has(instruction.name) ? { kind: 'builtin', name: instruction.name } : undefined;
+      const expected = local ? local.locals[instruction.name] : program.runtime.language === 'python' && instruction.scope !== 'local' && pythonBuiltins.has(instruction.name) && (instruction.name !== 'str' || program.vm === STRING_VM) ? { kind: 'builtin', name: instruction.name } : undefined;
       requireTrace(expected !== undefined && same(pushed(), expected), 'leitura inconsistente'); break;
     }
     case 'DUP': pattern(['operands']); requireTrace(state.operands.length > caller.operandBase && same(pushed(), originalTop), 'duplicação inconsistente'); break;
@@ -169,7 +172,9 @@ export function restoreValidatedStep(state: MachineState, program: Program, inpu
     }
     case 'LIST_GET': {
       pattern(['operands', 'operands', 'operands']);
-      const target = state.operands.at(-2)!, list = getList(target, state.heap), index = listIndex(originalTop!, list.items.length);
+      const target = state.operands.at(-2)!;
+      if (typeof target === 'string') { requireTrace(same(pushed(), stringIndex(target, originalTop!)), 'leitura de string inconsistente'); break; }
+      const list = getList(target, state.heap), index = listIndex(originalTop!, list.items.length);
       requireTrace(same(pushed(), list.items[index]), 'leitura de item inconsistente'); break;
     }
     case 'LIST_SET': case 'LIST_APPEND': {

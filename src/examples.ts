@@ -1,3 +1,6 @@
+import reverseBug from '../examples/python-string-reverse-bug.py?raw';
+import reverseFixed from '../examples/python-string-reverse-fixed.py?raw';
+import hello from '../examples/python-hello.py?raw';
 import bug from '../examples/sum-bug.rw?raw';
 import fixed from '../examples/sum-fixed.rw?raw';
 import factorial from '../examples/factorial.rw?raw';
@@ -18,11 +21,17 @@ export interface Example {
   title: string;
   tag: string;
   source: string;
-  expected?: number | bigint;
+  expected?: number | bigint | string;
   language?: LanguageId;
   description: string;
 }
 export const examples: Example[] = [
+  { id: 'python-string-reverse-bug', title: 'Python · Texto invertido com bug', tag: 'Strings e Unicode', source: reverseBug, language: 'python', expected: '🚀ãçam',
+    description: 'A inversão perde o primeiro caractere. Acompanhe i > 0, a string vazia e cada concatenação. O emoji ocupa uma posição de texto.' },
+  { id: 'python-string-reverse-fixed', title: 'Python · Texto invertido corrigido', tag: 'Strings reversíveis', source: reverseFixed, language: 'python', expected: '🚀ãçam',
+    description: 'i >= 0 inclui o primeiro caractere. Compare com a versão com bug e volte pelas concatenações para restaurar o texto.' },
+  { id: 'python-hello', title: 'Python · Hello, world!', tag: 'Primeiro texto', source: hello, language: 'python', expected: 'Hello, world!',
+    description: 'Uma variável de texto e um print. Retroceder restaura a atribuição e remove a saída; avançar reaplica os mesmos registros.' },
   { id: 'python-cancellable-navigation', title: 'Python · Navegação longa', tag: 'Saltos canceláveis', source: navigationScale, language: 'python', expected: 499500n,
     description: 'Selecione 4 MiB, use Entrar e Passar sobre. Volte ao Início e escolha Último para acompanhar, cancelar ou substituir um salto longo. O histórico permanece disponível.' },
   { id: 'python-storage-growth', title: 'Python · Crescimento do histórico', tag: 'Orçamento de armazenamento', source: storageGrowth, language: 'python', expected: 120n,

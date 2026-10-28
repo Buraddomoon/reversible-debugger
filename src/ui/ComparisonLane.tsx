@@ -9,15 +9,15 @@ import { highlightSyntax } from './SourceView';
 
 export const phaseLabels: Record<ComparisonPhase, string> = { initial: 'Início', write: 'Atribuição', mutation: 'Lista alterada', decision: 'Decisão', call: 'Chamada', return: 'Retorno', output: 'Saída', error: 'Erro', end: 'Fim', limit: 'Limite da gravação', pause: 'Fim do histórico parcial' };
 const statusLabels: Record<string, string> = { running: 'Em andamento', halted: 'Concluída', error: 'Erro' };
-export function differenceText(binding: DifferenceValue, language: LanguageId): string {
+export function differenceText(binding: DifferenceValue, language: LanguageId, literal = false): string {
   if (!binding.present) return '—';
   const value = binding.value;
-  if (typeof value === 'string') return value || '(vazio)';
-  if (Array.isArray(value)) return value.map(item => typeof item === 'string' ? item : formatValue(item, language)).join(' · ') || '(vazia)';
+  if (typeof value === 'string') return literal ? formatValue(value, language) : value || '(vazio)';
+  if (Array.isArray(value)) return value.map(item => typeof item === 'string' && !literal ? item : formatValue(item, language)).join(' · ') || '(vazia)';
   return formatValue(value as Value, language);
 }
 function valueType(value: Value, language: LanguageId): string {
-  return isList(value) ? 'list' : value === null ? 'None' : typeof value === 'bigint' ? 'int' : typeof value === 'number' ? language === 'python' ? 'float' : 'número' : typeof value === 'boolean' ? 'booleano' : 'função';
+  return isList(value) ? 'list' : typeof value === 'string' ? 'str' : value === null ? 'None' : typeof value === 'bigint' ? 'int' : typeof value === 'number' ? language === 'python' ? 'float' : 'número' : typeof value === 'boolean' ? 'booleano' : 'função';
 }
 function CodeExcerpt({ source, language, line }: { source: string; language: LanguageId; line: number | null }) {
   const lines = useMemo(() => source.split('\n'), [source]);
@@ -68,7 +68,7 @@ export function DifferenceTable({ differences, language }: { differences: readon
   const pages = Math.max(1, Math.ceil(differences.length / 20));
   const text = (diff: StateDifference, value: DifferenceValue) => {
     if (diff.category === 'output' && value.present && Array.isArray(value.value)) return value.value.join('') || '(vazia)';
-    const raw = differenceText(value, language);
+    const raw = differenceText(value, language, diff.category === 'heap' || diff.category === 'operands');
     if (diff.category === 'control') return statusLabels[raw] ?? phaseLabels[raw as ComparisonPhase] ?? raw;
     return raw;
   };

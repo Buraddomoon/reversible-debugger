@@ -2,7 +2,7 @@ import { executeInstruction, applyStep, initialState, type DeepReadonly, type Ma
 import { RecordingJournal, LIVE_BLOCK_BYTES, LIVE_BLOCK_STEPS, type JournalSnapshot } from './recording-journal';
 import { type RuntimeSelection } from './runtime';
 import type { JournalPoint } from './journal-checkpoints';
-import { JOURNAL_VALIDATOR } from './journal-validation-cache';
+import { journalValidator } from './journal-validation-cache';
 import { encode, type TraceMetadata } from './portable-history';
 import { utf8Bytes } from './history-blocks';
 import { freezePayload, HistoryBudgetError, validateHistoryBudget } from './history';
@@ -140,7 +140,7 @@ export class LiveRecording {
   }
   private async cachePrefix(): Promise<void> {
     try {
-      await this.journal.validation.publish({ validator: JOURNAL_VALIDATOR, runId: this.entry.id, sourceHash: this.entry.sourceHash,
+      await this.journal.validation.publish({ validator: journalValidator(this.program), runId: this.entry.id, sourceHash: this.entry.sourceHash,
         frontier: this.recording.head.frontier, seal: this.recording.head.lastSeal, state: this.recording.head.state,
         maxMachineBytes: this.maxMachine, maxStepBytes: this.maxStep, events: this.events });
       this.cacheWarning = null;

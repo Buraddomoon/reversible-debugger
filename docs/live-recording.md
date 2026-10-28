@@ -1,5 +1,7 @@
 # Gravação persistida durante a execução
 
+Atualização de tipos: [strings Python e perfil VM3](python-strings.md) acrescentam valores de texto, mantendo leitura/escrita VM2 por perfil e as versões de envelopes/bancos. As medidas e contratos históricos abaixo identificam o estágio em que foram registrados.
+
 Atualização: [limites configuráveis e versões ampliadas](execution-limits.md) permitem até 50.000 passos: envelope v3 / manifesto v2 / fonte de journal v2 quando o limite excede 20.000. A versão atual mantém leitura e escrita legadas dentro dos tetos anteriores, com a mesma VM2 e quotas. As medidas históricas abaixo conservam as condições em que foram coletadas.
 
 **Gravar sessão** inicia uma execução do código atual, a partir do passo zero. O modal pede um nome; a nova sessão aparece numa biblioteca própria, separada dos scripts e das capturas feitas com **Salvar execução**. É possível gravar os dois runtimes já suportados, sem efeitos externos.

@@ -1,6 +1,7 @@
+import { checkedString, stringLiteral } from './python-strings';
 import { LanguageError, validateSourceSize, type Expression, type FunctionNode, type Span, type Statement, type SyntaxTree } from './language';
 
-interface Token { text: string; span: Span; kind: 'number' | 'name' | 'symbol' | 'end' }
+interface Token { text: string; span: Span; value?: string; kind: 'number' | 'name' | 'string' | 'symbol' | 'end' }
 interface Line { indent: number; text: string; span: Span }
 const reserved = new Set('False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield'.split(' '));
 const priorities: Record<string, number> = { or: 1, and: 2, '==': 4, '!=': 4, '<': 4, '<=': 4, '>': 4, '>=': 4, '+': 5, '-': 5, '*': 6, '/': 6, '//': 6, '%': 6, '**': 8 };
@@ -12,11 +13,20 @@ function lines(source: string): Line[] {
   source.split('\n').forEach((raw, index) => {
     const indentText = /^[ \t]*/.exec(raw)![0];
     const span = { start: offset + indentText.length, end: offset + raw.length, line: index + 1, column: indentText.length + 1 };
-    const code = raw.slice(indentText.length).split('#')[0]!.trimEnd();
+    let quote = '', escaped = false, end = raw.length;
+    for (let i = indentText.length; i < raw.length; i++) {
+      const char = raw[i]!;
+      if (quote) { if (escaped) escaped = false; else if (char === '\\') escaped = true; else if (char === quote) quote = ''; }
+      else if (char === '"' || char === "'") quote = char;
+      else if (char === '#') { end = i; break; }
+      else if (char === '(' || char === '[') depth++;
+      else if (char === ')' || char === ']') depth--;
+    }
+    if (quote) throw new LanguageError('String não foi fechada nesta linha', span);
+    const code = raw.slice(indentText.length, end).trimEnd();
     if (code || continuation) {
       if (!continuation && indentText.includes('\t')) throw new LanguageError('Use espaços na indentação; tabulações ainda não são suportadas', span);
       if (!continuation) continuation = { indent: indentText.length, text: '', span };
-      for (const character of code) { if (character === '(' || character === '[') depth++; if (character === ')' || character === ']') depth--; }
       if (depth < 0) throw new LanguageError('Parêntese de fechamento inesperado', span);
       if (depth === 0) {
         continuation.text = source.slice(continuation.span.start, span.end);
@@ -41,6 +51,11 @@ function lex(line: Line): Token[] {
     if (/\s/.test(character)) { advance(); continue; }
     if (character === '#') { while (offset < line.text.length && line.text[offset] !== '\n') advance(); continue; }
     const span = { start: line.span.start + offset, end: line.span.start + offset, line: row, column };
+    if (character === '"' || character === "'") {
+      const literal = stringLiteral(line.text, offset, span), text = line.text.slice(offset, literal.end);
+      for (let i = 0; i < text.length; i++) advance();
+      tokens.push({ text, value: literal.text, kind: 'string', span: { ...span, end: line.span.start + offset } }); continue;
+    }
     number.lastIndex = identifier.lastIndex = offset;
     const numeric = number.exec(line.text), name = identifier.exec(line.text);
     let text: string, kind: Token['kind'];
@@ -120,6 +135,12 @@ class Expressions {
       const items: Expression[] = [];
       if (this.current.text !== ']') do { items.push(this.expression()); } while (this.match(',') && this.current.text !== ']');
       return { kind: 'list', items, span: combine(token.span, this.expect(']').span) };
+    }
+    if (token.kind === 'string') {
+      this.take(); const parts = [token.value!]; let end = token.span;
+      while (this.current.kind === 'string') { const next = this.take(); parts.push(next.value!); end = next.span; }
+      try { return { kind: 'literal', value: checkedString(parts.join('')), span: combine(token.span, end) }; }
+      catch (cause) { throw new LanguageError((cause as Error).message, token.span); }
     }
     if (token.kind === 'number') {
       this.take();

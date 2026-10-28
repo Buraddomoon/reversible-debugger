@@ -1,3 +1,4 @@
+import { programVM, knownVM } from './vm-version';
 import { LEGACY_MAX_STEPS, MAX_EXECUTION_STEPS, extendedLimits, validateExecutionLimits } from './execution-limits';
 import { DebugSession, recordingYield, type RecordingJob } from './debugger';
 import { initialState } from './machine';
@@ -78,7 +79,7 @@ export async function exportHistory(session: DebugSession, details: TraceMetadat
     if ((i + 1) % 256 === 0 || performance.now() - batchStart >= 8) { job.onProgress?.(i + 1, records.length); await recordingYield(job); batchStart = performance.now(); }
   }
   job.signal?.throwIfAborted();
-  const header = { vm: TRACE_VM, metadata: capturedDetails, source: program.source, runtime, programHash: await digest(JSON.stringify(encode(program))), limits, initial: encode(initialState()), cursor };
+  const header = { vm: programVM(program), metadata: capturedDetails, source: program.source, runtime, programHash: await digest(JSON.stringify(encode(program))), limits, initial: encode(initialState()), cursor };
   await recordingYield(job);
   // Each record was already encoded in a bounded batch. Join its JSON without
   // traversing/encoding the whole trace a second time in a single task.
@@ -100,7 +101,7 @@ export async function importHistory(content: string, job: RecordingJob & { maxHi
   // Bound nesting and decode records in batches before stringify/digest can
   // traverse untrusted nesting. Header decoding never walks the entire trace.
   const payload = fields(decode({ ...encoded, steps: [] }), expectedFields);
-  requireTrace(payload.vm === TRACE_VM, 'versão de compilador/VM incompatível');
+  requireTrace(knownVM(payload.vm), 'versão de compilador/VM incompatível');
   const details = metadata(payload.metadata); text(payload.source, MAX_SOURCE_CHARS);
   const runtimeFields = fields(payload.runtime, ['language', 'version']); text(runtimeFields.language, 20); text(runtimeFields.version, 20);
   const runtime = getRuntime(runtimeFields.language, runtimeFields.version);
@@ -117,10 +118,10 @@ export async function importHistory(content: string, job: RecordingJob & { maxHi
   requireTrace(envelope.checksum === await digest(JSON.stringify(envelope.payload)), 'checksum não confere; arquivo alterado ou corrompido');
   await recordingYield(job);
   text(payload.programHash, 64);
-  const program = compile(payload.source, runtime);
+  const program = compile(payload.source, runtime, payload.vm);
   requireTrace(payload.programHash === await digest(JSON.stringify(encode(program))), 'identidade do programa compilado não confere');
   await recordingYield(job);
-  const session = await DebugSession.restoreRecording(payload.source, { ...runtime, maxSteps: limits.maxSteps, maxFrames: limits.maxFrames, maxHistoryBytes: job.maxHistoryBytes }, records, payload.cursor, { ...job, onProgress: done => job.onProgress?.(total + done, total * 2) });
+  const session = await DebugSession.restoreRecording(payload.source, { ...runtime, vm: payload.vm, maxSteps: limits.maxSteps, maxFrames: limits.maxFrames, maxHistoryBytes: job.maxHistoryBytes }, records, payload.cursor, { ...job, onProgress: done => job.onProgress?.(total + done, total * 2) });
   return { ...details, session, bytes, checksum: envelope.checksum };
 }
 export function checkImportBudget(existing: readonly { bytes: number }[], incomingBytes: number): void {

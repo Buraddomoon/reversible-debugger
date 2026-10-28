@@ -305,3 +305,5 @@
 .execution-limits summary{cursor:pointer;font-size:.75rem;color:#c5ddd7;line-height:1.8}.execution-limits p{font-size:.6875rem;color:#9cb4c9;line-height:1.7}.execution-limit-fields{display:flex;align-items:end;flex-wrap:wrap;gap:14px;margin-top:14px}.execution-limit-fields label{display:grid;gap:6px;font-size:.6875rem;color:#adc7cf}.execution-limit-fields input{width:140px;max-width:100%;padding:8px;background:#142536;border:1px solid #426283;border-radius:5px;color:#e0e8dc;font-family:var(--mono)}.execution-limit-fields button{font-size:.75rem;min-height:35px}
 
 .output-navigation{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:9px;min-width:0}.output-navigation button{font-size:.75rem;padding:5px 8px;min-height:30px}.output-navigation label{display:flex;align-items:center;gap:4px;font-size:.75rem}.output-navigation input{width:64px;min-width:0;padding:4px;color:#e8edf5;background:var(--surface);border:1px solid var(--border);border-radius:4px}.output-navigation small{flex-basis:100%;line-height:1.5;overflow-wrap:anywhere}
+
+.syntax-string{color:#c2d997}

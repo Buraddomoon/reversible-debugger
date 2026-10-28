@@ -7,6 +7,7 @@ O seletor **Python / Python 3** identifica essa implementação das regras comun
 ## Recursos implementados
 
 - Atribuição `x = expressão` e atribuição aumentada `+=`, `-=`, `*=`, `/=`, `//=`, `%=` e `**=`.
+- Strings com aspas/escapes, concatenação, repetição, comparações e índices Unicode; `len` e `str`. [Contrato, exemplos, limites e formatos](python-strings.md).
 - Inteiros exatos, inclusive além de `2**53`, floats, booleanos `True`/`False` e `None`.
 - Literais inteiros decimais, hexadecimais, binários e octais; floats com ponto ou expoente.
 - Operadores `+`, `-`, `*`, `/`, `//`, `%`, `**`, comparações, sinais unários, `not`, `and` e `or`.
@@ -48,13 +49,13 @@ Em chamadas, o nome da função é avaliado antes dos argumentos. Essa referênc
 
 Inteiros usam `bigint`; floats usam números de dupla precisão. `//` arredonda em direção ao menos infinito e `%` acompanha o sinal do divisor, inclusive com operandos negativos. Booleanos participam da aritmética como inteiros. Essas regras e a precedência/curto-circuito foram verificadas contra as [expressões de Python](https://docs.python.org/3/reference/expressions.html) e com casos executados no Python existente nesta máquina.
 
-A interface mostra `int`, `float`, `None`, booleanos, funções e listas separadamente. Os valores de funções são apresentados descritivamente, sem um endereço de memória do CPython.
+A interface mostra `str`, `int`, `float`, `None`, booleanos, funções e listas separadamente. Os valores de funções são apresentados descritivamente, sem um endereço de memória do CPython.
 
 Uma atribuição `b = a` compartilha a lista, enquanto `[a[0], a[1]]` cria outra. Índices são avaliados com regras de Python: float é rejeitado, índices negativos contam a partir do fim e a escrita avalia o lado direito antes do alvo/índice. `append` verifica o receptor antes de avaliar o argumento. Ao desfazer uma mutação, todas as referências observam o conteúdo restaurado. [Contrato e exemplos](reversible-lists.md).
 
 ## Recursos ainda não suportados
 
-Strings, tuplas, dicionários, sets, imports, bibliotecas, atributos além da chamada direta de `append`, classes, lambdas, closures, funções aninhadas/condicionais, `for`, `range`, `break`, `continue`, `global`, `nonlocal`, exceções capturáveis, async, generators, comprehensions, parâmetros default/keyword/variádicos e comparações encadeadas (`0 < x < 10`). Listas ainda não suportam slicing, concatenação/repetição, comparação de ordem, `is`, atribuição aumentada por índice, métodos armazenados ou outros métodos. Comparar ciclos distintos que exigem recursão falha explicitamente. Também não há separadores `_` em literais, identificadores Unicode, tabulações como indentação, múltiplos comandos separados por `;` ou blocos na mesma linha.
+Aspas triplas, prefixos/f-strings, métodos/slicing de strings, conversão `int`/`float` a partir de texto, tuplas, dicionários, sets, imports, bibliotecas, atributos além da chamada direta de `append`, classes, lambdas, closures, funções aninhadas/condicionais, `for`, `range`, `break`, `continue`, `global`, `nonlocal`, exceções capturáveis, async, generators, comprehensions, parâmetros default/keyword/variádicos e comparações encadeadas (`0 < x < 10`). Listas ainda não suportam slicing, concatenação/repetição, comparação de ordem, `is`, atribuição aumentada por índice, métodos armazenados ou outros métodos. Comparar ciclos distintos que exigem recursão falha explicitamente. Também não há separadores `_` em literais, identificadores Unicode, tabulações como indentação, múltiplos comandos separados por `;` ou blocos na mesma linha.
 
 Esses casos recebem diagnóstico, não uma tradução silenciosa com outras regras. Aridade e nomes chamáveis são verificados em execução. Para comparar intervalos, use expressões explícitas com `and` quando os operandos não tenham efeitos de avaliação duplicados.
 
@@ -67,6 +68,7 @@ Esses casos recebem diagnóstico, não uma tradução silenciosa com outras regr
 - Histórico: 20.000 passos e 256 frames por padrão. Chegar ao limite de histórico preserva a navegação dos registros existentes.
 - Armazenamento: [64 MiB de payload por sessão](storage-budget.md) por padrão, ajustável. Falta de orçamento pausa o debugger antes de gravar a próxima instrução, sem erro do programa ou descarte de passos.
 - Heap: 4.096 listas e 20.000 itens totais entre elas. Objetos sem referências permanecem até desfazer a criação ou reiniciar; ainda não há coleta de lixo.
+- Strings: 100.000 unidades UTF-16 por valor; comprimento e índices Python contam pontos de código. Strings usam VM3 e históricos VM2 continuam legíveis.
 - Saída: 100.000 caracteres por chamada de `print`, incluindo espaços/quebra de linha. Excesso falha atomicamente, sem truncar a saída.
 - Literais inteiros: até 4.300 dígitos; inteiros calculados: até 100.000 bits. Potências excessivas são rejeitadas antes de alocar um inteiro enorme.
 - Conversões de inteiros em floats exigem que o inteiro caiba no intervalo float suportado. Casos com operandos gigantes que exigiriam uma conversão especializada do CPython são diagnosticados, inclusive certas divisões entre inteiros gigantes.

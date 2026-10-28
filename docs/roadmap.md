@@ -236,12 +236,21 @@ Critério atendido: limites declarados acompanham gravação, retomada, arquivos
 
 Critério atendido: eliminar releituras identificadas na captura com cache pequeno e limitar texto no DOM, preservando registros, estado e formatos. Snapshots da VM ainda incluem saída completa; materialização/download continuam ações integrais explícitas.
 
-## Próxima etapa — ampliar o subconjunto Python com strings
+## Strings Python reversíveis — implementado
 
-- Definir strings como valores da VM: literais, escapes, operações básicas e mensagens de erro compatíveis com o subconjunto documentado.
-- Versionar o codec quando necessário, preservando leitura dos históricos atuais e quotas explícitas para os novos valores.
-- Cobrir variáveis, argumentos/retornos, listas, `print`, comparação e todos os estados nos dois sentidos; acrescentar exemplos curtos de texto.
+- Aspas/escapes e literais adjacentes, concatenação/repetição, comparação, verdade, índices Unicode, `len` e `str`, incluindo funções, listas e saída.
+- Quota de 100.000 unidades UTF-16 por valor; falhas atômicas e previews limitados, sem truncar valores gravados.
+- Perfil `rewind-vm/3` para os novos tipos; leitura/escrita de VM2 preservada por perfil explícito, sem migração destrutiva dos bancos. Cabeçalhos de Workers e caches auxiliares acompanham o perfil.
+- Hello World e inversão de texto com bug/correção. Testes com Python instalado, navegação gerada e arquivos de referência anteriores; Firefox verifica UI/Workers/IndexedDB, 1.182 estados completos e 390 px. [Contrato, exemplos e reprodução](python-strings.md).
+
+Critério atendido: valores de texto observáveis e reversíveis em variáveis, chamadas, operandos, listas, saída, arquivos/capturas/journals e comparação, preservando estados dos arquivos anteriores.
+
+## Próxima etapa — `for` e `range` no subconjunto Python
+
+- Definir iteração sobre `range`, listas e strings, incluindo passos negativos, sem depender de iteradores JavaScript ocultos.
+- Registrar posição e valores necessários nos deltas, cobrindo chamadas dentro do corpo e mutações de listas durante a iteração.
+- Preservar formatos legados por perfil, quotas e testes de todos os estados nos dois sentidos; incluir busca e contagem de texto como exemplos curtos.
 
 A ampliação de limites além de 50.000, retenção parcial e adaptador JavaScript continuam marcos separados. Se houver retenção parcial, o primeiro cursor disponível e o checkpoint na fronteira precisam ser explícitos; remover início/futuro exige política visível.
 
-Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, strings, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.
+Cada marco preserva os testes de reversibilidade. Novos métodos/coleções, closures e adaptador JavaScript continuam como evoluções próprias; efeitos externos exigem contrato de gravação/replay.

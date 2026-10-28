@@ -50,8 +50,8 @@ export function compareStates(left: ComparisonRunView, right: ComparisonRunView,
   const graph = compareHeapRoots(roots, a.heap, b.heap);
   for (let i = 0; i < variableCount; i++) if (!graph.equal[i]) {
     const root = roots[i]!;
-    const formatA = isList(root.left) ? previewValue(root.left, left.program.runtime.language, a.heap) : root.left;
-    const formatB = isList(root.right) ? previewValue(root.right, right.program.runtime.language, b.heap) : root.right;
+    const formatA = isList(root.left) || typeof root.left === 'string' ? previewValue(root.left, left.program.runtime.language, a.heap) : root.left;
+    const formatB = isList(root.right) || typeof root.right === 'string' ? previewValue(root.right, right.program.runtime.language, b.heap) : root.right;
     add('variables', root.name!, present(formatA), present(formatB));
   }
   for (const difference of graph.differences) add('heap', difference.name, difference.left === undefined ? absent : present(difference.left), difference.right === undefined ? absent : present(difference.right));

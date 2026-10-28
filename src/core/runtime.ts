@@ -1,10 +1,11 @@
+import { reprString } from './python-strings';
 import type { Value } from './language';
 import { getList, isList, type ReadonlyHeap } from './heap';
 
 export type LanguageId = 'python' | 'rewind';
 export interface RuntimeSelection { readonly language: LanguageId; readonly version: string }
 export const runtimes = [
-  { id: 'python', label: 'Python', extension: '.py', versions: ['3'], versionLabel: 'Python 3', description: 'Números, booleanos, listas, índices, append, len, condicionais, while, funções e print. Sem bibliotecas, strings, slicing ou outros métodos nesta versão.' },
+  { id: 'python', label: 'Python', extension: '.py', versions: ['3'], versionLabel: 'Python 3', description: 'Números, strings, booleanos, listas, índices, append, len, str, condicionais, while, funções e print. Sem bibliotecas, f-strings, slicing ou outros métodos nesta versão.' },
   { id: 'rewind', label: 'Experimental da demo', extension: '.rw', versions: ['0.1'], versionLabel: '0.1', description: 'Linguagem criada para os exemplos originais da demo, com sintaxe própria. Não é Python ou JavaScript.' },
 ] as const;
 
@@ -18,9 +19,10 @@ export function getRuntime(language: string, version?: string): RuntimeSelection
 
 export function formatValue(value: Value, language: LanguageId = 'rewind'): string {
   if (language !== 'python') return String(value);
+  if (typeof value === 'string') return reprString(value, 160);
   if (value === null) return 'None';
   if (isList(value)) return `#L${value.id}`;
-  if (typeof value === 'object') return value.kind === 'function' ? `<function ${value.name}>` : ['int', 'float', 'bool'].includes(value.name) ? `<class '${value.name}'>` : `<built-in function ${value.name}>`;
+  if (typeof value === 'object') return value.kind === 'function' ? `<function ${value.name}>` : ['int', 'float', 'bool', 'str'].includes(value.name) ? `<class '${value.name}'>` : `<built-in function ${value.name}>`;
   if (typeof value === 'boolean') return value ? 'True' : 'False';
   if (typeof value === 'bigint') return value.toString();
   if (Number.isNaN(value)) return 'nan';
@@ -48,6 +50,7 @@ export function formatPythonOutput(value: Value, heap: ReadonlyHeap): string {
     const next = work.pop()!;
     if ('leave' in next) { active.delete(next.leave); continue; }
     if ('text' in next) { add(next.text); continue; }
+    if (typeof next.value === 'string') { add(active.size ? reprString(next.value, MAX_PRINT_CHARS, false) : next.value); continue; }
     if (!isList(next.value)) { add(formatValue(next.value, 'python')); continue; }
     if (active.has(next.value.id)) { add('[...]'); continue; }
     const items = getList(next.value, heap).items;

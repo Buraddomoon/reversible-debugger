@@ -1,0 +1,24 @@
+{
+  "browser": "150.0",
+  "count": 393,
+  "exactStates": 1182,
+  "vm": "rewind-vm/3",
+  "fileVersion": 3,
+  "volatileFuture": 4,
+  "sourcePreserved": true,
+  "portableWorker": true,
+  "libraryWorker": true,
+  "pagedCapture": true,
+  "pagedComparison": true,
+  "legacyFiles": 3,
+  "note": "Installed Firefox; native IndexedDB, application Workers and full-state oracle. No execution during navigation; independent legacy fixtures written at d62d861.",
+  "ui": {
+    "hello": true,
+    "reverseBug": true,
+    "comparison": true,
+    "exportImport": true,
+    "savedPaged": true,
+    "legacyImport": true,
+    "mobileWidth": 390
+  }
+}

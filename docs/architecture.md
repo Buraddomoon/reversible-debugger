@@ -185,7 +185,7 @@ As [medidas e decisões de escala](visual-explanations.md) mantêm a execução 
 
 ## Históricos portáveis
 
-`portable-history.ts` define envelopes v2/v3 conforme o limite declarado, com `rewind-vm/2`, codec de valores, identidade SHA-256 de programa/arquivo e quotas. Referências de lista usam tags por ID; alocações/mutações e contadores são validados. Arquivos v1 recebem diagnóstico explícito para abrir na branch anterior; não são migrados. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
+`portable-history.ts` define envelopes v2/v3 conforme o limite declarado, com perfis `rewind-vm/2` e `rewind-vm/3` (strings), codec de valores, identidade SHA-256 de programa/arquivo e quotas. Referências de lista usam tags por ID; alocações/mutações e contadores são validados. Arquivos v1 recebem diagnóstico explícito para abrir na branch anterior; não são migrados. `trace-validation.ts` valida a cadeia de estados e a estrutura dos deltas em uma VM privada, sem avaliar expressões. Checkpoints e projeções são reconstruídos. A sessão só é publicada depois de validar todos os registros e restaurar o cursor do arquivo.
 
 `DebugSession.replayOnly` impede gravar além de uma importação parcial. `restart()` cria uma execução gravável nova. `forkRecording()` compartilha programa e payloads congelados, copia os índices de armazenamento e mantém VM/cursor próprios, sem reprocessar a execução inteira. A comparação usa esse fork para consumir arquivos sem executar código de novo.
 
@@ -249,10 +249,16 @@ A admissão do journal reserva leitura do maior bloco durável/buffer, evitando 
 
 `execution-limits.ts` define o padrão de 20.000 passos e teto de 50.000, mantendo 256 frames. `DebugSession.setExecutionLimits` valida ambos os valores antes de aplicá-los; reduções respeitam a contagem e profundidade máxima de todo o histórico. O controlador transforma a fronteira de passos em parada de gravação; `forward()` conserva seu erro de baixo nível. Preferências por programa ficam separadas dos scripts. Sessões contínuas copiam os valores ao criar a fonte imutável.
 
-Limites ampliados usam envelope de arquivo v3, manifesto v2 e fonte de journal v2, com VM2 e schema IndexedDB v1. Leitores aceitam as variantes anteriores e escritores conservam os formatos legados até 20.000 passos. Exportação/captura congelam os limites antes do primeiro await. [Contrato, limites de compatibilidade e ensaio de 50.000 passos](execution-limits.md).
+Limites ampliados usam envelope de arquivo v3, manifesto v2 e fonte de journal v2, com perfis VM2/VM3 e schema IndexedDB v1. Leitores aceitam as variantes anteriores e escritores conservam os formatos legados até 20.000 passos. Exportação/captura congelam os limites antes do primeiro await. [Contrato, limites de compatibilidade e ensaio de 50.000 passos](execution-limits.md).
 
 ## Transferência sequencial e saída limitada no DOM
 
 A materialização de um journal usa `LiveRecording.streamRecords` e o protocolo interno `capture` → `capture-records` → `pull` → `capture-done`. Um bloco temporário permanece em uso entre pacotes de até 16 registros, mesmo quando não cabe no LRU. O cliente valida cada pacote no builder privado antes de solicitar o próximo; operações concorrentes são serializadas pelo Worker. Cancelamento/substituição descartam a captura sem alterar a origem. A reserva de leitura e a admissão existentes continuam em vigor.
 
 `ProgramOutput` compartilha paginação nos painéis clássico, paginado e comparativo. Percorre os tamanhos das entradas de saída, concatena apenas a janela visível de até 32.769 unidades UTF-16 e evita separar pares substitutos. A saída completa continua na VM e nos snapshots; o download concatena o texto apenas sob ação explícita. [Contrato, limites e validação nativa](transfers-and-output.md).
+
+## Perfil de valores de texto
+
+`python-strings.ts` centraliza literais/escapes, quota, Unicode, repetição e representação de strings. `Value` inclui strings imutáveis; deltas já existentes preservam seus valores em bindings, operandos, frames e listas. A leitura por índice usa a instrução existente `LIST_GET`, cuja semântica de sequência é declarada por VM3. `len` conta pontos de código e `str` respeita os escopos/aliases dos builtins. O parser distingue comentários/delimitadores fora e dentro de aspas, mantendo offsets do arquivo original.
+
+`compile` seleciona VM3 quando encontra literal string ou leitura de `str`; inclui `Program.vm` somente nesse perfil. Leitores passam o perfil do cabeçalho ao compilador e a cada builder/Worker, preservando o objeto/hash legado e os builtins VM2. `programVM` fornece a identidade declarada; versões desconhecidas e strings sob VM2 são recusadas. Os envelopes e bancos conservam suas estruturas/versões de limites; o codec JSON já transporta strings, mas os valores permitidos são validados segundo o perfil. Checkpoints e prefixos de journal usam identidade de validador `/2` para VM3 e conservam `/1` para VM2. [Contrato e testes](python-strings.md).

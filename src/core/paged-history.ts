@@ -53,7 +53,7 @@ export class PagedHistoryStore {
   private readonly indexSize: number;
   private currentStep: DeepReadonly<Step> | null = null;
   private constructor(private readonly library: ExecutionLibrary, private readonly checkpoints: CheckpointCache, recording: StoredRecording, index: ReplayIndex, private readonly cached: CachedIndex, private readonly built: boolean, options: PagedOptions) {
-    this.recording = recording; this.index = index; this.program = compile(recording.manifest.header.source, getRuntime(recording.entry.language, recording.entry.version));
+    this.recording = recording; this.index = index; this.program = compile(recording.manifest.header.source, getRuntime(recording.entry.language, recording.entry.version), recording.manifest.header.vm);
     this.limit = options.maxHistoryBytes ?? 64 * 1024 * 1024; validateHistoryBudget(this.limit); this.indexSize = utf8Bytes(cached.content);
     const available = this.limit - index.maxMachineBytes * 2 - index.maxStepBytes - this.indexSize;
     if (available < 1) throw new HistoryBudgetError(this.limit, index.maxMachineBytes * 2 + index.maxStepBytes + this.indexSize + 1);
@@ -69,7 +69,7 @@ export class PagedHistoryStore {
     await store.seek(recording.entry.cursor, job); return store;
   }
   private static async buildIndex(library: ExecutionLibrary, cache: CheckpointCache, recording: StoredRecording, key: string, options: PagedOptions, job: RecordingJob): Promise<CachedIndex> {
-    const program = compile(recording.manifest.header.source, getRuntime(recording.entry.language, recording.entry.version)), state = initialState();
+    const program = compile(recording.manifest.header.source, getRuntime(recording.entry.language, recording.entry.version), recording.manifest.header.vm), state = initialState();
     const index: ReplayIndex = { version: 1, runId: recording.entry.id, sourceChecksum: recording.checksum, count: recording.entry.count, maxMachineBytes: measureMachine(state).totalBytes, maxStepBytes: 0, events: [], checkpoints: [] };
     const limit = options.maxHistoryBytes ?? 64 * 1024 * 1024; validateHistoryBudget(limit);
     const token = await cache.begin(key); let committed = false, cursor = 0, eventBytes = 0, payload = measureMachine(state);

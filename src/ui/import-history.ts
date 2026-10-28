@@ -37,6 +37,6 @@ export async function importHistoryInWorker(content: string, job: RecordingJob &
   job.signal?.throwIfAborted();
   // Replay/verify again into a detached UI session in bounded batches; no JSON
   // parsing, digest or unbounded transfer is performed by the main thread.
-  const session = await DebugSession.restoreRecording(header.source, { ...header.runtime, maxSteps: header.maxSteps, maxFrames: header.maxFrames, maxHistoryBytes: header.maxHistoryBytes }, records, header.cursor, { ...job, onProgress: done => job.onProgress?.(header.count * 3 + done, header.count * 4) });
+  const session = await DebugSession.restoreRecording(header.source, { ...header.runtime, vm: header.vm, maxSteps: header.maxSteps, maxFrames: header.maxFrames, maxHistoryBytes: header.maxHistoryBytes }, records, header.cursor, { ...job, onProgress: done => job.onProgress?.(header.count * 3 + done, header.count * 4) });
   return { name: header.name, filename: header.filename, bytes: header.bytes, checksum: header.checksum, session };
 }

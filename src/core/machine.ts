@@ -1,3 +1,5 @@
+import { checkedString, stringLength, stringIndex } from './python-strings';
+import { STRING_VM } from './vm-version';
 import { describeInstruction, type Instruction, type Program } from './compiler';
 import type { Span, Value } from './language';
 import { pythonBinary, pythonBuiltins, pythonTruth, pythonUnary } from './python-values';
@@ -152,7 +154,7 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
   const read = (name: string, scope?: 'local' | 'global'): Value => {
     try { return resolve(name, scope).locals[name]!; }
     catch (error) {
-      if (python && scope !== 'local' && pythonBuiltins.has(name)) return { kind: 'builtin', name };
+      if (python && scope !== 'local' && pythonBuiltins.has(name) && (name !== 'str' || program.vm === STRING_VM)) return { kind: 'builtin', name };
       throw error;
     }
   };
@@ -216,7 +218,10 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
             push(null); description = `Saída: ${text.trimEnd()}`;
           } else if (name === 'len') {
             if (values.length !== 1) throw new Error('len espera um argumento');
-            push(BigInt(getList(values[0]!, state.heap).items.length)); description = `len(${format(values[0]!)})`;
+            push(BigInt(typeof values[0] === 'string' ? stringLength(values[0]) : getList(values[0]!, state.heap).items.length)); description = `len(${format(values[0]!)})`;
+          } else if (name === 'str') {
+            if (values.length > 1) throw new Error('str espera até um argumento nesta versão');
+            push(checkedString(values.length ? formatPythonOutput(values[0]!, state.heap) : ''));
           } else {
             if (values.length > 1 || (values.length === 0 && name === 'abs')) throw new Error(`${name} espera ${name === 'abs' ? 'um argumento' : 'até um argumento'} nesta versão`);
             const result = pythonUnary(name, values.length ? values[0]! : 0n, state.heap);
@@ -259,12 +264,16 @@ export function executeInstruction(state: MachineState, program: Program, maxFra
       }
       case 'CHECK_LIST': getList(state.operands.at(-1)!, state.heap); break;
       case 'LIST_GET': {
-        const index = pop(), target = pop(), list = getList(target, state.heap);
+        const index = pop(), target = pop();
+        if (typeof target === 'string') { push(stringIndex(target, index)); description = `Ler caractere de ${format(target)}`; break; }
+        const list = getList(target, state.heap);
         const position = listIndex(index, list.items.length); push(list.items[position]!);
         description = `Ler ${format(target)}[${position}]`; break;
       }
       case 'LIST_SET': {
-        const index = pop(), target = pop(), value = pop(), list = getList(target, state.heap);
+        const index = pop(), target = pop(), value = pop();
+        if (typeof target === 'string') throw new Error('Strings são imutáveis; atribuição por índice não é suportada');
+        const list = getList(target, state.heap);
         const position = listIndex(index, list.items.length);
         if (!isList(target)) throw new Error('Lista inválida');
         commit({ kind: 'heap-splice', id: target.id, index: position, removed: [list.items[position]!], added: [value] });

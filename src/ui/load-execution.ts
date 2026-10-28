@@ -23,7 +23,7 @@ export async function loadExecutionInWorker(id: string, job: RecordingJob & { ma
           if (message.kind === 'header') {
             if (header) throw new Error('Cabeçalho repetido');
             header = message.header;
-            builder = DebugSession.recordingBuilder(header.source, { ...header.runtime, maxSteps: header.maxSteps, maxFrames: header.maxFrames, maxHistoryBytes: job.maxHistoryBytes }, header.count, header.cursor);
+            builder = DebugSession.recordingBuilder(header.source, { ...header.runtime, vm: header.vm, maxSteps: header.maxSteps, maxFrames: header.maxFrames, maxHistoryBytes: job.maxHistoryBytes }, header.count, header.cursor);
           } else if (message.kind === 'progress') job.onProgress?.(message.done, message.total);
           else if (message.kind === 'chunk') {
             if (!builder || !header || message.records.length < 1 || message.records.length > 16) throw new Error('Transferência de blocos inconsistente');
